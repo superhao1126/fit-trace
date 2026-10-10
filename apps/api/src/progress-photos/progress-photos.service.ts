@@ -1,3 +1,4 @@
+import { recordRange } from '../common/dto/record-range-query.dto';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { ProgressPhoto as ProgressPhotoResponse } from '@fit-trace/shared';
 import type { Prisma, ProgressPhoto } from '@prisma/client';
@@ -41,6 +42,7 @@ export class ProgressPhotosService {
     const where: Prisma.ProgressPhotoWhereInput = {
       userId,
       ...(query.type ? { type: query.type } : {}),
+      recordedAt: recordRange(query),
     };
     const [photos, total] = await this.prisma.$transaction([
       this.prisma.progressPhoto.findMany({

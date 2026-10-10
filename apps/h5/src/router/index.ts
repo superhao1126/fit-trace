@@ -87,7 +87,7 @@ const router = createRouter({
         {
           path: 'settings/system',
           name: 'system-settings',
-          component: () => import('@/views/settings/SystemSettingsView.vue'),
+          redirect: '/settings',
         },
         {
           path: 'settings/agreement',

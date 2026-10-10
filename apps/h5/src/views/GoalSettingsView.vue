@@ -28,9 +28,7 @@ const currentWeight = ref<number | string>('');
 const goalType = ref<FitnessGoalType>(auth.user?.goal?.type ?? 'LOSE_FAT');
 const targetWeight = ref<number | string>(auth.user?.goal?.targetWeight ?? '');
 const targetDate = ref(
-  auth.user?.goal?.targetDate
-    ? dayjs(auth.user.goal.targetDate).format('YYYY-MM-DD')
-    : dayjs().add(90, 'day').format('YYYY-MM-DD'),
+  auth.user?.goal?.targetDate ? dayjs(auth.user.goal.targetDate).format('YYYY-MM-DD') : '',
 );
 const selectedGoal = computed(() => goalOptions.find((item) => item.value === goalType.value));
 
@@ -45,7 +43,7 @@ async function submit(): Promise<void> {
   const current = Number(currentWeight.value);
   const target = Number(targetWeight.value);
   if (!Number.isFinite(current) || current <= 0) {
-    ToastPlugin.warning('请输入正确的当前体重');
+    ToastPlugin.warning('请先记录一次体重');
     return;
   }
   if (!Number.isFinite(target) || target <= 0) {
@@ -67,14 +65,14 @@ async function submit(): Promise<void> {
 
   submitting.value = true;
   try {
-    auth.user = await updateFitnessGoal({
+    const user = await updateFitnessGoal({
       type: goalType.value,
-      currentWeight: current,
       targetWeight: target,
       ...(targetDate.value
         ? { targetDate: dayjs(targetDate.value).endOf('day').toISOString() }
         : {}),
     });
+    auth.updateUser(user);
     ToastPlugin.success('目标已保存');
     await router.replace('/dashboard');
   } catch (error) {
@@ -88,9 +86,8 @@ onMounted(async () => {
   try {
     const latest = await getLatestBodyRecord();
     if (latest) currentWeight.value = latest.weight;
-    if (targetWeight.value === '' && latest) {
-      targetWeight.value = Number((latest.weight - 3).toFixed(1));
-    }
+  } catch (error) {
+    showRequestError(error, '当前体重读取失败，请稍后重试');
   } finally {
     loading.value = false;
   }
@@ -134,15 +131,19 @@ onMounted(async () => {
         <div class="surface-card weight-settings">
           <label>
             <span>当前体重</span>
-            <Input v-model="currentWeight" type="number" inputmode="decimal" suffix="kg" />
-            <small>修改后会同时新增一条今天的身体记录</small>
+            <strong class="goal-current"
+              >{{ currentWeight || '尚未记录' }}<small v-if="currentWeight"> kg</small></strong
+            >
+            <button type="button" class="goal-record-link" @click="router.push('/body/create')">
+              {{ currentWeight ? '记录新的体重' : '先记录一次体重' }}
+            </button>
           </label>
           <label>
             <span>目标体重</span>
             <Input v-model="targetWeight" type="number" inputmode="decimal" suffix="kg" />
           </label>
           <label>
-            <span>希望在这一天前达到</span>
+            <span>目标日期（选填）</span>
             <input v-model="targetDate" class="date-input" type="date" />
             <small>日期只是节奏参考，不会影响记录功能</small>
           </label>
@@ -157,6 +158,19 @@ onMounted(async () => {
 </template>
 
 <style scoped lang="scss">
+.goal-current {
+  font-size: 1.125rem;
+  font-weight: 500;
+}
+.goal-record-link {
+  min-height: 40px;
+  padding: 0;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: var(--color-accent-text);
+  font-size: 0.8125rem;
+}
 .goal-section {
   margin-bottom: 26px;
 }

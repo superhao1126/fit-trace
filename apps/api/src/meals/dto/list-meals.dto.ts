@@ -1,8 +1,9 @@
+import { RecordRangeQueryDto } from '../../common/dto/record-range-query.dto';
 import { Type } from 'class-transformer';
 import type { MealType } from '@fit-trace/shared';
 import { IsIn, IsInt, IsOptional, Max, Min } from 'class-validator';
 
-export class ListMealsDto {
+export class ListMealsDto extends RecordRangeQueryDto {
   @Type(() => Number)
   @IsOptional()
   @IsInt({ message: '页码必须为整数' })

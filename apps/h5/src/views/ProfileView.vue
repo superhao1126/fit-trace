@@ -2,21 +2,10 @@
 import type { BodyRecord } from '@fit-trace/shared';
 import dayjs from 'dayjs';
 import { Skeleton } from 'tdesign-mobile-vue';
-import {
-  ActivityIcon,
-  CameraIcon,
-  ChevronRightIcon,
-  FlagIcon,
-  ForkIcon,
-  MeasurementIcon,
-  SettingIcon,
-} from 'tdesign-icons-vue-next';
+import { ChevronRightIcon, FlagIcon, MeasurementIcon, SettingIcon } from 'tdesign-icons-vue-next';
 import { computed, onActivated, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { getBodyRecords } from '@/api/body-records';
-import { getMeals } from '@/api/meals';
-import { getProgressPhotos } from '@/api/progress-photos';
-import { getWorkouts } from '@/api/workouts';
+import { getLatestBodyRecord } from '@/api/body-records';
 import { useAuthStore } from '@/stores/auth';
 import UserAvatar from '@/components/UserAvatar.vue';
 
@@ -26,21 +15,9 @@ const auth = useAuthStore();
 const router = useRouter();
 const loading = ref(true);
 const summaryError = ref(false);
-const counts = ref<{ body: number; meal: number; workout: number; photo: number } | null>(null);
 const latestBody = ref<BodyRecord | null>(null);
 const displayName = computed(
   () => auth.user?.nickname || auth.user?.email?.split('@')[0] || 'FitTrace 用户',
-);
-const stats = computed(() => [
-  { label: '身体', value: counts.value?.body, icon: MeasurementIcon, path: '/body/history' },
-  { label: '饮食', value: counts.value?.meal, icon: ForkIcon, path: '/meals' },
-  { label: '训练', value: counts.value?.workout, icon: ActivityIcon, path: '/workouts' },
-  { label: '照片', value: counts.value?.photo, icon: CameraIcon, path: '/photos' },
-]);
-const totalRecords = computed(() =>
-  counts.value
-    ? counts.value.body + counts.value.meal + counts.value.workout + counts.value.photo
-    : null,
 );
 const goalProgress = computed(() => {
   const goal = auth.user?.goal;
@@ -64,19 +41,7 @@ const goalLabels = { LOSE_FAT: '减脂', GAIN_MUSCLE: '增肌', MAINTAIN: '保�
 async function loadSummary(silent = false): Promise<void> {
   if (!silent) loading.value = true;
   try {
-    const [body, meals, workouts, photos] = await Promise.all([
-      getBodyRecords({ page: 1, pageSize: 1, recordedAtOrder: 'desc' }),
-      getMeals({ page: 1, pageSize: 1 }),
-      getWorkouts({ page: 1, pageSize: 1 }),
-      getProgressPhotos({ page: 1, pageSize: 1 }),
-    ]);
-    counts.value = {
-      body: body.meta.total,
-      meal: meals.meta.total,
-      workout: workouts.meta.total,
-      photo: photos.meta.total,
-    };
-    latestBody.value = body.data[0] ?? null;
+    latestBody.value = await getLatestBodyRecord();
     summaryError.value = false;
   } catch {
     summaryError.value = true;
@@ -122,43 +87,14 @@ onActivated(() => {
       <span class="account__edit">查看<ChevronRightIcon aria-hidden="true" /></span>
     </RouterLink>
 
-    <section
-      v-if="totalRecords !== 0 || summaryError"
-      class="profile-section"
-      aria-labelledby="records-title"
-    >
-      <div class="section-heading">
-        <h2 id="records-title">我的记录</h2>
-        <span v-if="totalRecords !== null">共 {{ totalRecords }} 条</span>
-      </div>
-      <div class="profile-card record-grid" :aria-busy="loading">
-        <button
-          v-for="item in stats"
-          :key="item.path"
-          type="button"
-          :aria-label="`查看${item.label}记录`"
-          @click="router.push(item.path)"
-        >
-          <component :is="item.icon" aria-hidden="true" />
-          <Skeleton v-if="loading" :loading="true" animation="gradient" :row-col="[1]" />
-          <strong v-else>{{ item.value ?? '—' }}</strong>
-          <span>{{ item.label }}</span>
-        </button>
-      </div>
-      <button v-if="summaryError" class="summary-retry" type="button" @click="loadSummary()">
-        记录暂时无法读取，点击重试
-      </button>
-    </section>
-
-    <section
-      v-if="totalRecords === 0 && !summaryError"
-      class="profile-section"
-      aria-label="记录档案"
-    >
+    <section class="profile-section" aria-label="记录档案">
       <button class="profile-card setting-row" type="button" @click="router.push('/archive')">
         <span class="row-icon"><MeasurementIcon /></span
-        ><span class="setting-row__label">我的记录档案</span
-        ><span class="setting-row__value">0 条记录</span><ChevronRightIcon class="chevron" />
+        ><span class="setting-row__label">记录档案</span
+        ><span class="setting-row__value">按日期查看</span><ChevronRightIcon class="chevron" />
+      </button>
+      <button v-if="summaryError" class="summary-retry" type="button" @click="loadSummary()">
+        体重暂时无法读取，点击重试
       </button>
     </section>
     <section class="profile-section" aria-labelledby="goal-title">
@@ -319,47 +255,6 @@ onActivated(() => {
   &:focus-visible {
     outline: 2px solid var(--color-accent-text);
     outline-offset: 3px;
-  }
-}
-.record-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  padding: 16px 0;
-  button {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    align-items: center;
-    gap: 7px;
-    padding: 0 6px;
-    background: transparent;
-    border: 0;
-    border-radius: 6px;
-    + button {
-      border-left: 1px solid var(--color-border);
-    }
-    > svg {
-      color: var(--color-text-tertiary);
-      font-size: 1.125rem;
-    }
-    strong {
-      font-size: 1.125rem;
-      font-weight: 500;
-      line-height: 1.2;
-      font-variant-numeric: tabular-nums;
-      letter-spacing: -0.04em;
-    }
-    > span {
-      color: var(--color-text-secondary);
-      font-size: 0.75rem;
-    }
-    &:active {
-      background: var(--color-surface-muted);
-    }
-  }
-  .t-skeleton {
-    width: 36px;
-    height: 27px;
   }
 }
 .summary-retry {

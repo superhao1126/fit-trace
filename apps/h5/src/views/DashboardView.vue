@@ -2,9 +2,17 @@
 import type { DashboardOverview, MealType } from '@fit-trace/shared';
 import dayjs from 'dayjs';
 import { Button, Skeleton } from 'tdesign-mobile-vue';
-import { ActivityIcon, ChevronRightIcon, ForkIcon, MeasurementIcon } from 'tdesign-icons-vue-next';
-import { computed, onActivated, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import {
+  ActivityIcon,
+  ChevronRightIcon,
+  ForkIcon,
+  MeasurementIcon,
+  CameraIcon,
+} from 'tdesign-icons-vue-next';
+import { computed, onActivated, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import DiaryDateStrip from '@/components/DiaryDateStrip.vue';
+import { recordDateTime } from '@/utils/record-date';
 import { getDashboard } from '@/api/dashboard';
 import { useAuthStore } from '@/stores/auth';
 
@@ -16,6 +24,16 @@ const mealLabels: Record<MealType, string> = {
 };
 const auth = useAuthStore();
 const router = useRouter();
+const route = useRoute();
+const selectedDate = ref(dayjs(recordDateTime(route.query.date)).format('YYYY-MM-DD'));
+const isToday = computed(() => selectedDate.value === dayjs().format('YYYY-MM-DD'));
+const todayPhotos = computed(() => overview.value?.today.photoPreview ?? []);
+const todayWorkouts = computed(() => overview.value?.today.workoutPreview ?? []);
+const photoLabels = { FRONT: '正面', SIDE: '侧面', BACK: '背面', OTHER: '其他' } as const;
+function openDayArchive() {
+  void router.push({ path: '/archive', query: { date: selectedDate.value } });
+}
+
 const loading = ref(true);
 const overview = ref<DashboardOverview | null>(null);
 const errorMessage = ref('');
@@ -24,7 +42,7 @@ const displayName = computed(
 );
 const todayLabel = computed(() => {
   const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
-  const date = dayjs(overview.value?.date);
+  const date = dayjs(selectedDate.value);
   return `${date.format('M月D日')} ${weekdays[date.day()]}`;
 });
 const latestBody = computed(() => overview.value?.latestBodyRecord ?? null);
@@ -43,7 +61,12 @@ const todayCalories = computed(() => overview.value?.today.calories ?? null);
 const todayWorkoutCount = computed(() => overview.value?.today.workoutCount ?? 0);
 const todayWorkoutMinutes = computed(() => overview.value?.today.workoutMinutes ?? 0);
 const hasTodayRecords = computed(() =>
-  Boolean(todayBody.value || todayMealCount.value || todayWorkoutCount.value),
+  Boolean(
+    todayBody.value ||
+    todayMealCount.value ||
+    todayWorkoutCount.value ||
+    overview.value?.today.photoCount,
+  ),
 );
 const hasRecentRecords = computed(() =>
   Boolean(
@@ -76,25 +99,45 @@ const goalDateText = computed(() => {
   return `还有 ${days} 天`;
 });
 function addRecord(path: string): void {
-  void router.push({ path, query: { returnTo: '/dashboard' } });
+  void router.push({ path, query: { returnTo: '/dashboard', date: selectedDate.value } });
 }
 
 defineOptions({ name: 'DashboardView' });
 
+let requestId = 0;
 async function loadOverview(silent = false): Promise<void> {
-  if (!silent) loading.value = true;
+  const request = ++requestId;
+  const date = selectedDate.value;
+  if (!silent) {
+    loading.value = true;
+    if (overview.value?.date !== date) overview.value = null;
+  }
   errorMessage.value = '';
   try {
-    overview.value = await getDashboard();
+    const result = await getDashboard(date);
+    if (request !== requestId) return;
+    overview.value = result;
   } catch {
+    if (request !== requestId) return;
     errorMessage.value = overview.value
       ? '刷新失败，当前展示的是上次加载的数据'
       : '首页加载失败，请稍后重试';
   } finally {
-    if (!silent) loading.value = false;
+    if (request === requestId) loading.value = false;
   }
 }
 
+watch(selectedDate, () => {
+  void router.replace({ path: '/dashboard', query: { date: selectedDate.value } });
+  void loadOverview();
+});
+watch(
+  () => route.query.date,
+  (date) => {
+    if (route.path === '/dashboard' && typeof date === 'string')
+      selectedDate.value = dayjs(recordDateTime(date)).format('YYYY-MM-DD');
+  },
+);
 onMounted(() => void loadOverview());
 // 从别的 tab 切回来时静默刷新：保留原内容，不再闪加载态
 let activated = false;
@@ -111,7 +154,7 @@ onActivated(() => {
   <main class="view-page dashboard">
     <header class="primary-header dashboard-header">
       <div>
-        <h1>今天</h1>
+        <h1>{{ isToday ? '今天' : '日记' }}</h1>
         <p>{{ todayLabel }}</p>
       </div>
       <button class="avatar" type="button" aria-label="我的资料" @click="router.push('/profile')">
@@ -119,6 +162,7 @@ onActivated(() => {
       </button>
     </header>
 
+    <DiaryDateStrip v-model="selectedDate" />
     <Skeleton v-if="loading" :loading="true" animation="gradient" :row-col="[1, 1, 1]" />
     <section v-if="errorMessage" class="load-error" role="alert">
       <span>{{ errorMessage }}</span
@@ -128,36 +172,36 @@ onActivated(() => {
     </section>
 
     <template v-if="!loading && overview">
-      <section class="surface-card today-overview" aria-label="今日概览">
+      <section class="surface-card today-overview" aria-label="当天概览">
         <div class="section-heading">
-          <h2>今日概览</h2>
-          <span>{{ hasTodayRecords ? '已开始记录' : '等待今天的第一条记录' }}</span>
+          <h2>当天概览</h2>
+          <span>{{ hasTodayRecords ? '已开始记录' : '还没有当天记录' }}</span>
         </div>
         <div class="overview-grid">
           <button
             type="button"
             @click="todayBody ? router.push(`/body/${todayBody.id}`) : addRecord('/body/create')"
           >
-            <span>{{ todayBody ? '今日体重' : latestBody ? '最近体重' : '体重' }}</span
+            <span>{{ todayBody ? '当天体重' : latestBody ? '最近体重' : '体重' }}</span
             ><strong>{{ (todayBody ?? latestBody)?.weight ?? '—' }}<small>kg</small></strong
             ><span>{{
               todayBody
-                ? '今天已记录'
+                ? '当天已记录'
                 : latestBody
                   ? dayjs(latestBody.recordedAt).format('M月D日')
                   : '尚未记录'
             }}</span>
           </button>
-          <button type="button" @click="router.push('/meals')">
-            <span>饮食热量</span><strong>{{ todayCalories ?? '—' }}<small>kcal</small></strong
+          <button type="button" @click="openDayArchive">
+            <span>已记录热量</span><strong>{{ todayCalories ?? '—' }}<small>kcal</small></strong
             ><span>{{ todayMealCount }} 餐</span>
           </button>
-          <button type="button" @click="router.push('/workouts')">
+          <button type="button" @click="openDayArchive">
             <span>训练时长</span><strong>{{ todayWorkoutMinutes }}<small>分钟</small></strong
             ><span>{{ todayWorkoutCount }} 次训练</span>
           </button>
         </div>
-        <button class="goal-row" type="button" @click="router.push('/goal')">
+        <button v-if="isToday" class="goal-row" type="button" @click="router.push('/goal')">
           <span v-if="auth.user?.goal"
             >{{ goalLabels[auth.user.goal.type] }} · 目标
             {{ auth.user.goal.targetWeight }} kg<small>{{
@@ -178,18 +222,19 @@ onActivated(() => {
         <button type="button" @click="addRecord('/workouts/create')">
           <ActivityIcon /><span>记训练</span>
         </button>
+        <button type="button" @click="addRecord('/photos')">
+          <CameraIcon /><span>记照片</span>
+        </button>
       </nav>
 
       <section v-if="!hasTodayRecords" class="start-today">
-        <h2>从今天的一次记录开始</h2>
-        <p>体重、吃过的食物或一次训练，选一项记下来</p>
+        <h2>{{ isToday ? '从今天的一次记录开始' : '补上一条当天记录' }}</h2>
+        <p>体重、饮食、训练或照片，选一项记下来</p>
       </section>
       <section v-else class="content-section">
         <div class="section-heading">
-          <h2>今日记录</h2>
-          <button type="button" @click="router.push('/archive')">
-            全部档案 <ChevronRightIcon />
-          </button>
+          <h2>当天记录</h2>
+          <button type="button" @click="openDayArchive">查看当天 <ChevronRightIcon /></button>
         </div>
         <div class="surface-card diary-list">
           <button
@@ -227,19 +272,50 @@ onActivated(() => {
             v-if="todayMealCount > todayMeals.length"
             class="more-row"
             type="button"
-            @click="router.push('/meals')"
+            @click="openDayArchive"
           >
             查看全部 {{ todayMealCount }} 餐 <ChevronRightIcon />
           </button>
           <button
-            v-if="todayWorkoutCount"
+            v-for="workout in todayWorkouts"
+            :key="workout.id"
             class="diary-row"
             type="button"
-            @click="router.push('/workouts')"
+            @click="router.push(`/workouts/${workout.id}`)"
           >
             <ActivityIcon /><span class="diary-row__main"
-              ><strong>今天的训练</strong><span>{{ todayWorkoutCount }} 次训练</span></span
-            ><span class="diary-row__value">{{ todayWorkoutMinutes }}<small>分钟</small></span>
+              ><strong>{{ workout.name }}</strong
+              ><span>{{ dayjs(workout.startedAt).format('HH:mm') }} · 训练</span></span
+            ><span class="diary-row__value">{{ workout.durationMinutes }}<small>分钟</small></span>
+          </button>
+          <button
+            v-if="todayWorkoutCount > todayWorkouts.length"
+            class="more-row"
+            type="button"
+            @click="openDayArchive"
+          >
+            查看全部 {{ todayWorkoutCount }} 次训练 <ChevronRightIcon />
+          </button>
+          <button
+            v-for="photo in todayPhotos"
+            :key="photo.id"
+            class="diary-row"
+            type="button"
+            @click="router.push(`/photos/${photo.id}`)"
+          >
+            <img class="diary-thumb" :src="photo.imageUrl" :alt="photoLabels[photo.type]" /><span
+              class="diary-row__main"
+              ><strong>{{ photoLabels[photo.type] }}照片</strong
+              ><span>{{ dayjs(photo.recordedAt).format('HH:mm') }} · 身材记录</span></span
+            ><ChevronRightIcon />
+          </button>
+          <button
+            v-if="(overview.today.photoCount ?? 0) > todayPhotos.length"
+            class="more-row"
+            type="button"
+            @click="openDayArchive"
+          >
+            查看全部 {{ overview.today.photoCount }} 张照片 <ChevronRightIcon />
           </button>
         </div>
       </section>
@@ -273,17 +349,17 @@ onActivated(() => {
           </p>
         </div>
       </section>
-      <nav class="secondary-links" aria-label="更多记录">
-        <button type="button" @click="router.push('/photos')">身材照片 <ChevronRightIcon /></button
-        ><button type="button" @click="router.push('/archive')">
-          全部档案 <ChevronRightIcon />
-        </button>
-      </nav>
     </template>
   </main>
 </template>
 
 <style scoped lang="scss">
+.diary-thumb {
+  width: 36px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 5px;
+}
 .dashboard-header .avatar {
   display: grid;
   width: 40px;
@@ -379,12 +455,12 @@ onActivated(() => {
 }
 .quick-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
   margin: 16px 0 24px;
   button {
     display: flex;
-    min-height: 64px;
+    min-height: 60px;
     flex-direction: column;
     align-items: center;
     justify-content: center;
@@ -505,24 +581,6 @@ onActivated(() => {
     grid-column: 1/-1;
     margin: 0;
     line-height: 1.6;
-  }
-}
-.secondary-links {
-  display: flex;
-  gap: 20px;
-  padding-top: 4px;
-  border-top: 1px solid var(--color-border);
-  button {
-    display: flex;
-    min-height: 44px;
-    flex: 1;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0;
-    border: 0;
-    color: var(--color-text-secondary);
-    background: transparent;
-    font-size: 0.8125rem;
   }
 }
 .load-error {

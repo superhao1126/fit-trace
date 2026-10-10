@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { DesktopIcon, ModeDarkIcon, ModeLightIcon } from 'tdesign-icons-vue-next';
-import RecordDetailHeader from '@/components/RecordDetailHeader.vue';
 import { getThemeMode, setThemeMode } from '@/utils/theme';
 
 const mode = ref(getThemeMode());
@@ -19,8 +18,7 @@ watch(mode, setThemeMode);
 </script>
 
 <template>
-  <main class="view-page system-settings-page">
-    <RecordDetailHeader title="系统设置" />
+  <div class="display-settings">
     <section class="settings-section" aria-labelledby="display-mode-title">
       <h2 id="display-mode-title">显示模式</h2>
       <div class="settings-list" role="group" aria-labelledby="display-mode-title">
@@ -46,7 +44,7 @@ watch(mode, setThemeMode);
       </div>
       <p class="settings-hint">选择后立即生效，自动保存在当前设备</p>
     </section>
-  </main>
+  </div>
 </template>
 
 <style scoped lang="scss">

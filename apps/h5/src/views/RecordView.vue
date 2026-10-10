@@ -6,10 +6,14 @@ import {
   ForkIcon,
   MeasurementIcon,
 } from 'tdesign-icons-vue-next';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import RecordDetailHeader from '@/components/RecordDetailHeader.vue';
 
 const router = useRouter();
+const route = useRoute();
+function openRecord(path: string) {
+  void router.push({ path, query: { date: route.query.date } });
+}
 const entries = [
   {
     title: '身体数据',
@@ -36,18 +40,14 @@ const entries = [
     path: '/photos',
   },
 ];
-const shortcuts = [
-  { label: '身体数据历史', path: '/body/history' },
-  { label: '饮食日记', path: '/meals' },
-  { label: '训练记录', path: '/workouts' },
-  { label: '照片档案', path: '/photos' },
-  { label: '全部记录档案', path: '/archive' },
-];
 </script>
 
 <template>
   <main class="view-page">
-    <RecordDetailHeader title="添加记录" subtitle="选择今天想要记录的内容" />
+    <RecordDetailHeader
+      title="添加记录"
+      :subtitle="route.query.date ? `为 ${route.query.date} 添加记录` : '选择想要记录的内容'"
+    />
 
     <div class="entry-list">
       <button
@@ -55,7 +55,7 @@ const shortcuts = [
         :key="entry.title"
         class="surface-card entry-card"
         type="button"
-        @click="router.push(entry.path)"
+        @click="openRecord(entry.path)"
       >
         <div class="entry-card__symbol"><component :is="entry.icon" /></div>
         <div class="entry-card__content">
@@ -67,18 +67,6 @@ const shortcuts = [
         <ChevronRightIcon />
       </button>
     </div>
-
-    <section class="surface-card shortcut-card">
-      <button
-        v-for="shortcut in shortcuts"
-        :key="shortcut.path + shortcut.label"
-        type="button"
-        @click="router.push(shortcut.path)"
-      >
-        <span>{{ shortcut.label }}</span>
-        <ChevronRightIcon />
-      </button>
-    </section>
   </main>
 </template>
 
@@ -127,37 +115,6 @@ const shortcuts = [
     display: flex;
     align-items: center;
     gap: 7px;
-  }
-}
-
-.shortcut-card {
-  margin-top: var(--spacing-md);
-
-  button {
-    display: flex;
-    width: 100%;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 14px 15px;
-    color: var(--color-text-primary);
-    text-align: left;
-    background: transparent;
-    border: 0;
-
-    + button {
-      border-top: 1px solid var(--color-border);
-    }
-
-    span {
-      font-size: 0.8125rem;
-      font-weight: 500;
-    }
-
-    svg {
-      flex: none;
-      color: var(--color-text-tertiary);
-    }
   }
 }
 </style>

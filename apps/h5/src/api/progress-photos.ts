@@ -11,6 +11,8 @@ export interface ProgressPhotoInput {
 export interface ProgressPhotoListParams {
   page?: number;
   pageSize?: number;
+  from?: string;
+  to?: string;
   type?: PhotoType;
 }
 

@@ -294,6 +294,11 @@ export interface DashboardOverview {
     }>;
     workoutCount: number;
     workoutMinutes: number;
+    workoutPreview: Array<
+      Pick<WorkoutRecord, 'id' | 'name' | 'type' | 'startedAt' | 'durationMinutes'>
+    >;
+    photoCount: number;
+    photoPreview: Array<Pick<ProgressPhoto, 'id' | 'type' | 'imageUrl' | 'recordedAt'>>;
   };
 }
 

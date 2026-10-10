@@ -1,9 +1,10 @@
+import { RecordRangeQueryDto } from '../../common/dto/record-range-query.dto';
 import { Type } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, Max, Min } from 'class-validator';
 import type { PhotoType } from '@fit-trace/shared';
 import { PHOTO_TYPES } from './create-progress-photo.dto';
 
-export class ListProgressPhotosDto {
+export class ListProgressPhotosDto extends RecordRangeQueryDto {
   @Type(() => Number)
   @IsOptional()
   @IsInt({ message: '页码必须为整数' })

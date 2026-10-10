@@ -1,3 +1,4 @@
+import { recordRange } from '../common/dto/record-range-query.dto';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { MealRecord as MealRecordResponse } from '@fit-trace/shared';
 import type { Prisma } from '@prisma/client';
@@ -42,6 +43,7 @@ export class MealsService {
     const where: Prisma.MealRecordWhereInput = {
       userId,
       ...(query.type ? { type: query.type } : {}),
+      recordedAt: recordRange(query),
     };
     const [meals, total] = await this.prisma.$transaction([
       this.prisma.mealRecord.findMany({

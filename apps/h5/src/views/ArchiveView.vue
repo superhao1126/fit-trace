@@ -12,11 +12,12 @@ import type {
 import dayjs from 'dayjs';
 import { Button, Loading } from 'tdesign-mobile-vue';
 import { ActivityIcon, AddIcon, ForkIcon, MeasurementIcon } from 'tdesign-icons-vue-next';
-import { computed, onActivated, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, onActivated, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { getBodyRecords } from '@/api/body-records';
 import { getMeals } from '@/api/meals';
 import { getProgressPhotos } from '@/api/progress-photos';
+import { dateRange, recordDateTime } from '@/utils/record-date';
 import { getWorkouts } from '@/api/workouts';
 
 type ArchiveFilter = 'ALL' | 'BODY' | 'MEAL' | 'WORKOUT' | 'PHOTO';
@@ -47,6 +48,43 @@ const photoLabels: Record<PhotoType, string> = {
   OTHER: '其他',
 };
 const router = useRouter();
+const route = useRoute();
+const initialDate =
+  typeof route.query.date === 'string'
+    ? dayjs(recordDateTime(route.query.date)).format('YYYY-MM-DD')
+    : '';
+const selectedDate = ref(initialDate);
+const selectedMonth = ref(dayjs(initialDate || undefined).format('YYYY-MM'));
+const page = ref(1);
+const loadingMore = ref(false);
+const totals = ref({ BODY: 0, MEAL: 0, WORKOUT: 0, PHOTO: 0 });
+const total = computed(() =>
+  activeFilter.value === 'ALL'
+    ? Object.values(totals.value).reduce((a, b) => a + b, 0)
+    : totals.value[activeFilter.value],
+);
+const hasMore = computed(() => {
+  const counts = {
+    BODY: bodyRecords.value.length,
+    MEAL: meals.value.length,
+    WORKOUT: workouts.value.length,
+    PHOTO: photos.value.length,
+  };
+  return activeFilter.value === 'ALL'
+    ? (Object.keys(counts) as Array<keyof typeof counts>).some(
+        (kind) => counts[kind] < totals.value[kind],
+      )
+    : counts[activeFilter.value] < totals.value[activeFilter.value];
+});
+function addRecord() {
+  void router.push({ path: '/record', query: { date: selectedDate.value || undefined } });
+}
+function chooseMonth(value: string) {
+  if (!/^\d{4}-\d{2}$/.test(value)) return;
+  selectedDate.value = '';
+  selectedMonth.value = value;
+}
+
 const loading = ref(true);
 const loadError = ref('');
 const activeFilter = ref<ArchiveFilter>('ALL');
@@ -113,26 +151,65 @@ function openItem(item: ArchiveItem): void {
 }
 defineOptions({ name: 'ArchiveView' });
 
-async function loadRecords(silent = false): Promise<void> {
-  if (!silent) loading.value = true;
+let requestId = 0;
+async function loadRecords(silent = false, more = false): Promise<void> {
+  const request = ++requestId;
+  const nextPage = more ? page.value + 1 : 1;
+  if (more) loadingMore.value = true;
+  else if (!silent) loading.value = true;
   loadError.value = '';
+  const range = dateRange(
+    selectedDate.value || `${selectedMonth.value}-01`,
+    selectedDate.value ? 'day' : 'month',
+  );
   try {
     const [bodyResult, mealResult, workoutResult, photoResult] = await Promise.all([
-      getBodyRecords({ page: 1, pageSize: 100, recordedAtOrder: 'desc' }),
-      getMeals({ page: 1, pageSize: 100 }),
-      getWorkouts({ page: 1, pageSize: 100 }),
-      getProgressPhotos({ page: 1, pageSize: 100 }),
+      getBodyRecords({ page: nextPage, pageSize: 20, recordedAtOrder: 'desc', ...range }),
+      getMeals({ page: nextPage, pageSize: 20, ...range }),
+      getWorkouts({ page: nextPage, pageSize: 20, ...range }),
+      getProgressPhotos({ page: nextPage, pageSize: 20, ...range }),
     ]);
-    bodyRecords.value = bodyResult.data;
-    meals.value = mealResult.data;
-    workouts.value = workoutResult.data;
-    photos.value = photoResult.data;
+    if (request !== requestId) return;
+    bodyRecords.value = more ? [...bodyRecords.value, ...bodyResult.data] : bodyResult.data;
+    meals.value = more ? [...meals.value, ...mealResult.data] : mealResult.data;
+    workouts.value = more ? [...workouts.value, ...workoutResult.data] : workoutResult.data;
+    photos.value = more ? [...photos.value, ...photoResult.data] : photoResult.data;
+    totals.value = {
+      BODY: bodyResult.meta.total,
+      MEAL: mealResult.meta.total,
+      WORKOUT: workoutResult.meta.total,
+      PHOTO: photoResult.meta.total,
+    };
+    page.value = nextPage;
   } catch {
-    loadError.value = '档案暂时无法加载，请重试';
+    if (request === requestId) loadError.value = '记录暂时无法加载，请重试';
   } finally {
-    if (!silent) loading.value = false;
+    if (request === requestId) {
+      loading.value = false;
+      loadingMore.value = false;
+    }
   }
 }
+watch(selectedDate, (date) => {
+  if (date) selectedMonth.value = date.slice(0, 7);
+});
+watch([selectedMonth, selectedDate], () => {
+  bodyRecords.value = [];
+  meals.value = [];
+  workouts.value = [];
+  photos.value = [];
+  totals.value = { BODY: 0, MEAL: 0, WORKOUT: 0, PHOTO: 0 };
+  void loadRecords();
+});
+watch(
+  () => route.query.date,
+  (date) => {
+    if (route.path !== '/archive') return;
+    selectedDate.value =
+      typeof date === 'string' ? dayjs(recordDateTime(date)).format('YYYY-MM-DD') : '';
+    if (selectedDate.value) selectedMonth.value = selectedDate.value.slice(0, 7);
+  },
+);
 
 onMounted(() => void loadRecords());
 let activated = false;
@@ -150,12 +227,46 @@ onActivated(() => {
     <header class="primary-header archive-header">
       <div>
         <h1>记录档案</h1>
-        <p>{{ items.length }} 条记录 · 按记录时间排列</p>
+        <p>
+          {{
+            selectedDate
+              ? dayjs(selectedDate).format('M月D日')
+              : dayjs(`${selectedMonth}-01`).format('YYYY年M月')
+          }}
+          · {{ total }} 条记录
+        </p>
       </div>
-      <Button theme="primary" size="small" variant="text" @click="router.push('/record')"
+      <Button theme="primary" size="small" variant="text" @click="addRecord"
         ><AddIcon /> 记录</Button
       >
     </header>
+    <div class="archive-dates">
+      <label
+        >月份<input
+          type="month"
+          aria-label="档案月份"
+          :value="selectedMonth"
+          :max="dayjs().format('YYYY-MM')"
+          @change="chooseMonth(($event.target as HTMLInputElement).value)"
+      /></label>
+      <label
+        >日期<input
+          v-model="selectedDate"
+          type="date"
+          aria-label="查找记录日期"
+          :max="dayjs().format('YYYY-MM-DD')"
+      /></label>
+      <button
+        v-if="selectedDate"
+        type="button"
+        @click="
+          selectedMonth = selectedDate.slice(0, 7);
+          selectedDate = '';
+        "
+      >
+        整月
+      </button>
+    </div>
     <div class="archive-filter filter-tabs" aria-label="按记录类型筛选">
       <button
         v-for="filter in filters"
@@ -181,10 +292,10 @@ onActivated(() => {
       </div>
       <EmptyState
         v-if="!loading && !loadError && items.length === 0"
-        title="这里还没有记录"
-        description="身体、饮食、训练和照片都会按时间收在这里"
-        action-label="添加第一条记录"
-        @action="router.push('/record')"
+        title="这段时间还没有记录"
+        description="换一个日期查看，或为当天补上一条记录"
+        action-label="添加记录"
+        @action="addRecord"
       />
       <div v-else class="archive-list">
         <section v-for="group in groups" :key="group.date" class="archive-group">
@@ -218,9 +329,15 @@ onActivated(() => {
               <span v-if="item.kind === 'BODY'" class="archive-row__content">
                 <small>身体</small>
                 <strong>{{ item.body.weight }} kg</strong>
-                <span>
-                  体脂 {{ item.body.bodyFat === null ? '—' : `${item.body.bodyFat}%` }} · 腰围
-                  {{ item.body.waist === null ? '—' : `${item.body.waist} cm` }}
+                <span v-if="item.body.bodyFat !== null || item.body.waist !== null">
+                  {{
+                    [
+                      item.body.bodyFat !== null ? `体脂 ${item.body.bodyFat}%` : '',
+                      item.body.waist !== null ? `腰围 ${item.body.waist} cm` : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')
+                  }}
                 </span>
               </span>
               <span v-else-if="item.kind === 'MEAL'" class="archive-row__content">
@@ -254,11 +371,67 @@ onActivated(() => {
           </div>
         </section>
       </div>
+      <Button
+        v-if="hasMore && !loading"
+        class="archive-more"
+        variant="outline"
+        block
+        :loading="loadingMore"
+        @click="loadRecords(false, true)"
+        >继续加载历史记录</Button
+      >
+      <p v-if="!loading && !loadError && total" class="archive-count">
+        已显示 {{ items.length }} / {{ total }} 条{{ hasMore ? '，继续加载可查看更早的记录' : '' }}
+      </p>
     </Loading>
   </main>
 </template>
 
 <style scoped lang="scss">
+.archive-dates {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  label {
+    display: grid;
+    min-width: 0;
+    flex: 1;
+    gap: 5px;
+    color: var(--color-text-secondary);
+    font-size: 0.6875rem;
+  }
+  input {
+    width: 100%;
+    min-width: 0;
+    height: 40px;
+    padding: 0 7px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    color: var(--color-text-primary);
+    background: var(--color-surface);
+    font-size: 0.8125rem;
+  }
+  button {
+    min-height: 40px;
+    padding: 0 4px;
+    margin-top: 16px;
+    color: var(--color-accent-text);
+    background: transparent;
+    border: 0;
+    font-size: 0.75rem;
+  }
+}
+.archive-more {
+  margin-top: 18px;
+}
+.archive-count {
+  text-align: center;
+  color: var(--color-text-tertiary);
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
 .archive-list {
   display: grid;
   gap: 24px;

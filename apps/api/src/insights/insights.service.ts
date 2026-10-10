@@ -94,7 +94,7 @@ export class InsightsService {
       weight: this.summarizeWeight(series, bodyRecords.length),
       calories: this.summarizeCalories(series),
       workouts: this.summarizeWorkouts(workouts),
-      meals: this.summarizeMeals(meals),
+      meals: this.summarizeMeals(meals, dayKey),
       photos: this.summarizePhotos(photos),
     };
   }
@@ -109,7 +109,7 @@ export class InsightsService {
     return {
       start,
       current,
-      change: Number((current - start).toFixed(2)),
+      change: values.length > 1 ? Number((current - start).toFixed(2)) : null,
       lowest: Math.min(...values),
       highest: Math.max(...values),
       recordCount,
@@ -149,12 +149,15 @@ export class InsightsService {
     };
   }
 
-  private summarizeMeals(meals: Array<{ type: MealType; recordedAt: Date }>): InsightMealSummary {
+  private summarizeMeals(
+    meals: Array<{ type: MealType; recordedAt: Date }>,
+    dayKey: (value: Date) => string,
+  ): InsightMealSummary {
     const byType = new Map<MealType, number>();
     const dates = new Set<string>();
     for (const meal of meals) {
       byType.set(meal.type, (byType.get(meal.type) ?? 0) + 1);
-      dates.add(meal.recordedAt.toISOString().slice(0, 10));
+      dates.add(dayKey(meal.recordedAt));
     }
     return {
       count: meals.length,

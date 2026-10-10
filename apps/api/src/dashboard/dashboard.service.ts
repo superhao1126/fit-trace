@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import type { DashboardOverview } from '@fit-trace/shared';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -6,13 +6,30 @@ import { PrismaService } from '../prisma/prisma.service';
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async overview(userId: string, tzOffset: number): Promise<DashboardOverview> {
+  async overview(
+    userId: string,
+    tzOffset: number,
+    selectedDate?: string,
+  ): Promise<DashboardOverview> {
     const now = new Date();
     const offset = tzOffset * 60_000;
-    const date = new Date(now.getTime() + offset).toISOString().slice(0, 10);
+    const today = new Date(now.getTime() + offset).toISOString().slice(0, 10);
+    const date = selectedDate ?? today;
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      !Number.isFinite(Date.parse(`${date}T00:00:00Z`)) ||
+      new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) !== date ||
+      date > today
+    ) {
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message: '请选择今天或过去的日期',
+      });
+    }
     const from = new Date(`${date}T00:00:00.000Z`).getTime() - offset;
-    const todayRange = { gte: new Date(from), lte: now };
-    const recentRange = { gte: new Date(from - 6 * 86_400_000), lte: now };
+    const until = new Date(Math.min(now.getTime(), from + 86_400_000 - 1));
+    const todayRange = { gte: new Date(from), lte: until };
+    const recentRange = { gte: new Date(from - 6 * 86_400_000), lte: until };
     const dayKey = (value: Date): string =>
       new Date(value.getTime() + offset).toISOString().slice(0, 10);
     const orderBy = [{ recordedAt: 'desc' }, { createdAt: 'desc' }] as const;
@@ -26,11 +43,13 @@ export class DashboardService {
       recentBodies,
       recentMeals,
       recentWorkouts,
+      dayWorkouts,
+      dayPhotos,
     ] = await this.prisma.$transaction(
       async (db) =>
         Promise.all([
           db.bodyRecord.findMany({
-            where: { userId, recordedAt: { lte: now } },
+            where: { userId, recordedAt: { lte: until } },
             orderBy: [...orderBy],
             take: 2,
             select: { id: true, weight: true, recordedAt: true },
@@ -51,17 +70,17 @@ export class DashboardService {
             _sum: { durationMinutes: true },
           }),
           db.mealRecord.findFirst({
-            where: { userId, recordedAt: { lte: now } },
+            where: { userId, recordedAt: { lte: until } },
             orderBy: [...orderBy],
             select: { id: true, type: true, recordedAt: true },
           }),
           db.workoutRecord.findFirst({
-            where: { userId, startedAt: { lte: now } },
+            where: { userId, startedAt: { lte: until } },
             orderBy: [{ startedAt: 'desc' }, { createdAt: 'desc' }],
             select: { id: true, type: true, startedAt: true },
           }),
           db.progressPhoto.findFirst({
-            where: { userId, recordedAt: { lte: now } },
+            where: { userId, recordedAt: { lte: until } },
             orderBy: [...orderBy],
             select: { id: true, recordedAt: true },
           }),
@@ -78,6 +97,17 @@ export class DashboardService {
             where: { userId, startedAt: recentRange },
             _count: true,
             _sum: { durationMinutes: true },
+          }),
+          db.workoutRecord.findMany({
+            where: { userId, startedAt: todayRange },
+            orderBy: [{ startedAt: 'desc' }, { createdAt: 'desc' }],
+            take: 4,
+            select: { id: true, name: true, type: true, startedAt: true, durationMinutes: true },
+          }),
+          db.progressPhoto.findMany({
+            where: { userId, recordedAt: todayRange },
+            orderBy: [...orderBy],
+            select: { id: true, type: true, imageUrl: true, recordedAt: true },
           }),
         ]),
       { isolationLevel: 'RepeatableRead' },
@@ -149,6 +179,14 @@ export class DashboardService {
         })),
         workoutCount: workoutSummary._count,
         workoutMinutes: workoutSummary._sum.durationMinutes ?? 0,
+        workoutPreview: dayWorkouts.map((workout) => ({
+          ...workout,
+          startedAt: workout.startedAt.toISOString(),
+        })),
+        photoCount: dayPhotos.length,
+        photoPreview: dayPhotos
+          .slice(0, 4)
+          .map((photo) => ({ ...photo, recordedAt: photo.recordedAt.toISOString() })),
       },
     };
   }

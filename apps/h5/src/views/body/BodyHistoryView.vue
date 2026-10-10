@@ -3,11 +3,10 @@ import EmptyState from '@/components/EmptyState.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { BodyRecord } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { Button, DialogPlugin, Loading, Tag, ToastPlugin } from 'tdesign-mobile-vue';
-import { DeleteIcon, EditIcon } from 'tdesign-icons-vue-next';
+import { Button, Loading, Tag } from 'tdesign-mobile-vue';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { deleteBodyRecord, getBodyRecords } from '@/api/body-records';
+import { getBodyRecords } from '@/api/body-records';
 import RecordDetailHeader from '@/components/RecordDetailHeader.vue';
 
 const router = useRouter();
@@ -26,7 +25,7 @@ async function load(reset = false): Promise<void> {
   const result = await getBodyRecords({
     page: page.value,
     pageSize,
-    recordedAtOrder: 'asc',
+    recordedAtOrder: 'desc',
   });
   records.value.push(...result.data);
   total.value = result.meta.total;
@@ -43,32 +42,6 @@ async function loadMore(): Promise<void> {
   } finally {
     loadingMore.value = false;
   }
-}
-
-function confirmDelete(record: BodyRecord): void {
-  let deleting = false;
-  const dialog = DialogPlugin.confirm({
-    title: '删除这条记录？',
-    content: `${dayjs(record.recordedAt).format('YYYY年M月D日')} · ${record.weight} kg，删除后无法恢复`,
-    confirmBtn: { content: '删除', theme: 'danger' },
-    cancelBtn: '取消',
-    onConfirm: async () => {
-      if (deleting) return;
-      deleting = true;
-      dialog.update({ confirmBtn: { content: '删除中…', theme: 'danger', loading: true } });
-      try {
-        await deleteBodyRecord(record.id);
-        records.value = records.value.filter((item) => item.id !== record.id);
-        total.value -= 1;
-        ToastPlugin.success('记录已删除');
-        dialog.destroy();
-      } catch (error) {
-        showRequestError(error, '删除失败，请稍后重试');
-        deleting = false;
-        dialog.update({ confirmBtn: { content: '删除', theme: 'danger' } });
-      }
-    },
-  });
 }
 
 onMounted(async () => {
@@ -130,38 +103,34 @@ onMounted(async () => {
             </Tag>
           </div>
 
-          <div class="record-card__metrics">
-            <div>
+          <div
+            v-if="
+              record.bodyFat !== null ||
+              record.waist !== null ||
+              record.chest !== null ||
+              record.hip !== null
+            "
+            class="record-card__metrics"
+          >
+            <div v-if="record.bodyFat !== null">
               <span>体脂率</span
               ><strong>{{ record.bodyFat ?? '—' }}{{ record.bodyFat !== null ? '%' : '' }}</strong>
             </div>
-            <div>
+            <div v-if="record.waist !== null">
               <span>腰围</span
               ><strong>{{ record.waist ?? '—' }}{{ record.waist !== null ? ' cm' : '' }}</strong>
             </div>
-            <div>
+            <div v-if="record.chest !== null">
               <span>胸围</span
               ><strong>{{ record.chest ?? '—' }}{{ record.chest !== null ? ' cm' : '' }}</strong>
             </div>
-            <div>
+            <div v-if="record.hip !== null">
               <span>臀围</span
               ><strong>{{ record.hip ?? '—' }}{{ record.hip !== null ? ' cm' : '' }}</strong>
             </div>
           </div>
 
           <p v-if="record.note" class="record-card__note">{{ record.note }}</p>
-          <div class="record-card__actions">
-            <Button
-              size="small"
-              variant="text"
-              @click.stop="router.push(`/body/${record.id}/edit`)"
-            >
-              <EditIcon /> 编辑
-            </Button>
-            <Button size="small" variant="text" theme="danger" @click.stop="confirmDelete(record)"
-              ><DeleteIcon /> 删除</Button
-            >
-          </div>
         </section>
       </div>
 

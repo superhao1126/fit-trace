@@ -20,6 +20,8 @@ export interface BodyRecordInput {
 export interface BodyRecordListParams {
   page?: number;
   pageSize?: number;
+  from?: string;
+  to?: string;
   recordedAtOrder?: 'asc' | 'desc';
 }
 

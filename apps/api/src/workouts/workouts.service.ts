@@ -1,3 +1,4 @@
+import { recordRange } from '../common/dto/record-range-query.dto';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { WorkoutRecord as WorkoutRecordResponse } from '@fit-trace/shared';
 import type { Prisma, WorkoutRecord } from '@prisma/client';
@@ -40,6 +41,7 @@ export class WorkoutsService {
     const where: Prisma.WorkoutRecordWhereInput = {
       userId,
       ...(query.type ? { type: query.type } : {}),
+      startedAt: recordRange(query),
     };
     const [workouts, total] = await this.prisma.$transaction([
       this.prisma.workoutRecord.findMany({

@@ -21,6 +21,8 @@ export async function getMeals(
     page?: number;
     pageSize?: number;
     type?: MealType;
+    from?: string;
+    to?: string;
   } = {},
 ): Promise<ApiListResponse<MealRecord>> {
   const response = await http.get<ApiListResponse<MealRecord>>('/meals', { params });

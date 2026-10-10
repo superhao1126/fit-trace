@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { recordDateTime } from '@/utils/record-date';
 import RecordDetailHeader from '@/components/RecordDetailHeader.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { BodyRecord } from '@fit-trace/shared';
@@ -38,7 +39,7 @@ const formData = reactive({
   waist: '' as number | string,
   chest: '' as number | string,
   hip: '' as number | string,
-  recordedAt: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+  recordedAt: recordDateTime(route.query.date),
   note: '',
 });
 const recordedAtDisplay = computed(() => dayjs(formData.recordedAt).format('YYYY-MM-DD HH:mm'));
@@ -98,7 +99,9 @@ async function submit(): Promise<void> {
       const created = await createBodyRecord(input);
       ToastPlugin.success('身体数据已保存');
       await router.replace(
-        route.query.returnTo === '/dashboard' ? '/dashboard' : `/body/${created.id}`,
+        route.query.returnTo === '/dashboard'
+          ? { path: '/dashboard', query: { date: dayjs(formData.recordedAt).format('YYYY-MM-DD') } }
+          : `/body/${created.id}`,
       );
     }
   } catch (error) {

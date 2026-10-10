@@ -13,6 +13,8 @@ export interface WorkoutInput {
 export interface WorkoutListParams {
   page?: number;
   pageSize?: number;
+  from?: string;
+  to?: string;
   type?: WorkoutType;
 }
 

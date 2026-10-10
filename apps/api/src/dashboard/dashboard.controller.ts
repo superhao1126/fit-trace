@@ -15,6 +15,6 @@ export class DashboardController {
     @CurrentUser('sub') userId: string,
     @Query() query: DashboardQueryDto,
   ): Promise<ApiPayload<DashboardOverview>> {
-    return { data: await this.dashboard.overview(userId, query.tzOffset) };
+    return { data: await this.dashboard.overview(userId, query.tzOffset, query.date) };
   }
 }

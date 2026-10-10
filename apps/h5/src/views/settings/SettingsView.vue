@@ -2,13 +2,8 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { Button } from 'tdesign-mobile-vue';
-import {
-  ChevronRightIcon,
-  FileIcon,
-  InfoCircleIcon,
-  SettingIcon,
-  UserIcon,
-} from 'tdesign-icons-vue-next';
+import { ChevronRightIcon, FileIcon, InfoCircleIcon, UserIcon } from 'tdesign-icons-vue-next';
+import DisplayModePicker from '@/components/DisplayModePicker.vue';
 import RecordDetailHeader from '@/components/RecordDetailHeader.vue';
 import { useAuthStore } from '@/stores/auth';
 
@@ -22,7 +17,6 @@ const items = [
     path: '/settings/account',
     icon: UserIcon,
   },
-  { title: '系统设置', description: '显示模式与外观', path: '/settings/system', icon: SettingIcon },
   { title: '用户协议', description: '了解使用条款', path: '/settings/agreement', icon: FileIcon },
   { title: '隐私政策', description: '了解信息使用方式', path: '/settings/privacy', icon: FileIcon },
   {
@@ -54,6 +48,7 @@ async function logout(): Promise<void> {
         </RouterLink>
       </div>
     </section>
+    <DisplayModePicker />
     <Button class="logout-button" variant="outline" block @click="logoutDialog?.showModal()"
       >退出登录</Button
     >

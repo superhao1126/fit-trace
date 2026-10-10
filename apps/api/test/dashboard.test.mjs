@@ -157,3 +157,46 @@ test('insufficient daily weights stay unknown; equal weights on two days mean un
   bodies.push({ userId: 'owner', recordedAt: new Date('2026-09-20T01:00:00Z'), weight: 70 });
   assert.equal((await fixture({ bodies }).overview('owner', 480)).recentTrend.weightChange, 0);
 });
+
+test('past diary ends before next local midnight and includes bounded previews', async (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-22T02:00:00Z') });
+  const photo = (id, at, userId = 'owner') => ({
+    id,
+    userId,
+    type: 'FRONT',
+    imageUrl: '/test.jpg',
+    recordedAt: new Date(at),
+  });
+  const photos = [
+    photo('start', '2026-09-19T16:00:00Z'),
+    photo('end', '2026-09-20T15:59:59.999Z'),
+    photo('next', '2026-09-20T16:00:00Z'),
+    photo('other', '2026-09-20T01:00:00Z', 'other'),
+  ];
+  const bodies = [
+    { id: 'past', userId: 'owner', weight: 70, recordedAt: new Date('2026-09-20T01:00:00Z') },
+    { id: 'today', userId: 'owner', weight: 69, recordedAt: new Date('2026-09-22T01:00:00Z') },
+  ];
+  const workouts = [
+    {
+      id: 'run',
+      userId: 'owner',
+      name: '晨跑',
+      type: 'RUNNING',
+      durationMinutes: 30,
+      startedAt: new Date('2026-09-20T01:00:00Z'),
+    },
+  ];
+  const result = await fixture({ bodies, photos, workouts }).overview('owner', 480, '2026-09-20');
+  assert.equal(result.date, '2026-09-20');
+  assert.equal(result.latestBodyRecord.id, 'past');
+  assert.equal(result.today.photoCount, 2);
+  assert.deepEqual(
+    result.today.photoPreview.map((p) => p.id),
+    ['end', 'start'],
+  );
+  assert.equal(result.today.workoutPreview[0].name, '晨跑');
+  assert.equal(result.recentTrend.to, '2026-09-20');
+  for (const date of ['2026-09-23', '2026-02-30', 'invalid'])
+    await assert.rejects(fixture().overview('owner', 480, date), { status: 400 });
+});

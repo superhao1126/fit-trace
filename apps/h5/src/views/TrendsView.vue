@@ -95,7 +95,7 @@ const insightCards = computed(() => {
   if (!data) return [];
   return [
     {
-      label: '平均每日热量',
+      label: '日均已记录热量',
       value: data.calories.average === null ? '—' : String(data.calories.average),
       unit: 'kcal',
     },
@@ -119,12 +119,14 @@ const insightSummary = computed(() => {
         : `这 ${data.days} 天体重${direction} ${amount} kg`,
     );
   } else {
-    sentences.push(`这 ${data.days} 天还没有身体数据`);
+    sentences.push(
+      data.weight.recordCount ? '至少记录两天体重后可查看变化' : `这 ${data.days} 天还没有身体数据`,
+    );
   }
 
   if (data.calories.average !== null) {
     sentences.push(
-      `有记录的 ${data.calories.recordedDays} 天里，平均每天摄入约 ${data.calories.average} kcal`,
+      `有记录的 ${data.calories.recordedDays} 天里，日均已记录食物热量约 ${data.calories.average} kcal`,
     );
   } else {
     sentences.push('饮食记录里还没有可统计的热量');
@@ -250,7 +252,7 @@ function createInsightOption(): ChartOption {
     ],
     series: [
       {
-        name: '每日热量',
+        name: '已记录热量',
         type: 'bar',
         data: points.map((point) => point.calories),
         barMaxWidth: 10,
@@ -474,11 +476,11 @@ onBeforeUnmount(() => {
 
       <section class="content-section">
         <div class="section-heading">
-          <h2>生活节奏</h2>
+          <h2>饮食与训练</h2>
           <span>同期饮食与训练</span>
         </div>
 
-        <div v-if="insightError" class="insight-error">生活节奏数据暂时无法加载</div>
+        <div v-if="insightError" class="insight-error">饮食与训练数据暂时无法加载</div>
         <template v-else-if="insights && hasInsightRecords">
           <div class="insight-grid">
             <div v-for="card in insightCards" :key="card.label">
@@ -488,7 +490,9 @@ onBeforeUnmount(() => {
               >
             </div>
           </div>
-          <p class="insight-summary">{{ insightSummary }}</p>
+          <p class="insight-summary">
+            {{ insightSummary }}。热量仅汇总已填写的食物，不代表完整全天摄入。
+          </p>
           <div
             v-if="hasInsightChartData"
             ref="insightElement"
@@ -497,11 +501,11 @@ onBeforeUnmount(() => {
             :aria-label="`${selectedRange} 天热量与体重对照图`"
           />
           <p v-if="hasInsightChartData" class="insight-legend">
-            <span class="insight-legend__bar" />每日热量 <span class="insight-legend__line" />体重
+            <span class="insight-legend__bar" />已记录热量 <span class="insight-legend__line" />体重
           </p>
         </template>
         <p v-else-if="!loading && insights" class="insight-empty">
-          记录饮食与训练后，在这里查看同期的生活节奏
+          记录饮食与训练后，在这里查看同期的饮食与训练
         </p>
       </section>
     </Loading>

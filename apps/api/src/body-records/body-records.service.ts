@@ -1,3 +1,4 @@
+import { recordRange } from '../common/dto/record-range-query.dto';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type {
   BodyRecord as BodyRecordResponse,
@@ -44,7 +45,7 @@ export class BodyRecordsService {
     data: BodyRecordResponse[];
     meta: { page: number; pageSize: number; total: number };
   }> {
-    const where: Prisma.BodyRecordWhereInput = { userId };
+    const where: Prisma.BodyRecordWhereInput = { userId, recordedAt: recordRange(query) };
     const [records, total] = await this.prisma.$transaction([
       this.prisma.bodyRecord.findMany({
         where,

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { recordDateTime } from '@/utils/record-date';
 import RecordDetailHeader from '@/components/RecordDetailHeader.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { WorkoutRecord, WorkoutType } from '@fit-trace/shared';
@@ -49,7 +50,7 @@ const templateSource = ref('');
 const formData = reactive({
   type: 'STRENGTH' as WorkoutType,
   name: '',
-  startedAt: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+  startedAt: recordDateTime(route.query.date),
   durationMinutes: '' as number | string,
   calories: '' as number | string,
   note: '',
@@ -112,7 +113,9 @@ async function submit(): Promise<void> {
       const created = await createWorkout(input);
       ToastPlugin.success('训练记录已保存');
       await router.replace(
-        route.query.returnTo === '/dashboard' ? '/dashboard' : `/workouts/${created.id}`,
+        route.query.returnTo === '/dashboard'
+          ? { path: '/dashboard', query: { date: dayjs(formData.startedAt).format('YYYY-MM-DD') } }
+          : `/workouts/${created.id}`,
       );
     }
   } catch (error) {

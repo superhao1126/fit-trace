@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { recordDateTime } from '@/utils/record-date';
 import RecordDetailHeader from '@/components/RecordDetailHeader.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { MealRecord, MealType } from '@fit-trace/shared';
@@ -81,7 +82,7 @@ const formData = reactive({
       : hour < 21
         ? 'DINNER'
         : 'SNACK') as MealType,
-  recordedAt: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+  recordedAt: recordDateTime(route.query.date),
   note: '',
   foods: [
     { key: foodKey, name: '', amount: '', calories: '', aiGenerated: false },
@@ -229,6 +230,17 @@ function applySuggestions(): void {
     ToastPlugin.warning('请先勾选要添加的食物');
     return;
   }
+  if (
+    picked.some(
+      (item) =>
+        !item.name.trim() ||
+        (item.calories !== '' &&
+          (!Number.isFinite(Number(item.calories)) || Number(item.calories) < 0)),
+    )
+  ) {
+    ToastPlugin.warning('请核对食物名称和热量，热量需为非负数字');
+    return;
+  }
   const isEmptyRow = formData.foods.every((food) => !food.name.trim());
   const nextFoods = isEmptyRow ? [] : [...formData.foods];
   for (const item of picked) {
@@ -290,7 +302,9 @@ async function submit(): Promise<void> {
       const created = await createMeal(input);
       ToastPlugin.success('饮食记录已保存');
       await router.replace(
-        route.query.returnTo === '/dashboard' ? '/dashboard' : `/meals/${created.id}`,
+        route.query.returnTo === '/dashboard'
+          ? { path: '/dashboard', query: { date: dayjs(formData.recordedAt).format('YYYY-MM-DD') } }
+          : `/meals/${created.id}`,
       );
     }
   } catch (error) {
@@ -462,14 +476,14 @@ onMounted(async () => {
                 <span>{{
                   recognitionProvider === 'mock'
                     ? '当前为模拟识别，不会分析照片，请手动调整'
-                    : '请核对食物与份量，点名称可修改'
+                    : '请核对名称、份量和热量后加入明细'
                 }}</span>
               </div>
-              <Button size="small" variant="outline" @click="applySuggestions">添加所选</Button>
+              <Button size="small" variant="outline" @click="applySuggestions">确认并加入</Button>
             </header>
             <div class="suggestion-list">
               <div
-                v-for="item in suggestions"
+                v-for="(item, index) in suggestions"
                 :key="item.key"
                 class="suggestion-item"
                 :class="{ selected: item.selected }"
@@ -490,19 +504,29 @@ onMounted(async () => {
                     :maxlength="100"
                     placeholder="食物名称"
                   />
-                  <span>{{ item.amount || '份量未知' }}</span>
+                  <input
+                    v-model="item.amount"
+                    :aria-label="`识别食物 ${index + 1} 份量`"
+                    maxlength="50"
+                    placeholder="份量选填"
+                  />
                 </span>
                 <span class="suggestion-item__calories">
-                  {{ item.calories === '' ? '—' : item.calories }}<small>kcal</small>
+                  <input
+                    v-model="item.calories"
+                    :aria-label="`识别食物 ${index + 1} 热量`"
+                    type="number"
+                    min="0"
+                    placeholder="选填"
+                  /><small>kcal</small>
                 </span>
               </div>
             </div>
-            <p class="suggestion-tip">
-              识别有误时直接改上面的名称，或取消勾选后手动添加；改名后热量仍按原来那道菜估算，加入明细后请随手核对
-            </p>
+            <p class="suggestion-tip">AI 热量为估算值；改动食物名称后，请同时核对份量和热量。</p>
           </div>
 
-          <div v-if="imageUrl" class="correct-block">
+          <details v-if="imageUrl" class="correct-block">
+            <summary>用文字重新识别</summary>
             <div class="correct-block__row">
               <Input
                 v-model="hintText"
@@ -516,7 +540,7 @@ onMounted(async () => {
             <p v-if="appliedHint" class="correct-block__applied">
               已按你的说明重新识别：{{ appliedHint }}
             </p>
-          </div>
+          </details>
         </div>
 
         <input
@@ -557,12 +581,15 @@ onMounted(async () => {
                 <DeleteIcon />
               </button>
             </div>
-            <details
-              class="food-item__extras"
-              :open="isEdit || food.aiGenerated || Boolean(food.amount) || food.calories !== ''"
-            >
+            <details class="food-item__extras" :open="isEdit">
               <summary>
-                份量与热量 <span>选填</span><ChevronRightIcon class="expand-icon" />
+                份量与热量
+                <span>{{
+                  [food.amount, food.calories !== '' ? `${food.calories} kcal` : '']
+                    .filter(Boolean)
+                    .join(' · ') || '选填'
+                }}</span
+                ><ChevronRightIcon class="expand-icon" />
               </summary>
               <div class="food-item__details">
                 <label>
@@ -1212,5 +1239,24 @@ onMounted(async () => {
       font-size: 0.6875rem;
     }
   }
+}
+.suggestion-item input {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 0;
+  color: var(--color-text-primary);
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  background: transparent;
+  font: inherit;
+}
+.suggestion-item__calories input {
+  width: 66px;
+  text-align: right;
+}
+.correct-block summary {
+  padding: 8px 0;
+  color: var(--color-text-secondary);
+  cursor: pointer;
 }
 </style>
