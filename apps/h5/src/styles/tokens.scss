@@ -8,6 +8,16 @@
   --app-safe-area-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
   --app-safe-area-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
   --app-safe-area-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+  /* 2026 Figma 页面规范；按页面迁移，避免覆盖尚未改造的页面。 */
+  --ui-background: #f1f3f5;
+  --ui-text-primary: #202824;
+  --ui-text-secondary: #727c77;
+  --ui-text-tertiary: #8b948f;
+  --ui-primary: #26735b;
+  --ui-primary-light: #e3f1ec;
+  --ui-border: #e8ecea;
+  --ui-radius-field: 12px;
+  --ui-radius-button: 14px;
   /* 固定品牌色：松针绿，与循形 App 图标保持一致。 */
   --color-primary: #2f7d5b;
   /* 品牌色填充底上的前景色 */
@@ -67,6 +77,13 @@
 }
 
 :root[data-theme='dark'] {
+  --ui-background: #14181a;
+  --ui-text-primary: #e9eeec;
+  --ui-text-secondary: #b6c0bc;
+  --ui-text-tertiary: #8f9a95;
+  --ui-primary: #67cda3;
+  --ui-primary-light: rgb(103 205 163 / 12%);
+  --ui-border: #2e3538;
   /* 品牌绿的深色适配版本，不提供用户配色切换。 */
   --color-primary: #67cda3;
   --color-on-primary: #111715;

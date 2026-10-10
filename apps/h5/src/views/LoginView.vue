@@ -2,7 +2,7 @@
 import type { ApiErrorResponse, LoginCaptcha } from '@fit-trace/shared';
 import axios from 'axios';
 import { Button, ToastPlugin } from 'tdesign-mobile-vue';
-import { ChevronLeftIcon, BrowseIcon, BrowseOffIcon } from 'tdesign-icons-vue-next';
+import { ChevronLeftIcon, CheckIcon } from 'tdesign-icons-vue-next';
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { getLoginCaptcha, resetPassword, sendEmailCode, verifyResetCode } from '@/api/auth';
@@ -52,21 +52,23 @@ const countdown = computed(() => Math.max(0, Math.ceil((resendAt.value - now.val
 const title = computed(() =>
   mode.value === 'reset' && resetGrant.value
     ? '设置新密码'
-    : { login: '登录循形', password: '密码登录', reset: '设置或找回密码' }[mode.value],
+    : { login: '登录循形', password: '密码登录', reset: '验证邮箱' }[mode.value],
 );
 const subtitle = computed(
   () =>
     ({
-      login: '验证邮箱，开始记录你的变化',
-      password: '使用已有账号的密码登录',
-      reset: resetGrant.value ? '邮箱验证已通过，请设置新密码' : '先验证邮箱，确认是你本人操作',
+      login: '用邮箱验证码，开始记录自己的变化',
+      password: '欢迎回来，继续你的记录',
+      reset: resetGrant.value ? '邮箱已验证，设置一个新的登录密码' : '验证通过后，可以设置新的密码',
     })[mode.value],
 );
 const submitLabel = computed(
   () =>
-    ({ login: '登录', password: '登录', reset: resetGrant.value ? '确认重置' : '验证并继续' })[
-      mode.value
-    ],
+    ({
+      login: '验证并登录',
+      password: '登录',
+      reset: resetGrant.value ? '保存新密码' : '验证并继续',
+    })[mode.value],
 );
 const timer = setInterval(() => {
   now.value = Date.now();
@@ -289,33 +291,41 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <main class="auth-page">
+  <main class="auth-page" :class="{ 'auth-page--reset': mode === 'reset' }">
     <div class="auth-shell">
-      <header class="auth-header">
-        <button
-          v-if="mode !== 'login'"
-          class="back-button"
-          type="button"
-          :disabled="busy"
-          @click="mode === 'reset' && resetGrant ? restartReset() : switchMode('login')"
-        >
-          <ChevronLeftIcon /> {{ mode === 'reset' && resetGrant ? '返回邮箱验证' : '返回登录' }}
-        </button>
-        <div v-else class="auth-brand" aria-label="循形 FitTrace">
-          <img src="/brand/app-icon-512.png" width="42" height="42" alt="" />
+      <header v-if="mode !== 'reset'" class="auth-header">
+        <div class="auth-brand" aria-label="循形 FitTrace">
+          <img src="/brand/app-icon-512.png" width="48" height="48" alt="" />
           <span class="brand-wordmark"><strong>循形</strong><span>FitTrace</span></span>
         </div>
       </header>
-      <section class="auth-content">
-        <h1>{{ title }}</h1>
-        <p class="auth-subtitle">{{ subtitle }}</p>
-        <p v-if="mode === 'reset'" class="reset-steps" aria-label="找回密码步骤">
-          <span :class="{ active: !resetGrant }">1 验证邮箱</span><span aria-hidden="true">→</span
-          ><span :class="{ active: resetGrant }">2 设置新密码</span>
-        </p>
-        <div v-if="mode === 'reset' && resetGrant" class="verified-email">
-          <span>已验证邮箱</span><strong>{{ resetGrant.email }}</strong>
+      <section class="auth-content" aria-labelledby="auth-title">
+        <div class="auth-title-row">
+          <button
+            v-if="mode === 'reset'"
+            class="back-button"
+            type="button"
+            :disabled="busy"
+            :aria-label="resetGrant ? '返回邮箱验证' : '返回密码登录'"
+            @click="resetGrant ? restartReset() : switchMode('password')"
+          >
+            <ChevronLeftIcon />
+          </button>
+          <h1 id="auth-title">{{ title }}</h1>
         </div>
+        <p class="auth-subtitle">{{ subtitle }}</p>
+        <div v-if="mode === 'reset' && resetGrant" class="verified-email" role="status">
+          <CheckIcon aria-hidden="true" />
+          <span>已验证 {{ resetGrant.email }}</span>
+        </div>
+        <p
+          v-else-if="mode === 'reset'"
+          class="reset-steps"
+          aria-label="找回密码步骤：1 验证邮箱，2 设置新密码"
+        >
+          <span class="active">1 验证邮箱</span><span aria-hidden="true">→</span
+          ><span>2 设置新密码</span>
+        </p>
         <form novalidate @submit.prevent="submit">
           <div v-if="mode !== 'reset' || !resetGrant" class="form-field">
             <label for="auth-email">邮箱</label>
@@ -366,7 +376,11 @@ async function submit(): Promise<void> {
               :role="errors.emailCode ? 'alert' : undefined"
               >{{
                 errors.emailCode ||
-                (sentTo ? `已请求发送至 ${sentTo}，10 分钟内有效` : '验证码用于确认邮箱归属')
+                (sentTo
+                  ? `已请求发送至 ${sentTo}，10 分钟内有效`
+                  : mode === 'login'
+                    ? '未注册的邮箱会在验证后自动创建账户'
+                    : '验证码 10 分钟内有效')
               }}</small
             >
           </div>
@@ -391,15 +405,15 @@ async function submit(): Promise<void> {
                 :aria-pressed="showPassword"
                 @click="showPassword = !showPassword"
               >
-                <BrowseOffIcon v-if="showPassword" /><BrowseIcon v-else />
+                {{ showPassword ? '隐藏' : '显示' }}
               </button>
             </div>
             <small
-              v-if="errors.password || mode !== 'password'"
+              v-if="errors.password"
               id="password-hint"
               :class="errors.password ? 'field-error' : 'field-hint'"
               :role="errors.password ? 'alert' : undefined"
-              >{{ errors.password || '8–72 位，建议组合字母、数字与符号' }}</small
+              >{{ errors.password }}</small
             >
           </div>
           <div v-if="mode === 'reset' && resetGrant" class="form-field">
@@ -423,6 +437,9 @@ async function submit(): Promise<void> {
               >{{ errors.confirmPassword }}</small
             >
           </div>
+          <p v-if="mode === 'reset' && resetGrant" class="password-advice field-hint">
+            建议组合字母、数字与符号
+          </p>
           <div v-if="mode === 'password' && captchaRequired" class="form-field">
             <label for="auth-captcha">安全验证</label>
             <div class="captcha-field">
@@ -470,9 +487,9 @@ async function submit(): Promise<void> {
               <div>
                 <label for="auth-agreement">我已阅读并同意</label>
                 <button type="button" aria-haspopup="dialog" @click="openPolicy('agreement')">
-                  《用户协议》</button
-                >和<button type="button" aria-haspopup="dialog" @click="openPolicy('privacy')">
-                  《隐私政策》
+                  用户协议</button
+                >与<button type="button" aria-haspopup="dialog" @click="openPolicy('privacy')">
+                  隐私政策
                 </button>
               </div>
             </div>
@@ -491,8 +508,8 @@ async function submit(): Promise<void> {
             >{{ submitting ? '请稍候…' : submitLabel }}</Button
           >
         </form>
-        <p v-if="mode === 'login'" class="auto-register-hint">未注册的邮箱将自动创建账户</p>
-        <p class="mode-link">
+        <p v-if="mode === 'reset' && resetGrant" class="reset-login-hint">重置后需重新登录</p>
+        <p v-if="mode !== 'reset'" class="mode-link">
           <template v-if="mode === 'login'"
             ><button type="button" :disabled="busy" @click="switchMode('password')">
               使用密码登录
@@ -518,105 +535,100 @@ async function submit(): Promise<void> {
 
 <style scoped lang="scss">
 .auth-page {
+  --color-background: var(--ui-background);
+  --color-text-primary: var(--ui-text-primary);
+  --color-text-secondary: var(--ui-text-secondary);
+  --color-text-tertiary: var(--ui-text-tertiary);
+  --color-primary: var(--ui-primary);
+  --color-primary-light: var(--ui-primary-light);
+  --color-accent-text: var(--ui-primary);
+  --color-border: var(--ui-border);
+  --td-brand-color: var(--ui-primary);
+  --td-button-primary-bg-color: var(--ui-primary);
+  --td-button-primary-border-color: var(--ui-primary);
+  --td-button-primary-color: var(--color-on-primary);
   min-height: 100vh;
   min-height: 100dvh;
   padding: var(--app-safe-area-top) var(--app-safe-area-right) var(--app-safe-area-bottom)
     var(--app-safe-area-left);
+  color: var(--color-text-primary);
   background: var(--color-background);
 }
 .auth-shell {
-  width: min(100%, 440px);
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 438px);
+  min-height: calc(100vh - var(--app-safe-area-top) - var(--app-safe-area-bottom));
+  min-height: calc(100dvh - var(--app-safe-area-top) - var(--app-safe-area-bottom));
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 64px 24px 24px;
 }
 .auth-header {
-  display: flex;
-  min-height: 88px;
-  align-items: center;
+  margin-bottom: 56px;
 }
 .auth-brand {
   display: flex;
   align-items: center;
-  gap: 11px;
-  color: var(--color-text-primary);
+  gap: 12px;
   img {
     display: block;
-    border-radius: 11px;
+    border-radius: 13px;
   }
 }
 .brand-wordmark {
   display: grid;
-  gap: 2px;
+  gap: 4px;
   strong {
-    font-size: 1.125rem;
-    font-weight: 750;
+    font-size: 23px;
+    font-weight: 600;
     line-height: 1.2;
   }
   span {
-    font-size: 0.6875rem;
-    font-weight: 600;
+    font-size: 12px;
     line-height: 1.2;
     color: var(--color-text-secondary);
   }
 }
-.auth-content {
-  padding-top: 22px;
+.auth-title-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
   h1 {
     margin: 0;
-    font-size: 1.65rem;
-    font-weight: 750;
+    font-size: 30px;
+    line-height: 1.3;
+    font-weight: 600;
     letter-spacing: -0.03em;
   }
 }
-.reset-steps {
-  display: flex;
-  gap: 12px;
-  margin: -12px 0 28px;
-  color: var(--color-text-tertiary);
-  font-size: 0.8125rem;
-  .active {
-    color: var(--color-text-primary);
-    font-weight: 650;
-  }
-}
-.verified-email {
-  display: grid;
-  gap: 6px;
-  margin-bottom: 24px;
-  font-size: 0.875rem;
-  span {
-    color: var(--color-text-secondary);
-  }
-  strong {
-    overflow-wrap: anywhere;
-  }
-}
 .auth-subtitle {
-  margin: 9px 0 32px;
+  margin: 12px 0 38px;
   color: var(--color-text-secondary);
-  font-size: 0.875rem;
+  font-size: 13px;
   line-height: 1.6;
 }
 form {
-  display: grid;
-  gap: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 .form-field {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   label {
-    font-size: 0.875rem;
-    font-weight: 650;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    line-height: 20px;
   }
 }
 input {
   width: 100%;
   min-width: 0;
   height: 48px;
-  padding: 0 13px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: var(--ui-radius-field);
   outline: none;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
   color: var(--color-text-primary);
   background: var(--color-surface);
   font-size: 16px;
@@ -634,8 +646,8 @@ input {
 .code-field {
   display: flex;
   align-items: center;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border: 1px solid transparent;
+  border-radius: var(--ui-radius-field);
   background: var(--color-surface);
   &:focus-within {
     border-color: var(--color-primary);
@@ -644,26 +656,17 @@ input {
     border-color: var(--color-danger-text);
   }
   input {
+    height: 46px;
     border: 0;
     background: transparent;
   }
 }
-.code-field {
-  > .t-button {
-    flex-shrink: 0;
-    margin-right: 5px;
-    font-size: 0.8125rem;
-  }
-}
-.visibility-button {
-  display: grid;
-  flex: 0 0 44px;
-  height: 44px;
-  place-items: center;
+.code-field > .t-button {
+  flex-shrink: 0;
+  min-height: 44px;
+  margin-right: 8px;
   color: var(--color-text-secondary);
-  svg {
-    font-size: 21px;
-  }
+  font-size: 13px;
 }
 button:not(.t-button) {
   padding: 0;
@@ -675,83 +678,210 @@ button:not(.t-button) {
     opacity: 0.55;
     cursor: default;
   }
-}
-.back-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--color-text-secondary) !important;
-  font-size: 0.875rem;
-  svg {
-    font-size: 20px;
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
+    border-radius: 4px;
   }
+}
+button.visibility-button {
+  flex: 0 0 56px;
+  height: 44px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
 }
 .field-error,
 .field-hint {
-  font-size: 0.75rem;
-  line-height: 1.5;
+  font-size: 12px;
+  line-height: 1.6;
   overflow-wrap: anywhere;
 }
 .field-error {
   color: var(--color-danger-text);
 }
 .field-hint {
-  color: var(--color-text-tertiary);
+  color: var(--color-text-secondary);
 }
 .form-actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: -6px;
-  font-size: 0.8125rem;
-}
-.submit-button {
-  margin-top: 4px;
+  margin-top: -4px;
+  font-size: 13px;
+  button {
+    min-height: 32px;
+  }
 }
 .agreement-field {
   display: grid;
   gap: 6px;
+  margin-top: 8px;
 }
 .agreement-row {
   display: flex;
   align-items: flex-start;
   gap: 8px;
   color: var(--color-text-secondary);
-  font-size: 0.75rem;
-  line-height: 1.8;
+  font-size: 12px;
+  line-height: 20px;
   input {
+    appearance: none;
+    display: grid;
+    place-content: center;
     flex: none;
     width: 17px;
     height: 17px;
     margin: 2px 0 0;
     padding: 0;
-    accent-color: var(--color-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
     cursor: pointer;
+    &:checked {
+      border-color: var(--color-primary);
+      background: var(--color-primary);
+      &::after {
+        width: 8px;
+        height: 4px;
+        margin-top: -2px;
+        border: solid var(--color-on-primary);
+        border-width: 0 0 2px 2px;
+        transform: rotate(-45deg);
+        content: '';
+      }
+    }
     &:focus-visible {
       outline: 2px solid var(--color-primary);
       outline-offset: 3px;
+    }
+    &[aria-invalid='true'] {
+      border-color: var(--color-danger-text);
     }
   }
   label {
     cursor: pointer;
   }
   button {
-    color: var(--color-accent-text);
+    color: var(--color-text-secondary);
+    margin: 0 2px;
   }
 }
-.auto-register-hint {
-  margin: 12px 0 0;
-  color: var(--color-text-tertiary);
-  font-size: 0.75rem;
+.submit-button {
+  --td-button-border-radius: var(--ui-radius-button);
+  height: 48px;
+  margin-top: 8px;
+  border-radius: var(--ui-radius-button);
+  font-size: 16px;
+  font-weight: 600;
+}
+.mode-link {
+  margin: 20px 0 0;
   text-align: center;
+  font-size: 14px;
+  button {
+    min-height: 44px;
+  }
+}
+.auth-footer {
+  margin-top: auto;
+  padding-top: 56px;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 20px;
+}
+.auth-page--reset {
+  .auth-shell {
+    padding-top: 40px;
+  }
+  .auth-title-row h1 {
+    font-size: 25px;
+  }
+  .auth-subtitle {
+    margin: 24px 0 32px;
+  }
+  .back-button {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 32px;
+    color: var(--color-text-primary);
+    svg {
+      font-size: 24px;
+    }
+  }
+  form {
+    gap: 32px;
+  }
+  .submit-button {
+    margin-top: 24px;
+  }
+}
+.reset-steps,
+.verified-email {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 56px;
+  margin: 0 0 36px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.verified-email {
+  gap: 12px;
+  margin-bottom: 36px;
+  font-size: 14px;
+  svg {
+    flex: none;
+    font-size: 24px;
+  }
+  span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
+.password-advice {
+  margin: -20px 0 0;
+}
+.reset-login-hint {
+  margin: 24px 0 0;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+.captcha-field {
+  display: flex;
+  gap: 8px;
+  input {
+    flex: 1;
+  }
+}
+button.captcha-image {
+  display: grid;
+  flex: 0 0 116px;
+  height: 48px;
+  overflow: hidden;
+  place-items: center;
+  background: var(--color-surface);
+  border-radius: var(--ui-radius-field);
+  img {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  span {
+    font-size: 12px;
+  }
 }
 .policy-dialog {
-  width: min(440px, calc(100% - 32px));
+  width: min(438px, calc(100% - 32px));
   max-height: 80dvh;
-  padding: 20px;
+  padding: 24px;
   color: var(--color-text-primary);
   background: var(--color-background);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border-radius: 20px;
   &::backdrop {
     background: rgb(0 0 0 / 35%);
   }
@@ -762,92 +892,22 @@ button:not(.t-button) {
     margin-bottom: 20px;
     h2 {
       margin: 0;
-      font-size: 1.125rem;
+      font-size: 20px;
     }
-  }
-}
-.mode-link {
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-  margin: 26px 0 0;
-  color: var(--color-text-secondary);
-  font-size: 0.875rem;
-  button {
-    font-weight: 650;
-  }
-}
-.captcha-field {
-  display: flex;
-  gap: 8px;
-  input {
-    flex: 1;
-  }
-}
-.captcha-image {
-  display: grid;
-  flex: 0 0 116px;
-  height: 48px;
-  overflow: hidden;
-  place-items: center;
-  background: var(--color-surface) !important;
-  border: 1px solid var(--color-border) !important;
-  border-radius: 8px;
-  img {
-    display: block;
-    width: 100%;
-    height: 100%;
-  }
-  span {
-    font-size: 0.75rem;
-  }
-}
-.auth-footer {
-  padding: 44px 0 24px;
-  text-align: center;
-  color: var(--color-text-tertiary);
-  font-size: 0.75rem;
-}
-@media (min-width: 600px) {
-  .auth-shell {
-    padding-top: 6vh;
+    button {
+      min-height: 32px;
+    }
   }
 }
 @media (max-height: 650px) {
+  .auth-shell {
+    padding-top: 32px;
+  }
   .auth-header {
-    min-height: 64px;
-  }
-  .auth-content {
-    padding-top: 8px;
-  }
-  .reset-steps {
-    display: flex;
-    gap: 12px;
-    margin: -12px 0 28px;
-    color: var(--color-text-tertiary);
-    font-size: 0.8125rem;
-    .active {
-      color: var(--color-text-primary);
-      font-weight: 650;
-    }
-  }
-  .verified-email {
-    display: grid;
-    gap: 6px;
-    margin-bottom: 24px;
-    font-size: 0.875rem;
-    span {
-      color: var(--color-text-secondary);
-    }
-    strong {
-      overflow-wrap: anywhere;
-    }
-  }
-  .auth-subtitle {
-    margin-bottom: 24px;
+    margin-bottom: 32px;
   }
   .auth-footer {
-    padding-top: 28px;
+    padding-top: 32px;
   }
 }
 </style>
