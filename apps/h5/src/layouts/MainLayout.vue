@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { Button } from 'tdesign-mobile-vue';
-import { ChartLineIcon, DataIcon, HomeIcon, UserIcon } from 'tdesign-icons-vue-next';
+import UiIcon, { type UiIconName } from '@/components/ui/UiIcon.vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
@@ -10,10 +10,10 @@ const TAB_ROOTS = ['/dashboard', '/trends', '/archive', '/profile'];
 /** 四个主 tab 做缓存：切回来时内容还在，只在后台静默刷新 */
 const CACHED_VIEWS = ['DashboardView', 'TrendsView', 'ArchiveView', 'ProfileView'];
 const navigation = [
-  { path: '/dashboard', label: '首页', icon: HomeIcon },
-  { path: '/trends', label: '趋势', icon: ChartLineIcon },
-  { path: '/archive', label: '档案', icon: DataIcon },
-  { path: '/profile', label: '我的', icon: UserIcon },
+  { path: '/dashboard', label: '首页', icon: 'home' as UiIconName },
+  { path: '/trends', label: '趋势', icon: 'trends' as UiIconName },
+  { path: '/archive', label: '档案', icon: 'archive' as UiIconName },
+  { path: '/profile', label: '我的', icon: 'user' as UiIconName },
 ];
 
 const activePath = computed(() => {
@@ -72,7 +72,7 @@ async function navigate(path: string): Promise<void> {
         size="large"
         @click="navigate(item.path)"
       >
-        <span class="bottom-nav__icon" aria-hidden="true"><component :is="item.icon" /></span>
+        <span class="bottom-nav__icon" aria-hidden="true"><UiIcon :name="item.icon" /></span>
         <span>{{ item.label }}</span>
       </Button>
     </nav>
@@ -92,6 +92,15 @@ async function navigate(path: string): Promise<void> {
   box-shadow: 0 0 0 1px var(--color-border);
 
   &--with-nav {
+    --color-background: var(--ui-background);
+    --color-text-primary: var(--ui-text-primary);
+    --color-text-secondary: var(--ui-text-secondary);
+    --color-text-tertiary: var(--ui-text-tertiary);
+    --color-primary: var(--ui-primary);
+    --color-accent-text: var(--ui-primary);
+    --color-primary-light: var(--ui-primary-light);
+    --color-border: var(--ui-border);
+    --td-brand-color: var(--ui-primary);
     --app-content-bottom-space: var(--bottom-nav-space);
   }
 
@@ -113,13 +122,13 @@ async function navigate(path: string): Promise<void> {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   padding: 6px 8px calc(6px + var(--app-safe-area-bottom));
   background: var(--color-surface-translucent);
-  border-top: 1px solid var(--color-border);
+  border-top: 0;
   transform: translateX(-50%);
   backdrop-filter: blur(16px);
 
   &__item.t-button {
     min-width: 0;
-    height: 50px;
+    height: 56px;
     padding: 4px;
     color: var(--color-text-tertiary);
     background: transparent;
@@ -130,7 +139,7 @@ async function navigate(path: string): Promise<void> {
       display: flex;
       flex-direction: column;
       gap: 4px;
-      font-size: 0.6875rem;
+      font-size: 12px;
       font-weight: 400;
     }
 

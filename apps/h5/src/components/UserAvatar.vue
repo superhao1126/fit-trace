@@ -1,10 +1,20 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import UiIcon from '@/components/ui/UiIcon.vue';
 
-const props = withDefaults(defineProps<{ url?: string | null; name: string; size?: number }>(), {
-  url: null,
-  size: 52,
-});
+const props = withDefaults(
+  defineProps<{
+    url?: string | null;
+    name: string;
+    size?: number;
+    fallback?: 'initial' | 'icon';
+  }>(),
+  {
+    url: null,
+    size: 52,
+    fallback: 'initial',
+  },
+);
 const failed = ref(false);
 watch(
   () => props.url,
@@ -17,7 +27,9 @@ watch(
 <template>
   <span class="user-avatar" :style="{ '--avatar-size': `${size}px` }" aria-hidden="true">
     <img v-if="url && !failed" :src="url" alt="" @error="failed = true" />
-    <span v-else>{{ name.slice(0, 1).toUpperCase() }}</span>
+    <UiIcon v-else-if="fallback === 'icon'" name="user" /><span v-else>{{
+      name.slice(0, 1).toUpperCase()
+    }}</span>
   </span>
 </template>
 

@@ -2,7 +2,10 @@
 import type { BodyRecord } from '@fit-trace/shared';
 import dayjs from 'dayjs';
 import { Skeleton } from 'tdesign-mobile-vue';
-import { ChevronRightIcon, FlagIcon, MeasurementIcon, SettingIcon } from 'tdesign-icons-vue-next';
+import UiPageHeader from '@/components/ui/UiPageHeader.vue';
+import UiButton from '@/components/ui/UiButton.vue';
+import UiIcon from '@/components/ui/UiIcon.vue';
+import UiRecordRow from '@/components/ui/UiRecordRow.vue';
 import { computed, onActivated, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { getLatestBodyRecord } from '@/api/body-records';
@@ -62,21 +65,14 @@ onActivated(() => {
 </script>
 
 <template>
-  <main class="view-page profile-page">
-    <header class="primary-header profile-header">
-      <h1>我的</h1>
-      <button
-        class="profile-settings"
-        type="button"
-        aria-label="设置"
-        @click="router.push('/settings')"
-      >
-        <SettingIcon aria-hidden="true" />
-      </button>
-    </header>
-
+  <main class="view-page ui-page profile-page">
+    <UiPageHeader title="我的" subtitle="记录日常，看见改变"
+      ><template #action
+        ><UiButton kind="text" @click="router.push('/settings')">设置</UiButton></template
+      ></UiPageHeader
+    >
     <RouterLink class="account" to="/profile/info" aria-label="查看个人资料">
-      <UserAvatar :url="auth.user?.avatarUrl" :name="displayName" />
+      <UserAvatar :url="auth.user?.avatarUrl" :name="displayName" fallback="icon" />
       <div class="account__body">
         <h2>{{ displayName }}</h2>
         <p>{{ auth.user?.email }}</p>
@@ -84,15 +80,18 @@ onActivated(() => {
           >{{ dayjs(auth.user.createdAt).format('YYYY年M月D日') }} 加入</span
         >
       </div>
-      <span class="account__edit">查看<ChevronRightIcon aria-hidden="true" /></span>
+      <UiIcon name="right" class="account__edit" />
     </RouterLink>
 
     <section class="profile-section" aria-label="记录档案">
-      <button class="profile-card setting-row" type="button" @click="router.push('/archive')">
-        <span class="row-icon"><MeasurementIcon /></span
-        ><span class="setting-row__label">记录档案</span
-        ><span class="setting-row__value">按日期查看</span><ChevronRightIcon class="chevron" />
-      </button>
+      <UiRecordRow
+        kind="body"
+        icon="archive"
+        tone="neutral"
+        title="记录档案"
+        subtitle="按日期回看记录"
+        @click="router.push('/archive')"
+      ></UiRecordRow>
       <button v-if="summaryError" class="summary-retry" type="button" @click="loadSummary()">
         体重暂时无法读取，点击重试
       </button>
@@ -106,12 +105,11 @@ onActivated(() => {
         @click="router.push('/goal')"
       >
         <div class="goal-card__heading">
-          <span class="row-icon row-icon--accent"><FlagIcon aria-hidden="true" /></span>
           <strong>{{
             auth.user?.goal ? `${goalLabels[auth.user.goal.type]}计划` : '设置健身目标'
           }}</strong>
           <span class="goal-card__action">{{ auth.user?.goal ? '调整' : '去设置' }}</span>
-          <ChevronRightIcon class="chevron" aria-hidden="true" />
+          <UiIcon name="right" class="chevron" />
         </div>
         <div class="goal-card__metrics">
           <div>
@@ -156,271 +154,190 @@ onActivated(() => {
         </p>
       </button>
       <button v-else class="profile-card setting-row" type="button" @click="router.push('/goal')">
-        <span class="row-icon"><FlagIcon /></span
-        ><span class="setting-row__label">设置健身目标</span><ChevronRightIcon class="chevron" />
+        <span class="row-icon"><UiIcon name="flag" /></span
+        ><span class="setting-row__label">设置健身目标</span><UiIcon name="right" class="chevron" />
       </button>
     </section>
   </main>
 </template>
 
 <style scoped lang="scss">
-.profile-settings {
-  display: grid;
-  width: 44px;
-  height: 44px;
-  flex: none;
-  place-items: center;
-  margin-right: -10px;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  border-radius: 50%;
-  font-size: 24px;
-}
 .account {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 8px 0 6px;
-  color: var(--color-text-primary);
+  padding: 20px 16px;
+  color: var(--ui-text-primary);
+  background: var(--color-surface);
+  border-radius: var(--ui-radius-card);
   text-decoration: none;
   &__body {
     min-width: 0;
     flex: 1;
     h2,
     p {
-      overflow: hidden;
       margin: 0;
-      text-overflow: ellipsis;
+      overflow: hidden;
       white-space: nowrap;
+      text-overflow: ellipsis;
     }
     h2 {
-      font-size: 1.125rem;
-      font-weight: 500;
-      line-height: 1.4;
+      font-size: 18px;
+      font-weight: 600;
     }
     p {
-      margin-top: 3px;
-      color: var(--color-text-secondary);
-      font-size: 0.8125rem;
+      margin-top: 5px;
+      color: var(--ui-text-secondary);
+      font-size: 12px;
     }
-  }
-  &__edit {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    flex: none;
-    color: var(--color-text-tertiary);
-    font-size: 0.75rem;
-  }
-  &:focus-visible {
-    outline: 2px solid var(--color-accent-text);
-    outline-offset: 4px;
   }
   &__joined {
     display: block;
     margin-top: 7px;
-    color: var(--color-text-tertiary);
-    font-size: 0.6875rem;
+    color: var(--ui-text-secondary);
+    font-size: 11px;
+  }
+  &__edit {
+    width: 16px;
+    height: 16px;
+    color: var(--ui-text-tertiary);
   }
 }
 .profile-section {
-  margin-top: 24px;
-}
-.section-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
-  h2 {
-    margin: 0;
-    font-size: 0.8125rem;
-    font-weight: 600;
-  }
-  > span {
-    color: var(--color-text-tertiary);
-    font-size: 0.6875rem;
-  }
+  margin-top: 28px;
 }
 .profile-card {
-  overflow: hidden;
+  border: 0;
+  border-radius: var(--ui-radius-card);
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-md);
-}
-.profile-page button {
-  color: var(--color-text-primary);
+  color: var(--ui-text-primary);
   cursor: pointer;
-  &:focus-visible {
-    outline: 2px solid var(--color-accent-text);
-    outline-offset: 3px;
-  }
 }
 .summary-retry {
-  margin-top: 8px;
-  padding: 4px 0;
-  color: var(--color-text-secondary);
-  font-size: 0.75rem;
+  margin-top: 10px;
+  padding: 6px 0;
+  color: var(--ui-text-secondary);
   background: transparent;
   border: 0;
-}
-.row-icon {
-  display: grid;
-  width: 32px;
-  height: 32px;
-  flex: none;
-  place-items: center;
-  color: var(--color-text-secondary);
-  font-size: 1.125rem;
-  background: var(--color-surface-muted);
-  border-radius: 10px;
-  &--accent {
-    color: var(--color-accent-text);
-    background: var(--color-primary-light);
-  }
-}
-.chevron {
-  flex: none;
-  color: var(--color-text-tertiary);
-  font-size: 1rem;
+  font-size: 12px;
 }
 .goal-card {
   display: block;
   width: 100%;
-  padding: 16px;
+  padding: 20px 16px;
   text-align: left;
   &__heading {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
     > strong {
       flex: 1;
-      font-size: 0.9375rem;
-      font-weight: 650;
+      font-size: 16px;
+      font-weight: 600;
     }
   }
   &__action {
-    color: var(--color-text-tertiary);
-    font-size: 0.75rem;
+    color: var(--ui-primary);
+    font-size: 12px;
   }
   &__metrics {
     display: grid;
-    grid-template-columns: 1fr 24px 1fr;
+    grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr);
+    gap: 16px;
     align-items: center;
-    gap: 14px;
-    margin-top: 20px;
+    margin-top: 32px;
     > div {
       display: grid;
       min-width: 0;
-      gap: 7px;
+      gap: 10px;
     }
     span {
-      color: var(--color-text-tertiary);
-      font-size: 0.75rem;
+      font-size: 12px;
+      color: var(--ui-text-secondary);
     }
     strong {
-      font-size: 1.625rem;
-      font-weight: 650;
+      font-size: 30px;
       line-height: 1.2;
+      font-weight: 600;
       font-variant-numeric: tabular-nums;
-      letter-spacing: -0.035em;
+      white-space: nowrap;
     }
     small {
-      color: var(--color-text-secondary);
-      font-size: 0.75rem;
+      color: var(--ui-text-secondary);
+      font-size: 12px;
       font-weight: 400;
-      letter-spacing: 0;
     }
     .goal-card__empty {
-      padding: 5px 0;
-      color: var(--color-text-tertiary);
-      font-size: 1rem;
-      font-weight: 500;
+      font-size: 17px;
+      color: var(--ui-text-secondary);
     }
     .goal-card__separator {
-      font-size: 1.25rem;
       text-align: center;
-    }
-    .t-skeleton {
-      max-width: 100px;
-      height: 31px;
+      font-size: 18px;
     }
   }
   &__note,
   &__updated {
     margin: 16px 0 0;
-    color: var(--color-text-secondary);
-    font-size: 0.6875rem;
-    line-height: 1.6;
-  }
-  &__note {
-    padding-top: 12px;
-    border-top: 1px solid var(--color-border);
+    color: var(--ui-text-secondary);
+    font-size: 11px;
+    line-height: 1.7;
   }
   &__updated {
-    margin-top: 2px;
-    color: var(--color-text-tertiary);
-  }
-  &:active {
-    background: var(--color-surface-muted);
-  }
-}
-.setting-row {
-  display: flex;
-  width: 100%;
-  min-height: 62px;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  background: transparent;
-  border: 0;
-  text-align: left;
-  + .setting-row {
-    position: relative;
-    &::before {
-      position: absolute;
-      top: 0;
-      right: 16px;
-      left: 58px;
-      height: 1px;
-      background: var(--color-border);
-      content: '';
-    }
-  }
-  &__label {
-    flex: 1;
-    font-size: 0.875rem;
-  }
-  &__value {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--color-text-tertiary);
-    font-size: 0.75rem;
-  }
-  &:active {
-    background: var(--color-surface-muted);
+    margin-top: 6px;
   }
 }
 .goal-progress {
-  margin: 0 16px 14px;
-  > span {
+  margin-top: 24px;
+  span {
     display: block;
     margin-bottom: 8px;
-    color: var(--color-text-secondary);
-    font-size: 0.75rem;
+    color: var(--ui-text-secondary);
+    font-size: 12px;
   }
   > div {
     height: 5px;
     overflow: hidden;
-    border-radius: 3px;
-    background: var(--color-surface-muted);
+    background: var(--ui-border);
+    border-radius: 5px;
+    i {
+      display: block;
+      height: 100%;
+      background: var(--ui-primary);
+      border-radius: 5px;
+    }
   }
-  i {
-    display: block;
-    height: 100%;
-    background: var(--color-primary);
+}
+.chevron {
+  width: 16px;
+  height: 16px;
+  color: var(--ui-primary);
+}
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 80px;
+  padding: 16px;
+  text-align: left;
+  &__label {
+    flex: 1;
+    font-size: 15px;
+  }
+}
+.row-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  color: var(--ui-primary);
+  background: var(--ui-primary-light);
+  border-radius: 14px;
+}
+@media (max-width: 360px) {
+  .goal-card__metrics strong {
+    font-size: 26px;
   }
 }
 </style>

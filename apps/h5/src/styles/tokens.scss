@@ -16,6 +16,15 @@
   --ui-primary: #26735b;
   --ui-primary-light: #e3f1ec;
   --ui-border: #e8ecea;
+  --ui-body-background: #e7eff9;
+  --ui-body-foreground: #4b74a5;
+  --ui-meal-background: #faede1;
+  --ui-meal-foreground: #b97941;
+  --ui-workout-background: #eee9f8;
+  --ui-workout-foreground: #8063aa;
+  --ui-photo-background: #e3f1ec;
+  --ui-photo-foreground: #3c8974;
+  --ui-radius-card: 20px;
   --ui-radius-field: 12px;
   --ui-radius-button: 14px;
   /* 固定品牌色：松针绿，与循形 App 图标保持一致。 */
@@ -77,6 +86,14 @@
 }
 
 :root[data-theme='dark'] {
+  --ui-body-background: #223045;
+  --ui-body-foreground: #93b4e0;
+  --ui-meal-background: #382c22;
+  --ui-meal-foreground: #e7b280;
+  --ui-workout-background: #30293f;
+  --ui-workout-foreground: #baa3e0;
+  --ui-photo-background: #1e3430;
+  --ui-photo-foreground: #80c3ae;
   --ui-background: #14181a;
   --ui-text-primary: #e9eeec;
   --ui-text-secondary: #b6c0bc;

@@ -10,8 +10,13 @@ import type {
   WorkoutType,
 } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { Button, Loading } from 'tdesign-mobile-vue';
-import { ActivityIcon, AddIcon, ForkIcon, MeasurementIcon } from 'tdesign-icons-vue-next';
+import { Loading } from 'tdesign-mobile-vue';
+import UiPageHeader from '@/components/ui/UiPageHeader.vue';
+import UiButton from '@/components/ui/UiButton.vue';
+import UiTabs from '@/components/ui/UiTabs.vue';
+import UiIcon from '@/components/ui/UiIcon.vue';
+import UiDateSheet from '@/components/ui/UiDateSheet.vue';
+import UiRecordRow from '@/components/ui/UiRecordRow.vue';
 import { computed, onActivated, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { getBodyRecords } from '@/api/body-records';
@@ -56,6 +61,14 @@ const initialDate =
 const selectedDate = ref(initialDate);
 const selectedMonth = ref(dayjs(initialDate || undefined).format('YYYY-MM'));
 const page = ref(1);
+const monthPickerVisible = ref(false);
+const datePickerVisible = ref(false);
+const calendarDate = computed({
+  get: () => selectedDate.value || `${selectedMonth.value}-01`,
+  set: (date: string) => {
+    selectedDate.value = date;
+  },
+});
 const loadingMore = ref(false);
 const totals = ref({ BODY: 0, MEAL: 0, WORKOUT: 0, PHOTO: 0 });
 const total = computed(() =>
@@ -223,63 +236,43 @@ onActivated(() => {
 </script>
 
 <template>
-  <main class="view-page archive-page">
-    <header class="primary-header archive-header">
-      <div>
-        <h1>记录档案</h1>
-        <p>
-          {{
-            selectedDate
-              ? dayjs(selectedDate).format('M月D日')
-              : dayjs(`${selectedMonth}-01`).format('YYYY年M月')
-          }}
-          · {{ total }} 条记录
-        </p>
-      </div>
-      <Button theme="primary" size="small" variant="text" @click="addRecord"
-        ><AddIcon /> 记录</Button
-      >
-    </header>
+  <main class="view-page ui-page archive-page">
+    <UiPageHeader
+      title="档案"
+      :subtitle="`${selectedDate ? dayjs(selectedDate).format('M月D日') : dayjs(`${selectedMonth}-01`).format('YYYY年M月')} · ${total} 条记录`"
+      ><template #action
+        ><UiButton kind="text" @click="addRecord">记录</UiButton></template
+      ></UiPageHeader
+    >
     <div class="archive-dates">
-      <label
-        >月份<input
-          type="month"
-          aria-label="档案月份"
-          :value="selectedMonth"
-          :max="dayjs().format('YYYY-MM')"
-          @change="chooseMonth(($event.target as HTMLInputElement).value)"
-      /></label>
-      <label
-        >日期<input
-          v-model="selectedDate"
-          type="date"
-          aria-label="查找记录日期"
-          :max="dayjs().format('YYYY-MM-DD')"
-      /></label>
-      <button
-        v-if="selectedDate"
-        type="button"
-        @click="
-          selectedMonth = selectedDate.slice(0, 7);
-          selectedDate = '';
-        "
-      >
-        整月
-      </button>
+      <UiButton kind="secondary" aria-label="选择档案月份" @click="monthPickerVisible = true">
+        <span class="archive-date-trigger"
+          >{{ dayjs(`${selectedMonth}-01`).format('YYYY年M月') }}<UiIcon name="right"
+        /></span>
+      </UiButton>
+      <UiButton kind="secondary" aria-label="查找记录日期" @click="datePickerVisible = true">
+        <span class="archive-date-trigger"
+          >{{ selectedDate ? dayjs(selectedDate).format('M月D日') : '查找日期'
+          }}<UiIcon name="calendar"
+        /></span>
+      </UiButton>
     </div>
-    <div class="archive-filter filter-tabs" aria-label="按记录类型筛选">
-      <button
-        v-for="filter in filters"
-        :key="filter.value"
-        type="button"
-        :class="{ active: activeFilter === filter.value }"
-        :aria-pressed="activeFilter === filter.value"
-        @click="activeFilter = filter.value"
-      >
-        {{ filter.label }}
-      </button>
-    </div>
-
+    <UiButton v-if="selectedDate" kind="text" @click="chooseMonth(selectedDate.slice(0, 7))"
+      >查看整月记录</UiButton
+    >
+    <UiDateSheet
+      v-model:visible="monthPickerVisible"
+      :model-value="selectedMonth"
+      selection="month"
+      @update:model-value="chooseMonth"
+    />
+    <UiDateSheet v-model:visible="datePickerVisible" v-model="calendarDate" />
+    <UiTabs
+      :model-value="activeFilter"
+      :options="filters"
+      label="按记录类型筛选"
+      @update:model-value="activeFilter = $event as ArchiveFilter"
+    />
     <Loading
       class="page-loading"
       :class="{ 'page-loading--active': loading }"
@@ -288,7 +281,7 @@ onActivated(() => {
     >
       <div v-if="loadError" class="archive-error" role="alert">
         <span>{{ loadError }}</span
-        ><Button variant="text" size="small" @click="loadRecords()">重新加载</Button>
+        ><UiButton kind="text" @click="loadRecords()">重试</UiButton>
       </div>
       <EmptyState
         v-if="!loading && !loadError && items.length === 0"
@@ -301,84 +294,58 @@ onActivated(() => {
         <section v-for="group in groups" :key="group.date" class="archive-group">
           <header>
             <strong>{{ dateTitle(group.date) }}</strong
-            ><span>{{ dayjs(group.date).format('YYYY年M月D日') }}</span>
+            ><span>{{ dayjs(group.date).format('M月D日') }}</span>
           </header>
           <div class="archive-group__body">
-            <button
-              v-for="item in group.items"
-              :key="item.id"
-              type="button"
-              class="archive-row"
-              @click="openItem(item)"
-            >
-              <span class="archive-row__time">{{ dayjs(item.recordedAt).format('HH:mm') }}</span>
-              <span
-                class="archive-row__icon"
-                :class="{ 'archive-row__icon--photo': item.kind === 'PHOTO' }"
-              >
-                <img
-                  v-if="item.kind === 'PHOTO'"
-                  :src="item.photo.imageUrl"
-                  :alt="`${photoLabels[item.photo.type]}照片`"
-                  loading="lazy"
-                />
-                <MeasurementIcon v-else-if="item.kind === 'BODY'" />
-                <ForkIcon v-else-if="item.kind === 'MEAL'" />
-                <ActivityIcon v-else-if="item.kind === 'WORKOUT'" />
-              </span>
-              <span v-if="item.kind === 'BODY'" class="archive-row__content">
-                <small>身体</small>
-                <strong>{{ item.body.weight }} kg</strong>
-                <span v-if="item.body.bodyFat !== null || item.body.waist !== null">
-                  {{
-                    [
-                      item.body.bodyFat !== null ? `体脂 ${item.body.bodyFat}%` : '',
-                      item.body.waist !== null ? `腰围 ${item.body.waist} cm` : '',
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')
-                  }}
-                </span>
-              </span>
-              <span v-else-if="item.kind === 'MEAL'" class="archive-row__content">
-                <small>饮食 · {{ mealLabels[item.meal.type] }}</small>
-                <strong>{{ item.meal.foods.map((food) => food.name).join('、') }}</strong>
-                <span>
-                  {{
-                    item.meal.totalCalories === null
-                      ? '未记录热量'
-                      : `${item.meal.totalCalories} kcal`
-                  }}
-                </span>
-              </span>
-              <span v-else-if="item.kind === 'WORKOUT'" class="archive-row__content">
-                <small>训练 · {{ workoutLabels[item.workout.type] }}</small>
-                <strong>{{ item.workout.name }}</strong>
-                <span>
-                  {{ item.workout.durationMinutes }} 分钟<template
-                    v-if="item.workout.calories !== null"
-                  >
-                    · {{ item.workout.calories }} kcal</template
-                  >
-                </span>
-              </span>
-              <span v-else class="archive-row__content">
-                <small>照片 · {{ photoLabels[item.photo.type] }}</small>
-                <strong>{{ item.photo.note || `${photoLabels[item.photo.type]}记录` }}</strong>
-                <span>{{ dayjs(item.photo.recordedAt).format('YYYY年M月D日') }}</span>
-              </span>
-            </button>
+            <template v-for="item in group.items" :key="item.id">
+              <UiRecordRow
+                v-if="item.kind === 'BODY'"
+                kind="body"
+                title="身体数据"
+                :subtitle="`${dayjs(item.recordedAt).format('HH:mm')} · ${[item.body.bodyFat !== null ? `体脂 ${item.body.bodyFat}%` : '', item.body.waist !== null ? `腰围 ${item.body.waist} cm` : '', item.body.note ?? ''].filter(Boolean).join(' · ')}`"
+                :value="item.body.weight"
+                unit="kg"
+                @click="openItem(item)"
+              />
+              <UiRecordRow
+                v-else-if="item.kind === 'MEAL'"
+                kind="meal"
+                :title="mealLabels[item.meal.type]"
+                :subtitle="`${dayjs(item.recordedAt).format('HH:mm')} · ${item.meal.foods.map((food) => food.name).join('、')}`"
+                :value="item.meal.totalCalories ?? '—'"
+                unit="kcal"
+                @click="openItem(item)"
+              />
+              <UiRecordRow
+                v-else-if="item.kind === 'WORKOUT'"
+                kind="workout"
+                :workout-type="item.workout.type"
+                :title="item.workout.name"
+                :subtitle="`${dayjs(item.recordedAt).format('HH:mm')} · ${workoutLabels[item.workout.type]}`"
+                :value="item.workout.durationMinutes"
+                unit="分钟"
+                @click="openItem(item)"
+              />
+              <UiRecordRow
+                v-else
+                kind="photo"
+                :title="`${photoLabels[item.photo.type]}照片`"
+                :subtitle="`${dayjs(item.recordedAt).format('HH:mm')} · ${item.photo.note || '身材记录'}`"
+                :image="item.photo.imageUrl"
+                @click="openItem(item)"
+              />
+            </template>
           </div>
         </section>
       </div>
-      <Button
+      <UiButton
         v-if="hasMore && !loading"
         class="archive-more"
-        variant="outline"
+        kind="secondary"
         block
         :loading="loadingMore"
         @click="loadRecords(false, true)"
-        >继续加载历史记录</Button
+        >加载更多</UiButton
       >
       <p v-if="!loading && !loadError && total" class="archive-count">
         已显示 {{ items.length }} / {{ total }} 条{{ hasMore ? '，继续加载可查看更早的记录' : '' }}
@@ -386,145 +353,64 @@ onActivated(() => {
     </Loading>
   </main>
 </template>
-
 <style scoped lang="scss">
 .archive-dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.archive-date-trigger {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  width: 100%;
   gap: 8px;
-  margin: 0 0 14px;
-  label {
-    display: grid;
-    min-width: 0;
-    flex: 1;
-    gap: 5px;
-    color: var(--color-text-secondary);
-    font-size: 0.6875rem;
-  }
-  input {
-    width: 100%;
-    min-width: 0;
-    height: 40px;
-    padding: 0 7px;
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
-    color: var(--color-text-primary);
-    background: var(--color-surface);
-    font-size: 0.8125rem;
-  }
-  button {
-    min-height: 40px;
-    padding: 0 4px;
-    margin-top: 16px;
-    color: var(--color-accent-text);
-    background: transparent;
-    border: 0;
-    font-size: 0.75rem;
+  font-size: 13px;
+  font-weight: 400;
+  .ui-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--ui-text-secondary);
   }
 }
-.archive-more {
-  margin-top: 18px;
-}
-.archive-count {
-  text-align: center;
-  color: var(--color-text-tertiary);
-  font-size: 0.75rem;
-  line-height: 1.6;
-}
-
 .archive-list {
   display: grid;
-  gap: 24px;
+  gap: 28px;
 }
 .archive-group > header {
   display: flex;
+  justify-content: space-between;
   align-items: baseline;
-  gap: 8px;
-  margin-bottom: 9px;
+  margin-bottom: 16px;
   strong {
-    font-size: 1rem;
+    font-size: 18px;
+    font-weight: 600;
   }
   span {
-    color: var(--color-text-tertiary);
-    font-size: 0.75rem;
+    color: var(--ui-text-secondary);
+    font-size: 12px;
   }
 }
 .archive-group__body {
-  overflow: hidden;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-md);
-}
-.archive-row {
-  display: flex;
-  width: 100%;
-  align-items: center;
+  display: grid;
   gap: 10px;
-  padding: 14px 12px;
-  text-align: left;
-  background: transparent;
-  border: 0;
-  + .archive-row {
-    border-top: 1px solid var(--color-border);
-  }
-  &__time {
-    width: 36px;
-    flex: none;
-    color: var(--color-text-tertiary);
-    font-size: 0.75rem;
-    font-variant-numeric: tabular-nums;
-  }
-  &__icon {
-    display: grid;
-    width: 40px;
-    height: 40px;
-    flex: none;
-    place-items: center;
-    color: var(--color-text-primary);
-    background: var(--color-primary-light);
-    border-radius: 9px;
-
-    &--photo {
-      overflow: hidden;
-      background: var(--color-surface-muted);
-
-      img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-    }
-  }
-  &__content {
-    display: grid;
-    min-width: 0;
-    flex: 1;
-    gap: 2px;
-    small {
-      color: var(--color-text-tertiary);
-      font-size: 0.75rem;
-    }
-    strong,
-    span {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    strong {
-      font-size: 0.875rem;
-    }
-    span {
-      color: var(--color-text-secondary);
-      font-size: 0.75rem;
-    }
-  }
+}
+.archive-more {
+  margin-top: 24px;
+}
+.archive-count {
+  text-align: center;
+  color: var(--ui-text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
 }
 .archive-error {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  color: var(--color-text-secondary);
-  font-size: 0.8125rem;
+  color: var(--ui-text-secondary);
+  font-size: 13px;
 }
 </style>

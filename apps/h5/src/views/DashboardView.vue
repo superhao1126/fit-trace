@@ -1,16 +1,14 @@
 <script setup lang="ts">
-import type { DashboardOverview, MealType } from '@fit-trace/shared';
+import type { DashboardOverview, MealType, WorkoutType } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { Button, Skeleton } from 'tdesign-mobile-vue';
-import {
-  ActivityIcon,
-  ChevronRightIcon,
-  ForkIcon,
-  MeasurementIcon,
-  CameraIcon,
-} from 'tdesign-icons-vue-next';
+import { Skeleton } from 'tdesign-mobile-vue';
 import { computed, onActivated, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import UiButton from '@/components/ui/UiButton.vue';
+import UiPageHeader from '@/components/ui/UiPageHeader.vue';
+import UiIcon from '@/components/ui/UiIcon.vue';
+import UiRecordRow from '@/components/ui/UiRecordRow.vue';
+import UiDateSheet from '@/components/ui/UiDateSheet.vue';
 import DiaryDateStrip from '@/components/DiaryDateStrip.vue';
 import { recordDateTime } from '@/utils/record-date';
 import { getDashboard } from '@/api/dashboard';
@@ -21,6 +19,14 @@ const mealLabels: Record<MealType, string> = {
   LUNCH: '午餐',
   DINNER: '晚餐',
   SNACK: '加餐',
+};
+const workoutLabels: Record<WorkoutType, string> = {
+  STRENGTH: '力量',
+  CARDIO: '有氧',
+  RUNNING: '跑步',
+  CYCLING: '骑行',
+  SWIMMING: '游泳',
+  OTHER: '其他',
 };
 const auth = useAuthStore();
 const router = useRouter();
@@ -37,9 +43,7 @@ function openDayArchive() {
 const loading = ref(true);
 const overview = ref<DashboardOverview | null>(null);
 const errorMessage = ref('');
-const displayName = computed(
-  () => auth.user?.nickname || auth.user?.email?.split('@')[0] || '朋友',
-);
+const calendarVisible = ref(false);
 const todayLabel = computed(() => {
   const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
   const date = dayjs(selectedDate.value);
@@ -151,79 +155,70 @@ onActivated(() => {
 </script>
 
 <template>
-  <main class="view-page dashboard">
-    <header class="primary-header dashboard-header">
-      <div>
-        <h1>{{ isToday ? '今天' : '日记' }}</h1>
-        <p>{{ todayLabel }}</p>
-      </div>
-      <button class="avatar" type="button" aria-label="我的资料" @click="router.push('/profile')">
-        {{ displayName.slice(0, 1).toUpperCase() }}
-      </button>
-    </header>
-
+  <main class="view-page ui-page dashboard">
+    <UiPageHeader :title="isToday ? '今天' : '日记'" :subtitle="todayLabel">
+      <template #action
+        ><UiButton kind="text" aria-label="选择日记日期" @click="calendarVisible = true"
+          >日历</UiButton
+        ></template
+      >
+    </UiPageHeader>
+    <UiDateSheet v-model:visible="calendarVisible" v-model="selectedDate" />
     <DiaryDateStrip v-model="selectedDate" />
     <Skeleton v-if="loading" :loading="true" animation="gradient" :row-col="[1, 1, 1]" />
     <section v-if="errorMessage" class="load-error" role="alert">
       <span>{{ errorMessage }}</span
-      ><Button variant="text" size="small" :disabled="loading" @click="loadOverview(!!overview)"
-        >重试</Button
-      >
+      ><UiButton kind="text" :disabled="loading" @click="loadOverview(!!overview)">重试</UiButton>
     </section>
 
     <template v-if="!loading && overview">
       <section class="surface-card today-overview" aria-label="当天概览">
-        <div class="section-heading">
-          <h2>当天概览</h2>
-          <span>{{ hasTodayRecords ? '已开始记录' : '还没有当天记录' }}</span>
-        </div>
         <div class="overview-grid">
           <button
             type="button"
             @click="todayBody ? router.push(`/body/${todayBody.id}`) : addRecord('/body/create')"
           >
-            <span>{{ todayBody ? '当天体重' : latestBody ? '最近体重' : '体重' }}</span
-            ><strong>{{ (todayBody ?? latestBody)?.weight ?? '—' }}<small>kg</small></strong
-            ><span>{{
+            <span>{{
               todayBody
-                ? '当天已记录'
+                ? '体重'
                 : latestBody
-                  ? dayjs(latestBody.recordedAt).format('M月D日')
-                  : '尚未记录'
-            }}</span>
+                  ? `最近体重 · ${dayjs(latestBody.recordedAt).format('M/D')}`
+                  : '体重'
+            }}</span
+            ><strong>{{ (todayBody ?? latestBody)?.weight ?? '—' }}<small>kg</small></strong>
           </button>
           <button type="button" @click="openDayArchive">
-            <span>已记录热量</span><strong>{{ todayCalories ?? '—' }}<small>kcal</small></strong
-            ><span>{{ todayMealCount }} 餐</span>
+            <span>已记录热量</span><strong>{{ todayCalories ?? '—' }}<small>kcal</small></strong>
           </button>
           <button type="button" @click="openDayArchive">
-            <span>训练时长</span><strong>{{ todayWorkoutMinutes }}<small>分钟</small></strong
-            ><span>{{ todayWorkoutCount }} 次训练</span>
+            <span>训练时长</span><strong>{{ todayWorkoutMinutes }}<small>分钟</small></strong>
           </button>
         </div>
         <button v-if="isToday" class="goal-row" type="button" @click="router.push('/goal')">
           <span v-if="auth.user?.goal"
-            >{{ goalLabels[auth.user.goal.type] }} · 目标
-            {{ auth.user.goal.targetWeight }} kg<small>{{
-              goalRemaining || goalDateText
-            }}</small></span
-          ><span v-else>设置体重目标<small>给记录一个方向</small></span
-          ><ChevronRightIcon />
+            >{{ goalLabels[auth.user.goal.type] }} · 目标 {{ auth.user.goal.targetWeight }} kg</span
+          ><span v-else>设置体重目标</span>
+          <small>{{ auth.user?.goal ? goalRemaining || goalDateText : '给记录一个方向' }}</small>
         </button>
       </section>
 
       <nav class="quick-actions" aria-label="快速记录">
         <button type="button" @click="addRecord('/body/create')">
-          <MeasurementIcon /><span>记体重</span>
+          <span class="quick-actions__icon quick-actions__icon--body"><UiIcon name="body" /></span
+          ><span>记体重</span>
         </button>
         <button type="button" @click="addRecord('/meals/create')">
-          <ForkIcon /><span>记饮食</span>
+          <span class="quick-actions__icon quick-actions__icon--meal"><UiIcon name="meal" /></span
+          ><span>记饮食</span>
         </button>
         <button type="button" @click="addRecord('/workouts/create')">
-          <ActivityIcon /><span>记训练</span>
+          <span class="quick-actions__icon quick-actions__icon--workout"
+            ><UiIcon name="workout" /></span
+          ><span>记训练</span>
         </button>
         <button type="button" @click="addRecord('/photos')">
-          <CameraIcon /><span>记照片</span>
+          <span class="quick-actions__icon quick-actions__icon--photo"><UiIcon name="photo" /></span
+          ><span>记照片</span>
         </button>
       </nav>
 
@@ -234,89 +229,69 @@ onActivated(() => {
       <section v-else class="content-section">
         <div class="section-heading">
           <h2>当天记录</h2>
-          <button type="button" @click="openDayArchive">查看当天 <ChevronRightIcon /></button>
+          <button type="button" @click="openDayArchive">查看当天 <UiIcon name="right" /></button>
         </div>
-        <div class="surface-card diary-list">
-          <button
+        <div class="diary-list">
+          <UiRecordRow
             v-if="todayBody"
-            class="diary-row"
-            type="button"
+            kind="body"
+            title="身体数据"
+            :subtitle="`${dayjs(todayBody.recordedAt).format('HH:mm')}${weightChange === null ? '' : ` · 较上次 ${weightChange > 0 ? '+' : ''}${weightChange.toFixed(1)} kg`}`"
+            :value="todayBody.weight"
+            unit="kg"
             @click="router.push(`/body/${todayBody.id}`)"
-          >
-            <MeasurementIcon /><span class="diary-row__main"
-              ><strong>身体数据</strong
-              ><span
-                >{{ dayjs(todayBody.recordedAt).format('HH:mm')
-                }}<template v-if="weightChange !== null">
-                  · 较上次 {{ weightChange > 0 ? '+' : ''
-                  }}{{ weightChange.toFixed(1) }} kg</template
-                ></span
-              ></span
-            ><span class="diary-row__value">{{ todayBody.weight }}<small>kg</small></span>
-          </button>
-          <button
+          />
+          <UiRecordRow
             v-for="meal in todayMeals"
             :key="meal.id"
-            class="diary-row"
-            type="button"
+            kind="meal"
+            :title="mealLabels[meal.type]"
+            :subtitle="`${dayjs(meal.recordedAt).format('HH:mm')} · ${meal.foodNames.join('、')}`"
+            :value="meal.totalCalories ?? '—'"
+            unit="kcal"
             @click="router.push(`/meals/${meal.id}`)"
-          >
-            <ForkIcon /><span class="diary-row__main"
-              ><strong>{{ mealLabels[meal.type] }}</strong
-              ><span>{{ meal.foodNames.join('、') }}</span></span
-            ><span class="diary-row__value"
-              >{{ meal.totalCalories ?? '—' }}<small>kcal</small></span
-            >
-          </button>
-          <button
+          />
+          <UiButton
             v-if="todayMealCount > todayMeals.length"
-            class="more-row"
-            type="button"
+            kind="secondary"
+            block
             @click="openDayArchive"
+            >查看全部 {{ todayMealCount }} 餐</UiButton
           >
-            查看全部 {{ todayMealCount }} 餐 <ChevronRightIcon />
-          </button>
-          <button
+          <UiRecordRow
             v-for="workout in todayWorkouts"
             :key="workout.id"
-            class="diary-row"
-            type="button"
+            kind="workout"
+            :workout-type="workout.type"
+            :title="workout.name"
+            :subtitle="`${dayjs(workout.startedAt).format('HH:mm')} · ${workoutLabels[workout.type]}`"
+            :value="workout.durationMinutes"
+            unit="分钟"
             @click="router.push(`/workouts/${workout.id}`)"
-          >
-            <ActivityIcon /><span class="diary-row__main"
-              ><strong>{{ workout.name }}</strong
-              ><span>{{ dayjs(workout.startedAt).format('HH:mm') }} · 训练</span></span
-            ><span class="diary-row__value">{{ workout.durationMinutes }}<small>分钟</small></span>
-          </button>
-          <button
+          />
+          <UiButton
             v-if="todayWorkoutCount > todayWorkouts.length"
-            class="more-row"
-            type="button"
+            kind="secondary"
+            block
             @click="openDayArchive"
+            >查看全部 {{ todayWorkoutCount }} 次训练</UiButton
           >
-            查看全部 {{ todayWorkoutCount }} 次训练 <ChevronRightIcon />
-          </button>
-          <button
+          <UiRecordRow
             v-for="photo in todayPhotos"
             :key="photo.id"
-            class="diary-row"
-            type="button"
+            kind="photo"
+            :title="`${photoLabels[photo.type]}照片`"
+            :subtitle="`${dayjs(photo.recordedAt).format('HH:mm')} · 身材记录`"
+            :image="photo.imageUrl"
             @click="router.push(`/photos/${photo.id}`)"
-          >
-            <img class="diary-thumb" :src="photo.imageUrl" :alt="photoLabels[photo.type]" /><span
-              class="diary-row__main"
-              ><strong>{{ photoLabels[photo.type] }}照片</strong
-              ><span>{{ dayjs(photo.recordedAt).format('HH:mm') }} · 身材记录</span></span
-            ><ChevronRightIcon />
-          </button>
-          <button
+          />
+          <UiButton
             v-if="(overview.today.photoCount ?? 0) > todayPhotos.length"
-            class="more-row"
-            type="button"
+            kind="secondary"
+            block
             @click="openDayArchive"
+            >查看全部 {{ overview.today.photoCount }} 张照片</UiButton
           >
-            查看全部 {{ overview.today.photoCount }} 张照片 <ChevronRightIcon />
-          </button>
         </div>
       </section>
 
@@ -324,7 +299,7 @@ onActivated(() => {
         <div class="section-heading">
           <h2>近 7 天</h2>
           <button type="button" @click="router.push('/trends')">
-            查看趋势 <ChevronRightIcon />
+            查看趋势 <UiIcon name="right" />
           </button>
         </div>
         <div class="trend-summary">
@@ -354,212 +329,158 @@ onActivated(() => {
 </template>
 
 <style scoped lang="scss">
-.diary-thumb {
-  width: 36px;
-  height: 44px;
-  object-fit: cover;
-  border-radius: 5px;
-}
-.dashboard-header .avatar {
-  display: grid;
-  width: 40px;
-  height: 40px;
-  place-items: center;
-  border: 0;
-  border-radius: 50%;
-  background: var(--color-primary-light);
-  color: var(--color-accent-text);
-  font-size: 1rem;
-}
-.section-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 16px;
-  h2 {
-    margin: 0;
-    font-size: 0.9375rem;
-    font-weight: 600;
-  }
-  > span,
-  button {
-    color: var(--color-text-tertiary);
-    font-size: 0.75rem;
-  }
-  button {
-    display: flex;
-    align-items: center;
-    min-height: 32px;
-    padding: 0;
-    border: 0;
-    background: transparent;
-  }
-}
 .today-overview {
-  padding: 18px 16px 0;
+  padding: 20px 16px 0;
 }
 .overview-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 16px;
   button {
     display: grid;
     min-width: 0;
     gap: 8px;
     padding: 0;
-    text-align: left;
     border: 0;
+    text-align: left;
+    color: var(--ui-text-primary);
     background: transparent;
-    color: var(--color-text-primary);
   }
   span {
-    color: var(--color-text-secondary);
-    font-size: 0.75rem;
+    color: var(--ui-text-secondary);
+    font-size: 12px;
   }
   strong {
-    font-size: 1.5rem;
-    font-weight: 550;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    font-size: 29px;
+    line-height: 1.2;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
-    line-height: 1.4;
-    white-space: nowrap;
   }
   small {
-    margin-left: 3px;
-    font-size: 0.625rem;
+    font-size: 11px;
     font-weight: 400;
-    color: var(--color-text-tertiary);
+    color: var(--ui-text-secondary);
+  }
+  button > span:last-child {
+    font-size: 10px;
   }
 }
 .goal-row {
   display: flex;
-  width: 100%;
-  min-height: 54px;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  width: 100%;
+  min-height: 50px;
   padding: 12px 0;
-  color: var(--color-text-secondary);
+  border: 0;
+  border-top: 1px solid var(--ui-border);
   text-align: left;
   background: transparent;
-  border: 0;
-  border-top: 1px solid var(--color-border);
-  font-size: 0.8125rem;
+  color: var(--ui-text-secondary);
+  font-size: 12px;
   small {
-    display: block;
-    margin-top: 4px;
-    color: var(--color-text-tertiary);
-    font-size: 0.6875rem;
+    display: inline;
+    font-size: 11px;
+    color: var(--ui-primary);
+  }
+  svg {
+    flex: none;
   }
 }
 .quick-actions {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-  margin: 16px 0 24px;
+  gap: 8px;
+  margin: 20px 0 28px;
   button {
-    display: flex;
-    min-height: 60px;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    display: grid;
+    place-items: center;
+    align-content: center;
     gap: 8px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-sm);
+    min-width: 0;
+    min-height: 80px;
+    padding: 10px 4px;
+    border: 0;
+    border-radius: 20px;
     background: var(--color-surface);
-    color: var(--color-text-primary);
-    font-size: 0.8125rem;
+    color: var(--ui-text-primary);
+    font-size: 12px;
   }
-  svg {
-    color: var(--color-accent-text);
-    font-size: 20px;
+  &__icon {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 12px;
+    &--body {
+      color: var(--ui-body-foreground);
+      background: var(--ui-body-background);
+    }
+    &--meal {
+      color: var(--ui-meal-foreground);
+      background: var(--ui-meal-background);
+    }
+    &--workout {
+      color: var(--ui-workout-foreground);
+      background: var(--ui-workout-background);
+    }
+    &--photo {
+      color: var(--ui-photo-foreground);
+      background: var(--ui-photo-background);
+    }
   }
 }
 .start-today {
-  padding: 12px 0 24px;
+  margin-top: 32px;
+  padding: 24px 20px;
+  background: var(--color-surface);
+  border-radius: var(--ui-radius-card);
   h2 {
-    margin: 0 0 8px;
-    font-size: 0.9375rem;
-    font-weight: 500;
+    margin: 0 0 12px;
+    font-size: 18px;
+    font-weight: 600;
   }
   p {
     margin: 0;
-    color: var(--color-text-secondary);
-    font-size: 0.8125rem;
-    line-height: 1.7;
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--ui-text-secondary);
   }
 }
 .content-section {
-  margin: 24px 0;
+  margin: 28px 0;
 }
-.diary-row {
-  display: flex;
-  width: 100%;
-  min-height: 72px;
-  align-items: center;
-  gap: 12px;
-  padding: 14px;
-  border: 0;
-  background: transparent;
-  color: var(--color-text-primary);
-  text-align: left;
-  + .diary-row {
-    border-top: 1px solid var(--color-border);
-  }
-  > svg {
-    flex: none;
-    color: var(--color-text-tertiary);
-    font-size: 19px;
-  }
-  &__main {
-    display: grid;
-    min-width: 0;
-    flex: 1;
-    gap: 5px;
-    strong {
-      font-size: 0.875rem;
-      font-weight: 500;
-    }
-    span {
-      overflow: hidden;
-      color: var(--color-text-secondary);
-      font-size: 0.75rem;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-  }
-  &__value {
-    font-size: 0.9375rem;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-    small {
-      display: block;
-      color: var(--color-text-tertiary);
-      font-size: 0.625rem;
-      text-align: right;
-    }
-  }
+.section-heading .ui-icon {
+  width: 16px;
+  height: 16px;
 }
-.more-row {
+.section-heading button {
   display: flex;
-  width: 100%;
-  min-height: 44px;
   align-items: center;
-  justify-content: center;
-  border: 0;
-  border-top: 1px solid var(--color-border);
-  color: var(--color-accent-text);
+  min-height: 32px;
+  padding: 0;
   background: transparent;
-  font-size: 0.8125rem;
+  border: 0;
+  color: var(--ui-text-secondary);
+  font-size: 12px;
+}
+.diary-list {
+  display: grid;
+  gap: 10px;
 }
 .trend-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px 8px;
-  padding: 16px 0;
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
+  padding: 20px 16px;
+  background: var(--color-surface);
+  border-radius: var(--ui-radius-card);
   > div {
     display: grid;
     gap: 8px;
@@ -567,12 +488,12 @@ onActivated(() => {
   span,
   small,
   p {
-    color: var(--color-text-secondary);
-    font-size: 0.75rem;
+    color: var(--ui-text-secondary);
+    font-size: 11px;
   }
   strong {
-    font-size: 1rem;
-    font-weight: 500;
+    font-size: 16px;
+    font-weight: 600;
   }
   small {
     font-weight: 400;
@@ -588,16 +509,19 @@ onActivated(() => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  color: var(--color-text-secondary);
-  font-size: 0.8125rem;
+  color: var(--ui-text-secondary);
+  font-size: 13px;
 }
 @media (max-width: 360px) {
   .overview-grid strong {
-    font-size: 1.25rem;
+    font-size: 25px;
   }
   .today-overview {
-    padding-right: 12px;
-    padding-left: 12px;
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+  .quick-actions {
+    gap: 6px;
   }
 }
 </style>

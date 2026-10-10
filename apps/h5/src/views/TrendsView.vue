@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import UiPageHeader from '@/components/ui/UiPageHeader.vue';
+import UiButton from '@/components/ui/UiButton.vue';
+import UiTabs from '@/components/ui/UiTabs.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import type {
   BodyTrendData,
@@ -17,8 +20,8 @@ import {
 } from 'echarts/components';
 import { init, use, type ComposeOption, type EChartsType } from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
-import { Button, Loading } from 'tdesign-mobile-vue';
-import { AddIcon, ChartLineIcon, RefreshIcon } from 'tdesign-icons-vue-next';
+import { Loading } from 'tdesign-mobile-vue';
+import { ChartLineIcon, RefreshIcon } from 'tdesign-icons-vue-next';
 import { computed, nextTick, onActivated, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { getBodyTrends } from '@/api/body-records';
@@ -41,10 +44,10 @@ const router = useRouter();
 const ranges: BodyTrendDays[] = [7, 30, 90];
 const metrics: MetricOption[] = [
   { key: 'weight', label: '体重', unit: 'kg' },
-  { key: 'bodyFat', label: '体脂率', unit: '%' },
+  { key: 'bodyFat', label: '体脂', unit: '%' },
   { key: 'waist', label: '腰围', unit: 'cm' },
 ];
-const selectedRange = ref<BodyTrendDays>(30);
+const selectedRange = ref<BodyTrendDays>(7);
 const selectedMetric = ref<BodyTrendMetric>('weight');
 const trendData = ref<BodyTrendData | null>(null);
 const insights = ref<InsightOverview | null>(null);
@@ -185,15 +188,11 @@ function createChartOption(): ChartOption {
         symbol: 'circle',
         symbolSize: 7,
         showSymbol: points.length < 15,
-        lineStyle: { color: token('--color-chart-line', '#151b19'), width: 3 },
+        lineStyle: { color: token('--ui-body-foreground', '#4b74a5'), width: 2.5 },
         itemStyle: {
-          color: token('--color-chart-point', '#2f7d5b'),
-          borderColor: token('--color-chart-line', '#151b19'),
+          color: token('--ui-body-foreground', '#4b74a5'),
+          borderColor: token('--ui-body-foreground', '#4b74a5'),
           borderWidth: 2,
-        },
-        areaStyle: {
-          color: token('--color-primary-light', '#eaf3ee'),
-          opacity: 0.7,
         },
       },
     ],
@@ -257,7 +256,7 @@ function createInsightOption(): ChartOption {
         data: points.map((point) => point.calories),
         barMaxWidth: 10,
         itemStyle: {
-          color: token('--color-primary-border', '#d7e9ad'),
+          color: token('--ui-meal-background', '#faede1'),
           borderRadius: [3, 3, 0, 0],
         },
       },
@@ -270,10 +269,10 @@ function createInsightOption(): ChartOption {
         connectNulls: true,
         symbol: 'circle',
         symbolSize: 6,
-        lineStyle: { color: token('--color-chart-line', '#151b19'), width: 2.5 },
+        lineStyle: { color: token('--ui-body-foreground', '#4b74a5'), width: 2.5 },
         itemStyle: {
-          color: token('--color-chart-point', '#2f7d5b'),
-          borderColor: token('--color-chart-line', '#151b19'),
+          color: token('--ui-body-foreground', '#4b74a5'),
+          borderColor: token('--ui-body-foreground', '#4b74a5'),
           borderWidth: 2,
         },
       },
@@ -375,29 +374,18 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="view-page trends-page">
-    <header class="primary-header trends-header">
-      <div>
-        <h1>数据趋势</h1>
-        <p>看清变化，找到适合自己的节奏</p>
-      </div>
-      <Button theme="primary" variant="text" size="small" @click="router.push('/body/create')"
-        ><AddIcon /> 记录</Button
-      >
-    </header>
-
-    <div class="range-switch filter-tabs" aria-label="趋势时间范围">
-      <button
-        v-for="range in ranges"
-        :key="range"
-        type="button"
-        :class="{ active: selectedRange === range }"
-        @click="selectRange(range)"
-      >
-        {{ range }} 天
-      </button>
-    </div>
-
+  <main class="view-page ui-page trends-page">
+    <UiPageHeader title="趋势" subtitle="看清变化，找到自己的节奏"
+      ><template #action
+        ><UiButton kind="text" @click="router.push('/body/create')">记录</UiButton></template
+      ></UiPageHeader
+    >
+    <UiTabs
+      :model-value="selectedRange"
+      :options="ranges.map((range) => ({ value: range, label: `${range} 天` }))"
+      label="趋势时间范围"
+      @update:model-value="selectRange($event as BodyTrendDays)"
+    />
     <Loading
       class="page-loading"
       :class="{ 'page-loading--active': loading }"
@@ -405,23 +393,17 @@ onBeforeUnmount(() => {
       text="正在计算趋势"
     >
       <section class="surface-card trend-card">
-        <div class="metric-tabs" aria-label="趋势指标">
-          <button
-            v-for="item in metrics"
-            :key="item.key"
-            type="button"
-            :class="{ active: selectedMetric === item.key }"
-            @click="selectedMetric = item.key"
-          >
-            {{ item.label }}
-          </button>
-        </div>
+        <UiTabs
+          :model-value="selectedMetric"
+          :options="metrics.map((item) => ({ value: item.key, label: item.label }))"
+          label="趋势指标"
+          tone="body"
+          @update:model-value="selectedMetric = $event as BodyTrendMetric"
+        />
 
         <div v-if="errorMessage" class="error-state">
           <span>{{ errorMessage }}</span>
-          <Button size="small" variant="outline" @click="loadTrends()">
-            <RefreshIcon /> 重新加载
-          </Button>
+          <UiButton kind="secondary" @click="loadTrends()"> <RefreshIcon /> 重新加载 </UiButton>
         </div>
 
         <template v-else-if="series?.points.length && stats">
@@ -444,8 +426,8 @@ onBeforeUnmount(() => {
             :aria-label="`${metric.label}趋势图`"
           />
 
-          <details class="trend-details">
-            <summary>查看详细统计</summary>
+          <section class="trend-details" aria-label="详细统计">
+            <h2>详细统计</h2>
             <div class="stats-grid">
               <div v-for="item in statItems(stats)" :key="item.label">
                 <span>{{ item.label }}</span>
@@ -459,7 +441,7 @@ onBeforeUnmount(() => {
                 </strong>
               </div>
             </div>
-          </details>
+          </section>
         </template>
 
         <EmptyState
@@ -469,7 +451,7 @@ onBeforeUnmount(() => {
         >
           <template #image><ChartLineIcon class="empty-icon" /></template>
           <template #action>
-            <Button theme="primary" @click="router.push('/body/create')">记录身体数据</Button>
+            <UiButton @click="router.push('/body/create')">记录身体数据</UiButton>
           </template>
         </EmptyState>
       </section>
@@ -513,295 +495,182 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped lang="scss">
-.trends-page {
-  padding-bottom: 24px;
-}
-
 .trend-card {
   width: 100%;
   min-width: 0;
-  padding: 18px;
+  padding: 18px 16px 24px;
 }
-
-.metric-tabs {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--color-border);
-
-  button {
-    position: relative;
-    padding: 7px 4px 11px;
-    color: var(--color-text-tertiary);
-    font-size: 0.9375rem;
-    font-weight: 500;
-    background: transparent;
-    border: 0;
-
-    &::after {
-      position: absolute;
-      right: 28%;
-      bottom: 0;
-      left: 28%;
-      height: 3px;
-      background: transparent;
-      border-radius: 3px;
-      content: '';
-    }
-
-    &.active {
-      color: var(--color-text-primary);
-
-      &::after {
-        background: var(--color-primary);
-      }
-    }
-  }
-}
-
 .trend-heading {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 20px 2px 0;
-
+  padding: 14px 0 0;
   > div {
     display: grid;
-    gap: 5px;
+    gap: 8px;
+    min-width: 0;
   }
-
   span {
-    color: var(--color-text-tertiary);
-    font-size: 0.75rem;
+    color: var(--ui-text-secondary);
+    font-size: 12px;
   }
-
   strong {
-    color: var(--color-text-primary);
-    font-size: 2rem;
+    font-size: 34px;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.055em;
-
+    letter-spacing: -0.03em;
     small {
-      font-size: 0.875rem;
-      letter-spacing: 0;
+      margin-left: 6px;
+      color: var(--ui-text-secondary);
+      font-size: 13px;
+      font-weight: 400;
     }
   }
 }
-
 .change-badge {
-  padding: 6px 9px;
-  color: var(--color-text-secondary) !important;
-  font-weight: 500;
-  background: var(--color-surface-muted);
-  border-radius: 999px;
-
-  &.fall {
-    color: var(--color-success-text) !important;
-    background: var(--color-primary-light);
-  }
-
-  &.rise {
-    color: var(--color-danger-text) !important;
-    background: var(--color-surface-muted);
-  }
+  padding: 8px 12px;
+  color: var(--ui-body-foreground) !important;
+  background: var(--ui-body-background);
+  border-radius: 12px;
+  white-space: nowrap;
 }
-
 .trend-chart {
   width: 100%;
-  height: 230px;
-  margin: 4px 0 14px;
+  height: 220px;
+  margin: 16px 0 20px;
 }
-
+.trend-details h2 {
+  margin: 0 0 18px;
+  font-size: 15px;
+  font-weight: 600;
+}
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1px;
-  overflow: hidden;
-  background: var(--color-border);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px 12px;
   > div {
     display: grid;
-    gap: 5px;
-    padding: 12px 9px;
-    background: var(--color-surface-muted);
+    min-width: 0;
+    gap: 8px;
   }
-
   span {
-    color: var(--color-text-tertiary);
-    font-size: 0.75rem;
+    color: var(--ui-text-secondary);
+    font-size: 11px;
   }
-
   strong {
-    color: var(--color-text-primary);
-    font-size: 0.875rem;
-    font-variant-numeric: tabular-nums;
-
-    small {
-      font-size: 0.75rem;
-    }
-
-    &.fall {
-      color: var(--color-success-text);
-    }
-
-    &.rise {
-      color: var(--color-danger-text);
-    }
-  }
-}
-
-.content-section {
-  margin-top: 26px;
-}
-
-.section-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 11px;
-
-  h2 {
-    margin: 0;
-    font-size: 1rem;
+    font-size: 14px;
     font-weight: 600;
-  }
-
-  span {
-    color: var(--color-text-tertiary);
-    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+    small {
+      font-size: 11px;
+      font-weight: 400;
+    }
   }
 }
-
+.content-section {
+  margin-top: 28px;
+}
+.section-heading span {
+  color: var(--ui-text-secondary);
+  font-size: 11px;
+}
 .insight-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1px;
-  overflow: hidden;
-  background: var(--color-border);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-md);
-
+  gap: 10px;
   > div {
     display: grid;
-    gap: 5px;
-    padding: 13px 14px;
+    gap: 12px;
+    padding: 18px 16px;
     background: var(--color-surface);
+    border-radius: var(--ui-radius-card);
   }
-
   span {
-    color: var(--color-text-tertiary);
-    font-size: 0.75rem;
+    font-size: 11px;
+    color: var(--ui-text-secondary);
   }
-
   strong {
-    font-size: 1.05rem;
+    font-size: 22px;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.03em;
-
     small {
-      font-size: 0.75rem;
-      font-weight: 500;
+      font-size: 12px;
+      font-weight: 400;
     }
   }
 }
-
 .insight-summary {
-  margin: 12px 0 0;
-  padding: 13px 14px;
-  color: var(--color-text-secondary);
-  font-size: 0.875rem;
-  line-height: 1.7;
-  background: var(--color-surface-muted);
-  border-radius: var(--border-radius-md);
+  margin: 14px 0 0;
+  color: var(--ui-text-secondary);
+  font-size: 12px;
+  line-height: 1.8;
 }
-
 .insight-chart {
   width: 100%;
   height: 200px;
-  margin-top: 12px;
+  margin-top: 20px;
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-md);
+  border-radius: var(--ui-radius-card);
 }
-
 .insight-legend {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
-  margin: 8px 2px 0;
-  color: var(--color-text-tertiary);
-  font-size: 0.75rem;
-
+  margin: 12px 0 0;
+  color: var(--ui-text-secondary);
+  font-size: 11px;
   span {
     display: inline-block;
     margin-left: 8px;
   }
-
   &__bar {
     width: 10px;
     height: 10px;
-    background: var(--color-primary-border);
+    background: var(--ui-meal-foreground);
     border-radius: 3px;
   }
-
   &__line {
     width: 14px;
-    height: 2.5px;
-    background: var(--color-ink);
+    height: 2px;
+    background: var(--ui-body-foreground);
     border-radius: 2px;
   }
 }
-
-.insight-error {
-  padding: 22px 14px;
-  color: var(--color-text-tertiary);
-  font-size: 0.875rem;
-  text-align: center;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-md);
-}
-
-.error-state {
-  display: grid;
-  min-height: 160px;
-  place-items: center;
-  align-content: center;
-  gap: 14px;
-  color: var(--color-text-secondary);
-  font-size: 0.875rem;
-}
-
-.empty-icon {
-  color: var(--color-text-tertiary);
-  font-size: 1.5rem;
-}
-
-@media (max-width: 360px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-.trend-details {
-  margin-top: 12px;
-  summary {
-    padding: 12px 0;
-    color: var(--color-text-secondary);
-    font-size: 0.8125rem;
-    cursor: pointer;
-  }
-}
+.insight-error,
 .insight-empty {
   margin: 0;
-  padding: 16px 0;
-  color: var(--color-text-secondary);
-  font-size: 0.8125rem;
+  padding: 24px 16px;
+  color: var(--ui-text-secondary);
+  background: var(--color-surface);
+  border-radius: var(--ui-radius-card);
+  font-size: 13px;
   line-height: 1.7;
-  border-top: 1px solid var(--color-border);
+}
+.error-state {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+  align-content: center;
+  gap: 16px;
+  color: var(--ui-text-secondary);
+  font-size: 13px;
+}
+.empty-icon {
+  color: var(--ui-body-foreground);
+  font-size: 30px;
+}
+@media (max-width: 360px) {
+  .stats-grid {
+    gap: 22px 8px;
+    strong {
+      font-size: 13px;
+    }
+  }
+  .insight-grid strong {
+    font-size: 19px;
+  }
 }
 </style>

@@ -314,3 +314,30 @@ textarea:focus-visible {
 .record-form details[open] > summary .expand-icon {
   transform: rotate(90deg);
 }
+
+/* 已迁移页面共用的视觉规范；旧页面继续使用原规范。 */
+.ui-page {
+  padding: 0 24px 24px;
+  .surface-card {
+    border: 0;
+    border-radius: var(--ui-radius-card);
+  }
+  .section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+    h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+  }
+}
+@media (max-width: 360px) {
+  .ui-page {
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+}
