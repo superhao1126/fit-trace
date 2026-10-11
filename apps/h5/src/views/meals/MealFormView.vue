@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { correctFoodName } from '@/utils/food-correction';
 import { recordDateTime } from '@/utils/record-date';
 import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
 import UiInput from '@/components/ui/UiInput.vue';
@@ -53,8 +54,6 @@ const recognizing = ref(false);
 const imageUrl = ref('');
 const recognitionProvider = ref('');
 const suggestions = ref<FoodSuggestion[]>([]);
-const hintText = ref('');
-const appliedHint = ref('');
 const fileInput = ref<HTMLInputElement | null>(null);
 const recentMeals = ref<MealRecord[]>([]);
 const templateSource = ref('');
@@ -167,14 +166,12 @@ async function onPhotoChange(event: Event): Promise<void> {
   }
 }
 
-async function recognizePhoto(hint?: string): Promise<void> {
-  if (!imageUrl.value || recognizing.value) return;
-  const correction = hint?.trim() ?? '';
+async function recognizePhoto(): Promise<void> {
+  if (!imageUrl.value || recognizing.value || suggestions.value.length) return;
   recognizing.value = true;
   try {
-    const result = await recognizeFood(imageUrl.value, correction || undefined);
+    const result = await recognizeFood(imageUrl.value);
     recognitionProvider.value = result.provider;
-    appliedHint.value = correction;
     suggestions.value = result.foods.map((food) => ({
       key: ++foodKey,
       name: food.name,
@@ -193,21 +190,10 @@ async function recognizePhoto(hint?: string): Promise<void> {
   }
 }
 
-function applyHint(): void {
-  const correction = hintText.value.trim();
-  if (!correction) {
-    ToastPlugin.warning('请先说明哪里识别错了');
-    return;
-  }
-  void recognizePhoto(correction);
-}
-
 function removePhoto(): void {
   imageUrl.value = '';
   recognitionProvider.value = '';
   suggestions.value = [];
-  hintText.value = '';
-  appliedHint.value = '';
 }
 
 function toggleSuggestion(key: number): void {
@@ -242,7 +228,7 @@ function applySuggestions(): void {
       name: item.name,
       amount: item.amount,
       calories: item.calories,
-      aiGenerated: true,
+      aiGenerated: item.aiGenerated,
     });
   }
   formData.foods = nextFoods;
@@ -420,10 +406,21 @@ onMounted(async () => {
           <div v-if="imageUrl" class="photo-preview">
             <img :src="imageUrl" alt="餐食照片" />
             <div class="photo-preview__actions">
-              <UiButton kind="secondary" :loading="recognizing" @click="recognizePhoto()">
+              <UiButton
+                v-if="!suggestions.length"
+                kind="secondary"
+                :loading="recognizing"
+                @click="recognizePhoto()"
+              >
                 重新识别
               </UiButton>
-              <UiButton kind="danger" @click="removePhoto"> <DeleteIcon /> 移除 </UiButton>
+              <UiButton
+                kind="danger"
+                :disabled="recognizing || uploadingPhoto"
+                @click="removePhoto"
+              >
+                <DeleteIcon /> 移除
+              </UiButton>
             </div>
           </div>
 
@@ -444,7 +441,7 @@ onMounted(async () => {
                 <span>{{
                   recognitionProvider === 'mock'
                     ? '当前为模拟识别，不会分析照片，请手动调整'
-                    : '请核对名称、份量和热量后加入明细'
+                    : '识别错了？直接修改对应菜名，不用重新识别'
                 }}</span>
               </div>
               <UiButton kind="secondary" @click="applySuggestions">确认并加入</UiButton>
@@ -467,10 +464,12 @@ onMounted(async () => {
                 </button>
                 <span class="suggestion-item__main">
                   <UiInput
-                    v-model="item.name"
+                    :model-value="item.name"
+                    :aria-label="`识别食物 ${index + 1} 名称`"
                     class="suggestion-item__name"
                     :maxlength="100"
                     placeholder="食物名称"
+                    @update:model-value="correctFoodName(item, String($event))"
                   />
                   <input
                     v-model="item.amount"
@@ -490,23 +489,11 @@ onMounted(async () => {
                 </span>
               </div>
             </div>
-            <p class="suggestion-tip">AI 热量为估算值；改动食物名称后，请同时核对份量和热量。</p>
-          </div>
-
-          <details v-if="imageUrl" class="correct-block">
-            <summary>用文字重新识别</summary>
-            <div class="correct-block__row">
-              <UiInput
-                v-model="hintText"
-                :maxlength="200"
-                placeholder="识别不对？直接告诉它，比如：左边那碗是鸡蛋羹"
-              />
-              <UiButton kind="secondary" :loading="recognizing" @click="applyHint"> 纠正 </UiButton>
-            </div>
-            <p v-if="appliedHint" class="correct-block__applied">
-              已按你的说明重新识别：{{ appliedHint }}
+            <p class="suggestion-tip">
+              修改 AI
+              菜名会清除原来的份量和热量估算，请重新填写或留空。加入明细后，已确认条目会保留。
             </p>
-          </details>
+          </div>
         </div>
 
         <input
@@ -529,11 +516,12 @@ onMounted(async () => {
           <section v-for="(food, index) in formData.foods" :key="food.key" class="food-item">
             <div class="food-item__main">
               <input
-                v-model="food.name"
+                :value="food.name"
                 class="food-item__name"
                 :aria-label="`食物 ${index + 1} 名称`"
                 maxlength="100"
                 placeholder="食物名称，如鸡胸肉"
+                @input="correctFoodName(food, ($event.target as HTMLInputElement).value)"
               />
               <span v-if="food.aiGenerated" class="food-item__ai">AI</span>
               <button
@@ -769,20 +757,6 @@ onMounted(async () => {
     background: transparent;
     color: var(--ui-text-primary);
     font-size: 14px;
-  }
-}
-.correct-block {
-  margin: 20px 0;
-  summary {
-    font-size: 14px;
-    color: var(--ui-primary);
-    min-height: 44px;
-    cursor: pointer;
-  }
-  &__row {
-    display: grid;
-    gap: 12px;
-    margin-top: 10px;
   }
 }
 .foods-heading {
