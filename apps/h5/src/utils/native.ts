@@ -6,6 +6,17 @@ import router from '@/router';
 import { authSession } from '@/api/session';
 
 export function setupNativeShell(): void {
+  if (!Capacitor.isNativePlatform()) return;
+  document.documentElement.classList.add('native-app');
+  document.addEventListener('contextmenu', (event) => {
+    if (
+      !(event.target instanceof Element) ||
+      !event.target.closest('input, textarea, [contenteditable="true"]')
+    ) {
+      event.preventDefault();
+    }
+  });
+  document.addEventListener('dragstart', (event) => event.preventDefault());
   if (Capacitor.getPlatform() !== 'android') return;
 
   void App.addListener('appStateChange', ({ isActive }) => {

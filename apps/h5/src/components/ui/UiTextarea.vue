@@ -22,8 +22,5 @@ defineEmits<{ 'update:modelValue': [value: string] }>();
     font-size: 15px;
     line-height: 1.7;
   }
-  &:focus-within {
-    box-shadow: 0 0 0 1.5px var(--ui-primary);
-  }
 }
 </style>

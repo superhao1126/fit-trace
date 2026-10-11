@@ -80,8 +80,5 @@ defineEmits<{ 'update:modelValue': [value: string | number] }>();
     color: var(--ui-text-secondary);
     font-size: 13px;
   }
-  &:focus-within {
-    box-shadow: 0 0 0 1.5px var(--ui-primary);
-  }
 }
 </style>

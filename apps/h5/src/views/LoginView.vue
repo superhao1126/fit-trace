@@ -635,9 +635,6 @@ input {
   &::placeholder {
     color: var(--color-text-tertiary);
   }
-  &:focus {
-    border-color: var(--color-primary);
-  }
   &[aria-invalid='true'] {
     border-color: var(--color-danger-text);
   }
@@ -649,9 +646,6 @@ input {
   border: 1px solid transparent;
   border-radius: var(--ui-radius-field);
   background: var(--color-surface);
-  &:focus-within {
-    border-color: var(--color-primary);
-  }
   &.invalid {
     border-color: var(--color-danger-text);
   }

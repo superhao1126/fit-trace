@@ -286,9 +286,7 @@ button {
   }
 }
 
-button:focus-visible,
-input:focus-visible,
-textarea:focus-visible {
+button:focus-visible {
   outline: 2px solid var(--color-accent-text);
   outline-offset: 3px;
 }
@@ -428,4 +426,46 @@ textarea:focus-visible {
 .ui-detail-actions {
   margin-top: 40px;
   text-align: center;
+}
+
+/* 输入框聚焦时保留原布局，不绘制主题色轮廓。 */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* 原生容器中的内容使用 App 交互，表单仍保留光标和编辑能力。 */
+html.native-app {
+  overscroll-behavior: none;
+  &,
+  * {
+    scrollbar-width: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+  input,
+  textarea,
+  [contenteditable='true'] {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  img,
+  a {
+    -webkit-user-drag: none;
+  }
+  :focus-visible {
+    outline: none !important;
+  }
+  body {
+    overscroll-behavior: none;
+  }
 }

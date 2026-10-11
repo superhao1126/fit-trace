@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { correctFoodName } from '@/utils/food-correction';
+import { applyFoodEstimate, correctFoodName } from '@/utils/food-correction';
 import { recordDateTime } from '@/utils/record-date';
 import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
 import UiInput from '@/components/ui/UiInput.vue';
@@ -26,6 +26,8 @@ interface EditableFood {
   amount: string;
   calories: string | number;
   aiGenerated: boolean;
+  sourceImageUrl?: string;
+  sourceName?: string;
 }
 
 interface FoodSuggestion extends EditableFood {
@@ -53,6 +55,7 @@ const uploadingPhoto = ref(false);
 const recognizing = ref(false);
 const imageUrl = ref('');
 const recognitionProvider = ref('');
+const estimatingFoods = ref(new Set<number>());
 const suggestions = ref<FoodSuggestion[]>([]);
 const fileInput = ref<HTMLInputElement | null>(null);
 const recentMeals = ref<MealRecord[]>([]);
@@ -178,6 +181,8 @@ async function recognizePhoto(): Promise<void> {
       amount: food.estimatedAmount ?? '',
       calories: food.estimatedCalories ?? '',
       aiGenerated: true,
+      sourceImageUrl: imageUrl.value,
+      sourceName: food.name,
       selected: true,
     }));
     if (suggestions.value.length === 0) {
@@ -187,6 +192,42 @@ async function recognizePhoto(): Promise<void> {
     showRequestError(error, '识别失败，请手动填写');
   } finally {
     recognizing.value = false;
+  }
+}
+
+async function estimateFood(food: EditableFood): Promise<void> {
+  const name = food.name.trim();
+  const photo = food.sourceImageUrl;
+  if (!photo || !name || estimatingFoods.value.has(food.key)) return;
+  const snapshot = { name: food.name, amount: food.amount, calories: food.calories };
+  estimatingFoods.value.add(food.key);
+  try {
+    const hint = `只估算一道菜：原名称“${(food.sourceName ?? '').slice(0, 30)}”，用户确认名称为“${name}”。结合照片估算份量和热量，foods 仅返回此项并使用确认名称；无法定位返回空数组。`;
+    const result = await recognizeFood(photo, hint);
+    const current = [...suggestions.value, ...formData.foods].find((item) => item.key === food.key);
+    if (!current || current.sourceImageUrl !== photo) return;
+    if (
+      result.provider === 'mock' ||
+      result.foods.length !== 1 ||
+      result.foods[0].name.trim() !== name
+    ) {
+      ToastPlugin.warning('未能估算这道菜，请重试或手动填写');
+      return;
+    }
+    if (applyFoodEstimate(current, snapshot, result.foods[0])) {
+      current.sourceName = name;
+      ToastPlugin.success('已更新这道菜的估算，可继续调整');
+    } else if (
+      current.name === snapshot.name &&
+      current.amount === snapshot.amount &&
+      current.calories === snapshot.calories
+    ) {
+      ToastPlugin.warning('估算信息不完整，请重试或手动填写');
+    }
+  } catch (error) {
+    showRequestError(error, '估算失败，请重试或手动填写');
+  } finally {
+    estimatingFoods.value.delete(food.key);
   }
 }
 
@@ -229,6 +270,8 @@ function applySuggestions(): void {
       amount: item.amount,
       calories: item.calories,
       aiGenerated: item.aiGenerated,
+      sourceImageUrl: item.sourceImageUrl,
+      sourceName: item.sourceName,
     });
   }
   formData.foods = nextFoods;
@@ -314,6 +357,8 @@ onMounted(async () => {
         amount: food.amount ?? '',
         calories: food.calories ?? '',
         aiGenerated: food.aiGenerated,
+        sourceImageUrl: food.aiGenerated ? (meal.imageUrl ?? undefined) : undefined,
+        sourceName: food.aiGenerated ? food.name : undefined,
       }));
       return;
     }
@@ -365,7 +410,7 @@ onMounted(async () => {
           :model-value="entryMode"
           :options="entryModes"
           label="添加食物方式"
-          :disabled="uploadingPhoto || recognizing"
+          :disabled="uploadingPhoto || recognizing || estimatingFoods.size > 0"
           @update:model-value="entryMode = $event as 'manual' | 'photo' | 'recent'"
         />
         <p v-if="templateSource" class="template-hint">
@@ -444,7 +489,12 @@ onMounted(async () => {
                     : '识别错了？直接修改对应菜名，不用重新识别'
                 }}</span>
               </div>
-              <UiButton kind="secondary" @click="applySuggestions">确认并加入</UiButton>
+              <UiButton
+                kind="secondary"
+                :disabled="estimatingFoods.size > 0"
+                @click="applySuggestions"
+                >确认并加入</UiButton
+              >
             </header>
             <div class="suggestion-list">
               <div
@@ -477,6 +527,15 @@ onMounted(async () => {
                     maxlength="50"
                     placeholder="份量选填"
                   />
+                  <button
+                    v-if="item.sourceImageUrl"
+                    type="button"
+                    class="food-estimate"
+                    :disabled="!item.name.trim() || estimatingFoods.has(item.key)"
+                    @click="estimateFood(item)"
+                  >
+                    {{ estimatingFoods.has(item.key) ? '估算中…' : 'AI 重新估算' }}
+                  </button>
                 </span>
                 <span class="suggestion-item__calories">
                   <input
@@ -490,8 +549,8 @@ onMounted(async () => {
               </div>
             </div>
             <p class="suggestion-tip">
-              修改 AI
-              菜名会清除原来的份量和热量估算，请重新填写或留空。加入明细后，已确认条目会保留。
+              修改 AI 菜名会清除旧估算，可点击「AI
+              重新估算」或手动填写。估算仅更新对应菜品，结果可继续调整。
             </p>
           </div>
         </div>
@@ -534,6 +593,15 @@ onMounted(async () => {
                 移除
               </button>
             </div>
+            <button
+              v-if="food.sourceImageUrl"
+              type="button"
+              class="food-estimate"
+              :disabled="!food.name.trim() || estimatingFoods.has(food.key)"
+              @click="estimateFood(food)"
+            >
+              {{ estimatingFoods.has(food.key) ? '估算中…' : 'AI 重新估算' }}
+            </button>
             <details class="food-item__extras" :open="true">
               <summary>
                 份量与热量
@@ -586,7 +654,7 @@ onMounted(async () => {
         <UiButton
           block
           :loading="submitting"
-          :disabled="uploadingPhoto || recognizing"
+          :disabled="uploadingPhoto || recognizing || estimatingFoods.size > 0"
           @click="submit"
         >
           {{ isEdit ? '保存修改' : '保存饮食记录' }}
@@ -603,6 +671,18 @@ onMounted(async () => {
 </template>
 
 <style scoped lang="scss">
+.food-estimate {
+  display: block;
+  padding: 8px 0;
+  border: 0;
+  background: transparent;
+  color: var(--ui-text-secondary);
+  font-size: 12px;
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
 .meal-form-card {
   padding: 0;
   background: transparent;
