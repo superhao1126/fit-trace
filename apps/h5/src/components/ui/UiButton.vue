@@ -2,7 +2,7 @@
 import { Button } from 'tdesign-mobile-vue';
 withDefaults(
   defineProps<{
-    kind?: 'primary' | 'secondary' | 'text' | 'icon';
+    kind?: 'primary' | 'secondary' | 'text' | 'icon' | 'danger';
     loading?: boolean;
     disabled?: boolean;
     block?: boolean;
@@ -40,6 +40,7 @@ withDefaults(
     opacity: 0.4;
   }
   &::after {
+    border: 0;
     border-radius: inherit;
   }
   &:focus-visible {
@@ -52,6 +53,14 @@ withDefaults(
     }
     background: var(--color-surface);
     color: var(--ui-text-primary);
+  }
+  &.ui-button--danger {
+    height: 44px;
+    padding: 0;
+    background: transparent;
+    color: var(--color-danger);
+    font-size: 14px;
+    font-weight: 400;
   }
   &.ui-button--text {
     height: 44px;

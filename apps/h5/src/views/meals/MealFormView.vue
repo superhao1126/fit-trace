@@ -1,26 +1,18 @@
 <script setup lang="ts">
 import { recordDateTime } from '@/utils/record-date';
-import RecordDetailHeader from '@/components/RecordDetailHeader.vue';
+import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
+import UiInput from '@/components/ui/UiInput.vue';
+import UiTextarea from '@/components/ui/UiTextarea.vue';
+import UiButton from '@/components/ui/UiButton.vue';
+import UiTabs from '@/components/ui/UiTabs.vue';
+import UiIcon from '@/components/ui/UiIcon.vue';
+import UiRecordRow from '@/components/ui/UiRecordRow.vue';
+import UiDateTimePicker from '@/components/ui/UiDateTimePicker.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { MealRecord, MealType } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import {
-  Button,
-  DateTimePicker,
-  Input,
-  Loading,
-  Popup,
-  Textarea,
-  ToastPlugin,
-} from 'tdesign-mobile-vue';
-import {
-  AddIcon,
-  CalendarIcon,
-  CameraIcon,
-  CheckIcon,
-  ChevronRightIcon,
-  DeleteIcon,
-} from 'tdesign-icons-vue-next';
+import { Loading, ToastPlugin } from 'tdesign-mobile-vue';
+import { AddIcon, CheckIcon, DeleteIcon } from 'tdesign-icons-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { recognizeFood } from '@/api/ai';
@@ -357,8 +349,8 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="view-page record-form meal-form-page">
-    <RecordDetailHeader
+  <main class="view-page ui-page ui-form meal-form-page">
+    <UiDetailHeader
       :title="isEdit ? '编辑饮食记录' : '记饮食'"
       subtitle="记下吃了什么，份量和热量选填"
     />
@@ -369,39 +361,27 @@ onMounted(async () => {
       :loading="loading"
       text="正在读取饮食记录"
     >
-      <section class="surface-card meal-form-card">
-        <div class="field-block">
-          <span class="field-label">餐次</span>
-          <div class="meal-type-grid">
-            <button
-              v-for="item in mealTypes"
-              :key="item.value"
-              type="button"
-              :class="{ active: formData.type === item.value }"
-              @click="formData.type = item.value"
-            >
-              <strong>{{ item.label }}</strong>
-            </button>
-          </div>
-        </div>
-
-        <button class="form-meta" type="button" @click="datePickerVisible = true">
-          <span>记录时间</span><span>{{ recordedAtDisplay }} <CalendarIcon /></span>
-        </button>
-
-        <div class="entry-modes" role="group" aria-label="添加食物方式">
-          <button
-            v-for="mode in entryModes"
-            :key="mode.value"
-            type="button"
-            :aria-pressed="entryMode === mode.value"
-            :disabled="uploadingPhoto || recognizing"
-            :class="{ active: entryMode === mode.value }"
-            @click="entryMode = mode.value"
-          >
-            {{ mode.label }}
+      <section class="meal-form-card">
+        <UiTabs
+          :model-value="formData.type"
+          :options="mealTypes"
+          tone="meal"
+          label="餐次"
+          @update:model-value="formData.type = $event as MealType"
+        />
+        <div class="form-meta">
+          <span class="field-label">记录时间</span
+          ><button type="button" @click="datePickerVisible = true">
+            {{ recordedAtDisplay }}<UiIcon name="calendar" />
           </button>
         </div>
+        <UiTabs
+          :model-value="entryMode"
+          :options="entryModes"
+          label="添加食物方式"
+          :disabled="uploadingPhoto || recognizing"
+          @update:model-value="entryMode = $event as 'manual' | 'photo' | 'recent'"
+        />
         <p v-if="templateSource" class="template-hint">
           已带入 {{ templateSource }}，确认下方内容后保存
         </p>
@@ -410,20 +390,15 @@ onMounted(async () => {
           <p v-if="!recentMeals.length" class="template-hint">
             还没有可复用的饮食记录，先手动记下第一餐
           </p>
-          <button
+          <UiRecordRow
             v-for="meal in recentMeals.slice(0, 5)"
             :key="meal.id"
-            type="button"
-            class="last-meal"
+            kind="meal"
+            :title="mealTypes.find((item) => item.value === meal.type)?.label || '饮食'"
+            :subtitle="`${dayjs(meal.recordedAt).format('M月D日')} · ${meal.foods.map((food) => food.name).join('、')}`"
+            value="带入"
             @click="applyMealTemplate(meal)"
-          >
-            <span
-              ><strong
-                >{{ dayjs(meal.recordedAt).format('M月D日') }} ·
-                {{ mealTypes.find((item) => item.value === meal.type)?.label }}</strong
-              ><small>{{ meal.foods.map((food) => food.name).join('、') }}</small></span
-            ><span>带入</span>
-          </button>
+          />
           <div v-if="recentFoods.length" class="recent-foods">
             <span>也可以只加一种食物</span>
             <div>
@@ -445,22 +420,15 @@ onMounted(async () => {
           <div v-if="imageUrl" class="photo-preview">
             <img :src="imageUrl" alt="餐食照片" />
             <div class="photo-preview__actions">
-              <Button
-                size="small"
-                variant="outline"
-                :loading="recognizing"
-                @click="recognizePhoto()"
-              >
+              <UiButton kind="secondary" :loading="recognizing" @click="recognizePhoto()">
                 重新识别
-              </Button>
-              <Button size="small" variant="text" theme="danger" @click="removePhoto">
-                <DeleteIcon /> 移除
-              </Button>
+              </UiButton>
+              <UiButton kind="danger" @click="removePhoto"> <DeleteIcon /> 移除 </UiButton>
             </div>
           </div>
 
           <button v-else type="button" class="photo-picker" @click="pickPhoto">
-            <CameraIcon />
+            <UiIcon name="photo" />
             <strong>{{ uploadingPhoto ? '正在上传…' : '拍照或选择餐食照片' }}</strong>
             <span>上传后先由 AI 识别，再由你确认</span>
           </button>
@@ -479,7 +447,7 @@ onMounted(async () => {
                     : '请核对名称、份量和热量后加入明细'
                 }}</span>
               </div>
-              <Button size="small" variant="outline" @click="applySuggestions">确认并加入</Button>
+              <UiButton kind="secondary" @click="applySuggestions">确认并加入</UiButton>
             </header>
             <div class="suggestion-list">
               <div
@@ -498,7 +466,7 @@ onMounted(async () => {
                   <CheckIcon v-if="item.selected" />
                 </button>
                 <span class="suggestion-item__main">
-                  <Input
+                  <UiInput
                     v-model="item.name"
                     class="suggestion-item__name"
                     :maxlength="100"
@@ -528,14 +496,12 @@ onMounted(async () => {
           <details v-if="imageUrl" class="correct-block">
             <summary>用文字重新识别</summary>
             <div class="correct-block__row">
-              <Input
+              <UiInput
                 v-model="hintText"
                 :maxlength="200"
                 placeholder="识别不对？直接告诉它，比如：左边那碗是鸡蛋羹"
               />
-              <Button size="small" variant="outline" :loading="recognizing" @click="applyHint">
-                纠正
-              </Button>
+              <UiButton kind="secondary" :loading="recognizing" @click="applyHint"> 纠正 </UiButton>
             </div>
             <p v-if="appliedHint" class="correct-block__applied">
               已按你的说明重新识别：{{ appliedHint }}
@@ -562,7 +528,6 @@ onMounted(async () => {
         <div class="food-list">
           <section v-for="(food, index) in formData.foods" :key="food.key" class="food-item">
             <div class="food-item__main">
-              <span class="food-item__index" aria-hidden="true">{{ index + 1 }}</span>
               <input
                 v-model="food.name"
                 class="food-item__name"
@@ -578,10 +543,10 @@ onMounted(async () => {
                 :disabled="formData.foods.length === 1"
                 @click="removeFood(food.key)"
               >
-                <DeleteIcon />
+                移除
               </button>
             </div>
-            <details class="food-item__extras" :open="isEdit">
+            <details class="food-item__extras" :open="true">
               <summary>
                 份量与热量
                 <span>{{
@@ -589,7 +554,7 @@ onMounted(async () => {
                     .filter(Boolean)
                     .join(' · ') || '选填'
                 }}</span
-                ><ChevronRightIcon class="expand-icon" />
+                ><UiIcon name="right" class="expand-icon" />
               </summary>
               <div class="food-item__details">
                 <label>
@@ -619,10 +584,10 @@ onMounted(async () => {
         </div>
 
         <details class="note-details" :open="isEdit && !!formData.note">
-          <summary>添加备注（选填）<ChevronRightIcon class="expand-icon" /></summary>
+          <summary>添加备注（选填）<UiIcon name="right" class="expand-icon" /></summary>
           <div class="field-block note-field">
             <span class="field-label">备注</span>
-            <Textarea
+            <UiTextarea
               v-model="formData.note"
               :maxlength="500"
               :autosize="{ minRows: 3, maxRows: 6 }"
@@ -630,633 +595,337 @@ onMounted(async () => {
             />
           </div>
         </details>
-        <Button
-          theme="primary"
-          size="large"
+        <UiButton
           block
           :loading="submitting"
           :disabled="uploadingPhoto || recognizing"
           @click="submit"
         >
           {{ isEdit ? '保存修改' : '保存饮食记录' }}
-        </Button>
+        </UiButton>
       </section>
     </Loading>
 
-    <Popup v-model="datePickerVisible" placement="bottom">
-      <DateTimePicker
-        :value="formData.recordedAt"
-        title="选择记录时间"
-        :mode="['date', 'minute']"
-        format="YYYY-MM-DD HH:mm:ss"
-        @confirm="confirmRecordedAt"
-        @cancel="datePickerVisible = false"
-      />
-    </Popup>
+    <UiDateTimePicker
+      v-model:visible="datePickerVisible"
+      :value="formData.recordedAt"
+      @confirm="confirmRecordedAt"
+    />
   </main>
 </template>
 
 <style scoped lang="scss">
-.entry-modes {
-  display: flex;
-  gap: 4px;
-  padding: 4px;
-  margin-bottom: 20px;
-  border-radius: 10px;
-  background: var(--color-surface-muted);
-  button {
-    flex: 1;
-    min-height: 40px;
-    padding: 8px 4px;
-    border: 0;
-    border-radius: 7px;
-    color: var(--color-text-secondary);
-    background: transparent;
-    font-size: 0.8125rem;
-  }
-  button.active {
-    color: var(--color-text-primary);
-    background: var(--color-surface);
-    box-shadow: 0 1px 3px rgb(0 0 0 / 6%);
-  }
-}
-.template-hint {
-  color: var(--color-text-secondary);
-  font-size: 0.75rem;
-  line-height: 1.6;
-}
-.note-details {
-  margin: 18px 0;
-  summary {
-    cursor: pointer;
-    padding: 8px 0;
-    color: var(--color-text-secondary);
-    font-size: 0.8125rem;
-  }
-}
-
 .meal-form-card {
-  width: 100%;
-  padding: 18px;
+  padding: 0;
+  background: transparent;
 }
-
-.field-block {
-  display: grid;
-  gap: 8px;
-  margin-bottom: 18px;
+.template-hint,
+.suggestion-tip,
+.correct-block__applied {
+  color: var(--ui-text-secondary);
+  font-size: 12px;
+  line-height: 1.7;
 }
-
-.field-label {
-  color: var(--color-text-secondary);
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
 .quick-start {
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--color-border);
-
-  &__heading {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-
-    > div {
-      display: grid;
-      gap: 3px;
-    }
-
-    small,
-    > span {
-      color: var(--color-text-tertiary);
-      font-size: 0.7rem;
-      line-height: 1.45;
-    }
-
-    > span {
-      flex: none;
-      color: var(--color-accent-text);
-    }
-  }
-}
-
-.last-meal {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
   gap: 12px;
-  padding: 12px;
-  color: var(--color-text-primary);
-  text-align: left;
-  background: var(--color-surface-muted);
-  border: 0;
-  border-radius: 10px;
-
-  > span:first-child {
-    display: grid;
-    min-width: 0;
-    gap: 3px;
-  }
-
-  strong {
-    font-size: 0.85rem;
-  }
-
-  small {
-    overflow: hidden;
-    color: var(--color-text-secondary);
-    font-size: 0.72rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  > span:last-child {
-    flex: none;
-    color: var(--color-accent-text);
-    font-size: 0.75rem;
-    font-weight: 500;
-  }
 }
-
 .recent-foods {
   display: grid;
-  gap: 7px;
-
-  > span {
-    color: var(--color-text-tertiary);
-    font-size: 0.72rem;
-  }
-
+  gap: 12px;
+  font-size: 13px;
+  color: var(--ui-text-secondary);
   > div {
     display: flex;
-    gap: 6px;
+    gap: 8px;
     overflow-x: auto;
-    scrollbar-width: none;
-
-    &::-webkit-scrollbar {
-      display: none;
-    }
   }
-
   button {
     flex: none;
-    padding: 7px 10px;
-    color: var(--color-text-secondary);
-    font-size: 0.72rem;
-    background: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
+    padding: 10px 14px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--color-surface);
+    color: var(--ui-meal-foreground);
   }
 }
-
 .file-input {
   display: none;
 }
-
 .photo-picker {
   display: grid;
-  justify-items: center;
-  gap: 5px;
-  padding: 20px 14px;
-  color: var(--color-text-secondary);
-  background: var(--color-surface-muted);
-  border: 1px dashed var(--color-border);
-  border-radius: var(--border-radius-md);
-
-  svg {
-    color: var(--color-text-primary);
-    font-size: 1.4rem;
+  place-items: center;
+  gap: 20px;
+  min-height: 230px;
+  width: 100%;
+  padding: 24px 16px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--ui-meal-background);
+  color: var(--ui-meal-foreground);
+  .ui-icon {
+    width: 36px;
+    height: 36px;
   }
-
   strong {
-    color: var(--color-text-primary);
-    font-size: 0.875rem;
+    color: var(--ui-text-primary);
+    font-size: 16px;
   }
-
   span {
-    color: var(--color-text-tertiary);
-    font-size: 0.75rem;
+    font-size: 12px;
+    color: var(--ui-text-secondary);
   }
 }
-
 .photo-preview {
   display: grid;
-  gap: 9px;
-
+  gap: 12px;
   img {
     width: 100%;
-    max-height: 220px;
+    max-height: 240px;
     object-fit: cover;
-    background: var(--color-surface-muted);
-    border-radius: var(--border-radius-md);
+    border-radius: 20px;
   }
-
   &__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 4px;
-  }
-}
-
-.recognizing-hint {
-  padding: 12px;
-  color: var(--color-text-secondary);
-  font-size: 0.875rem;
-  text-align: center;
-  background: var(--color-surface-muted);
-  border-radius: var(--border-radius-md);
-}
-
-.suggestion-panel {
-  margin-top: 3px;
-  padding: 13px;
-  background: var(--color-primary-light);
-  border: 1px solid var(--color-primary-border);
-  border-radius: var(--border-radius-md);
-
-  > header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 10px;
-
+    gap: 12px;
+  }
+}
+.recognizing-hint {
+  padding: 16px;
+  color: var(--ui-meal-foreground);
+  font-size: 13px;
+}
+.suggestion-panel {
+  margin-top: 12px;
+  > header {
+    display: grid;
+    gap: 16px;
+    padding: 20px;
+    border-radius: 20px;
+    background: var(--ui-meal-background);
     > div {
       display: grid;
-      gap: 3px;
+      gap: 8px;
     }
-
     strong {
-      font-size: 0.875rem;
+      font-size: 16px;
     }
-
     span {
-      color: var(--color-text-secondary);
-      font-size: 0.75rem;
+      font-size: 12px;
+      color: var(--ui-text-secondary);
+      line-height: 1.7;
     }
   }
 }
-
 .suggestion-list {
   display: grid;
-  gap: 6px;
+  gap: 12px;
+  margin-top: 16px;
 }
-
 .suggestion-item {
-  display: flex;
-  width: 100%;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 70px;
   align-items: center;
-  gap: 9px;
-  padding: 10px 11px;
-  background: var(--color-surface);
+  gap: 10px;
+  padding: 16px;
   border: 1px solid transparent;
-  border-radius: 9px;
-
+  border-radius: 20px;
+  background: var(--color-surface);
   &__check {
+    width: 24px;
+    height: 24px;
+    padding: 0;
     display: grid;
-    width: 18px;
-    height: 18px;
-    flex: none;
     place-items: center;
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    background: transparent;
     color: var(--color-on-primary);
-    font-size: 0.875rem;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 5px;
   }
-
+  &.selected {
+    border-color: var(--ui-primary);
+    .suggestion-item__check {
+      background: var(--ui-primary);
+    }
+  }
   &__main {
     display: grid;
+    gap: 8px;
     min-width: 0;
-    flex: 1;
-    gap: 2px;
-
-    span {
-      color: var(--color-text-tertiary);
-      font-size: 0.75rem;
-    }
   }
-
-  &__name {
-    width: 100%;
-
-    :deep(.t-input) {
-      height: auto;
-      padding: 0;
-      background: transparent;
-      border: 0;
-      border-radius: 0;
-      box-shadow: none;
-
-      &:hover,
-      &:focus-within {
-        border: 0;
-        box-shadow: none;
-      }
-    }
-
-    :deep(input) {
-      height: auto;
-      padding: 0;
-      color: var(--color-text-primary);
-      font-size: 0.875rem;
-      font-weight: 500;
-    }
-  }
-
   &__calories {
-    flex: none;
-    font-size: 0.875rem;
-    font-weight: 500;
-    font-variant-numeric: tabular-nums;
-
-    small {
-      margin-left: 2px;
-      color: var(--color-text-tertiary);
-      font-size: 0.75rem;
-      font-weight: 500;
-    }
+    display: grid;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--ui-text-secondary);
   }
-
-  &.selected {
-    border-color: var(--color-primary);
-
-    .suggestion-item__check {
-      background: var(--color-primary);
-      border-color: var(--color-primary);
-    }
-  }
-}
-
-.suggestion-tip {
-  margin: 10px 0 0;
-  color: var(--color-text-secondary);
-  font-size: 0.75rem;
-  line-height: 1.6;
-}
-
-.correct-block {
-  display: grid;
-  gap: 7px;
-  margin-top: 10px;
-
-  &__row {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-
-    :deep(.t-input) {
-      flex: 1;
-      min-width: 0;
-      background: var(--color-surface-muted);
-      border-radius: 9px;
-    }
-  }
-
-  &__applied {
-    margin: 0;
-    color: var(--color-text-tertiary);
-    font-size: 0.75rem;
-    line-height: 1.6;
-  }
-}
-
-.meal-type-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-  button {
+  input {
+    width: 100%;
     min-width: 0;
-    min-height: 40px;
-    padding: 8px 4px;
-    color: var(--color-text-secondary);
-    background: var(--color-surface-muted);
-    border: 1px solid transparent;
-    border-radius: 6px;
-    strong {
-      font-size: 0.8125rem;
-      font-weight: 400;
-    }
-    &.active {
-      color: var(--color-accent-text);
-      background: var(--color-primary-light);
-      border-color: var(--color-primary-border);
-    }
+    border: 0;
+    padding: 8px 0;
+    background: transparent;
+    color: var(--ui-text-primary);
+    font-size: 14px;
   }
 }
-
+.correct-block {
+  margin: 20px 0;
+  summary {
+    font-size: 14px;
+    color: var(--ui-primary);
+    min-height: 44px;
+    cursor: pointer;
+  }
+  &__row {
+    display: grid;
+    gap: 12px;
+    margin-top: 10px;
+  }
+}
 .foods-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-  margin: 4px 0 8px;
-
+  gap: 12px;
+  margin: 28px 0 16px;
   .field-label {
-    color: var(--color-text-primary);
-    font-weight: 550;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--ui-text-primary);
   }
   small,
   &__hint {
-    color: var(--color-text-tertiary);
-    font-size: 0.75rem;
+    font-size: 12px;
     font-weight: 400;
-  }
-  small {
-    margin-left: 4px;
+    color: var(--ui-text-secondary);
   }
 }
-
 .food-list {
-  border-top: 1px solid var(--color-border);
+  display: grid;
+  gap: 12px;
 }
-
 .food-item {
+  padding: 16px;
+  border-radius: 20px;
+  background: var(--color-surface);
   min-width: 0;
-  padding: 8px 0 12px;
-  border-bottom: 1px solid var(--color-border);
-
   input {
     width: 100%;
     min-width: 0;
-    padding: 0;
     border: 0;
-    border-radius: 0;
     background: transparent;
-    color: var(--color-text-primary);
+    color: var(--ui-text-primary);
     font: inherit;
-    outline: none;
+    padding: 0;
     &::placeholder {
-      color: var(--color-text-tertiary);
+      color: var(--ui-text-tertiary);
     }
   }
-
   &__main {
     display: flex;
     align-items: center;
     gap: 8px;
-    min-height: 40px;
-    border-radius: 6px;
-    &:focus-within {
-      box-shadow: 0 0 0 1px var(--color-primary-border);
-    }
+    min-height: 36px;
   }
-  &__index {
-    flex: none;
-    width: 14px;
-    color: var(--color-text-tertiary);
-    font-size: 0.75rem;
-    text-align: center;
-  }
-  input.food-item__name {
+  &__name {
     flex: 1;
-    height: 40px;
-    font-size: 1rem;
+    font-size: 16px;
+    font-weight: 600;
   }
   &__ai {
-    color: var(--color-text-tertiary);
-    font-size: 0.6875rem;
+    color: var(--ui-meal-foreground);
+    font-size: 11px;
   }
   &__remove {
-    display: grid;
     flex: none;
-    place-items: center;
-    width: 40px;
-    height: 40px;
-    padding: 0;
     border: 0;
-    border-radius: 6px;
     background: transparent;
-    color: var(--color-text-tertiary);
-    font-size: 1rem;
+    color: var(--ui-text-secondary);
+    font-size: 12px;
+    min-height: 36px;
+    padding: 0 4px;
     &:disabled {
       opacity: 0.3;
-      cursor: default;
     }
-    &:not(:disabled):hover {
-      color: var(--color-danger);
-      background: var(--color-surface-muted);
+  }
+  &__extras {
+    margin-top: 12px;
+    summary {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 36px;
+      color: var(--ui-text-secondary);
+      font-size: 12px;
+      span {
+        margin-left: auto;
+      }
+      .ui-icon {
+        width: 14px;
+        height: 14px;
+      }
     }
   }
   &__details {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 8px;
-    margin-top: 4px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 12px;
     label {
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
       min-width: 0;
-      min-height: 36px;
-      padding: 0 8px;
-      border-radius: 6px;
-      background: var(--color-surface-muted);
-      font-size: 0.75rem;
-      &:focus-within {
-        box-shadow: 0 0 0 1px var(--color-primary-border);
+      color: var(--ui-text-secondary);
+      font-size: 12px;
+      > span {
+        grid-column: 1/-1;
       }
-    }
-    span,
-    small {
-      flex: none;
-      color: var(--color-text-secondary);
-      font-size: 0.6875rem;
-    }
-    input {
-      height: 36px;
-    }
-    input[type='number'] {
-      appearance: textfield;
-    }
-    input::-webkit-inner-spin-button,
-    input::-webkit-outer-spin-button {
-      appearance: none;
-      margin: 0;
+      input {
+        height: 32px;
+        color: var(--ui-text-primary);
+        font-size: 14px;
+      }
+      small {
+        align-self: center;
+      }
     }
   }
 }
 .add-food {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 5px;
-  width: 100%;
-  min-height: 40px;
-  margin-top: 4px;
-  padding: 0;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--color-accent-text);
-  font-size: 0.8125rem;
-  &:hover {
-    background: var(--color-surface-muted);
-  }
-}
-
-.note-field {
-  margin-top: 20px;
-}
-
-@media (max-width: 360px) {
-  .meal-type-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-.form-meta {
-  display: flex;
-  width: 100%;
+  gap: 6px;
   min-height: 44px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin: -8px 0 16px;
-  padding: 0;
-  background: transparent;
   border: 0;
-  color: var(--color-text-secondary);
-  font-size: 0.75rem;
-  > span:last-child {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
+  background: transparent;
+  color: var(--ui-primary);
+  font-size: 14px;
+  padding: 0;
 }
-.food-item__extras {
+.note-details {
+  margin: 12px 0 28px;
   summary {
     display: flex;
-    min-height: 36px;
     align-items: center;
     gap: 8px;
-    color: var(--color-text-secondary);
-    font-size: 0.75rem;
-    span {
-      color: var(--color-text-tertiary);
-      font-size: 0.6875rem;
+    min-height: 44px;
+    color: var(--ui-primary);
+    font-size: 14px;
+    cursor: pointer;
+    .ui-icon {
+      width: 16px;
+      height: 16px;
     }
   }
+  .field-block {
+    margin-top: 12px;
+  }
 }
-.suggestion-item input {
-  width: 100%;
-  min-width: 0;
-  padding: 6px 0;
-  color: var(--color-text-primary);
-  border: 0;
-  border-bottom: 1px solid var(--color-border);
-  background: transparent;
-  font: inherit;
-}
-.suggestion-item__calories input {
-  width: 66px;
-  text-align: right;
-}
-.correct-block summary {
-  padding: 8px 0;
-  color: var(--color-text-secondary);
-  cursor: pointer;
+.meal-form-card > .ui-button:last-child {
+  margin-top: 20px;
 }
 </style>

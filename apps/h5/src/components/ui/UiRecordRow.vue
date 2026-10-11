@@ -14,6 +14,7 @@ withDefaults(
     image?: string;
     icon?: UiIconName;
     tone?: 'category' | 'neutral';
+    informational?: boolean;
   }>(),
   {
     subtitle: '',
@@ -27,11 +28,12 @@ withDefaults(
 );
 </script>
 <template>
-  <Button
+  <component
+    :is="informational ? 'div' : Button"
     class="ui-record-row"
     :class="[`ui-record-row--${kind}`, { 'ui-record-row--neutral': tone === 'neutral' }]"
-    variant="text"
-    block
+    :variant="informational ? undefined : 'text'"
+    :block="informational ? undefined : true"
   >
     <span class="ui-record-row__layout"
       ><span class="ui-record-row__icon"
@@ -47,10 +49,10 @@ withDefaults(
         >{{ value }}<small v-if="unit"> {{ unit }}</small></span
       ><UiIcon v-else name="right" class="ui-record-row__chevron"
     /></span>
-  </Button>
+  </component>
 </template>
 <style scoped lang="scss">
-.ui-record-row.t-button {
+.ui-record-row {
   display: block;
   width: 100%;
   height: auto;
@@ -151,7 +153,7 @@ withDefaults(
   color: var(--ui-text-tertiary);
 }
 @media (max-width: 360px) {
-  .ui-record-row.t-button {
+  .ui-record-row {
     padding: 14px 12px;
   }
   .ui-record-row__layout {

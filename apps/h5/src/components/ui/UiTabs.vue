@@ -3,16 +3,28 @@ import { Button } from 'tdesign-mobile-vue';
 withDefaults(
   defineProps<{
     modelValue: string | number;
-    options: Array<{ value: string | number; label: string }>;
+    options: ReadonlyArray<{ value: string | number; label: string }>;
     label: string;
-    tone?: 'brand' | 'body';
+    columns?: number;
+    disabled?: boolean;
+    tone?: 'brand' | 'body' | 'meal' | 'workout';
   }>(),
-  { tone: 'brand' },
+  { tone: 'brand', columns: undefined },
 );
 defineEmits<{ 'update:modelValue': [value: string | number] }>();
 </script>
 <template>
-  <div class="ui-tabs" :class="`ui-tabs--${tone}`" role="group" :aria-label="label">
+  <div
+    class="ui-tabs"
+    :class="`ui-tabs--${tone}`"
+    :style="
+      columns
+        ? { display: 'grid', gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }
+        : undefined
+    "
+    role="group"
+    :aria-label="label"
+  >
     <Button
       v-for="option in options"
       :key="option.value"
@@ -20,8 +32,9 @@ defineEmits<{ 'update:modelValue': [value: string | number] }>();
       class="ui-tabs__item"
       :class="{ active: modelValue === option.value }"
       :aria-pressed="modelValue === option.value"
+      :disabled="disabled"
       @click="$emit('update:modelValue', option.value)"
-      >{{ option.label }}</Button
+      ><slot name="option" :option="option">{{ option.label }}</slot></Button
     >
   </div>
 </template>
@@ -56,5 +69,19 @@ defineEmits<{ 'update:modelValue': [value: string | number] }>();
     background: var(--ui-body-foreground);
     color: var(--color-surface);
   }
+}
+</style>
+
+<style scoped lang="scss">
+.ui-tabs--meal .ui-tabs__item.active {
+  background: var(--ui-meal-foreground);
+  color: var(--color-on-primary);
+}
+.ui-tabs--workout .ui-tabs__item {
+  height: 50px;
+}
+.ui-tabs--workout .ui-tabs__item.active {
+  background: var(--ui-workout-background);
+  color: var(--ui-workout-foreground);
 }
 </style>

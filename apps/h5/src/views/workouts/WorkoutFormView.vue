@@ -1,19 +1,17 @@
 <script setup lang="ts">
 import { recordDateTime } from '@/utils/record-date';
-import RecordDetailHeader from '@/components/RecordDetailHeader.vue';
+import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
+import UiButton from '@/components/ui/UiButton.vue';
+import UiInput from '@/components/ui/UiInput.vue';
+import UiTextarea from '@/components/ui/UiTextarea.vue';
+import UiIcon from '@/components/ui/UiIcon.vue';
+import UiTabs from '@/components/ui/UiTabs.vue';
+import UiDateTimePicker from '@/components/ui/UiDateTimePicker.vue';
+import UiRecordRow from '@/components/ui/UiRecordRow.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { WorkoutRecord, WorkoutType } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import {
-  Button,
-  DateTimePicker,
-  Input,
-  Loading,
-  Popup,
-  Textarea,
-  ToastPlugin,
-} from 'tdesign-mobile-vue';
-import { CalendarIcon, ChevronRightIcon } from 'tdesign-icons-vue-next';
+import { Loading, ToastPlugin } from 'tdesign-mobile-vue';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
@@ -33,7 +31,7 @@ const workoutTypes: Array<{ value: WorkoutType; label: string }> = [
   { value: 'SWIMMING', label: '游泳' },
   { value: 'OTHER', label: '其他' },
 ];
-const durationPresets = [20, 30, 45, 60, 90];
+const durationPresets = [15, 30, 45];
 
 const route = useRoute();
 const router = useRouter();
@@ -155,281 +153,126 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="view-page record-form workout-form-page">
-    <RecordDetailHeader :title="isEdit ? '编辑训练记录' : '记训练'" subtitle="记录训练内容和时长" />
-
+  <main class="view-page ui-page ui-form workout-form-page">
+    <UiDetailHeader :title="isEdit ? '编辑训练记录' : '记训练'" subtitle="记录训练内容与时长" />
     <Loading
       class="page-loading"
       :class="{ 'page-loading--active': loading }"
       :loading="loading"
       text="正在读取训练记录"
     >
-      <section class="surface-card workout-form-card">
-        <div v-if="!isEdit && latestWorkout" class="quick-start field-block">
-          <div>
-            <span class="field-label">快速开始</span>
-            <small>带入训练内容，开始时间仍使用现在</small>
-          </div>
-          <button type="button" @click="applyWorkoutTemplate(latestWorkout)">
-            <span>
-              <strong>复用上次训练</strong>
-              <small> {{ latestWorkout.name }} · {{ latestWorkout.durationMinutes }} 分钟 </small>
-            </span>
-            <span>{{ templateSource || '带入' }}</span>
-          </button>
-        </div>
-
-        <div class="field-block">
-          <span class="field-label">训练类型</span>
-          <div class="workout-type-grid">
-            <button
-              v-for="item in workoutTypes"
-              :key="item.value"
-              type="button"
-              :class="{ active: formData.type === item.value }"
-              :aria-pressed="formData.type === item.value"
-              @click="formData.type = item.value"
-            >
-              <span class="workout-type-grid__icon"><SportIcon :type="item.value" /></span>
-              <strong>{{ item.label }}</strong>
-            </button>
-          </div>
-        </div>
-
-        <div class="field-block">
-          <span class="field-label">训练名称</span>
-          <Input
-            v-model="formData.name"
-            :maxlength="60"
-            :placeholder="`例如：${selectedType.label}训练`"
-          />
-        </div>
-
-        <div class="field-block">
-          <span class="field-label">训练时长</span>
-          <Input
-            v-model="formData.durationMinutes"
-            type="number"
-            inputmode="numeric"
-            suffix="分钟"
-            placeholder="45"
-          />
-          <div class="preset-row">
-            <button
-              v-for="preset in durationPresets"
-              :key="preset"
-              type="button"
-              :class="{ active: Number(formData.durationMinutes) === preset }"
-              @click="formData.durationMinutes = preset"
-            >
-              {{ preset }} 分钟
-            </button>
-          </div>
-        </div>
-
-        <button class="form-meta" type="button" @click="datePickerVisible = true">
-          <span>开始时间</span><span>{{ startedAtDisplay }} <CalendarIcon /></span>
-        </button>
-        <details
-          class="workout-extra"
-          :open="isEdit || formData.calories !== '' || Boolean(formData.note)"
+      <div v-if="!isEdit && latestWorkout" class="workout-reuse">
+        <UiRecordRow
+          kind="workout"
+          :workout-type="latestWorkout.type"
+          title="复用上次训练"
+          :subtitle="`${latestWorkout.name} · ${latestWorkout.durationMinutes} 分钟`"
+          value="带入"
+          @click="applyWorkoutTemplate(latestWorkout)"
+        />
+        <p v-if="templateSource">已带入 {{ templateSource }}，记录时间保持当前选择</p>
+      </div>
+      <div class="field-block">
+        <span class="field-label">训练类型</span
+        ><UiTabs
+          :model-value="formData.type"
+          :options="workoutTypes"
+          tone="workout"
+          :columns="3"
+          label="训练类型"
+          @update:model-value="formData.type = $event as WorkoutType"
+          ><template #option="{ option }"
+            ><span class="sport-option"
+              ><SportIcon :type="option.value as WorkoutType" />{{ option.label }}</span
+            ></template
+          ></UiTabs
         >
-          <summary>热量与备注 <span>选填</span><ChevronRightIcon class="expand-icon" /></summary>
-          <div class="field-block">
-            <span class="field-label">消耗热量（可选）</span>
-            <Input v-model="formData.calories" type="number" suffix="kcal" placeholder="例如 320" />
-          </div>
-
-          <div class="field-block note-field">
-            <span class="field-label">备注</span>
-            <Textarea
-              v-model="formData.note"
-              :maxlength="500"
-              :autosize="{ minRows: 3, maxRows: 6 }"
-              placeholder="例如：状态不错、组间休息偏长等"
-            />
-          </div>
-        </details>
-        <Button theme="primary" size="large" block :loading="submitting" @click="submit">
-          {{ isEdit ? '保存修改' : '保存训练记录' }}
-        </Button>
-      </section>
-    </Loading>
-
-    <Popup v-model="datePickerVisible" placement="bottom">
-      <DateTimePicker
-        :value="formData.startedAt"
-        title="选择开始时间"
-        :mode="['date', 'minute']"
-        format="YYYY-MM-DD HH:mm:ss"
-        @confirm="confirmStartedAt"
-        @cancel="datePickerVisible = false"
+      </div>
+      <label class="field-block"
+        ><span class="field-label">训练名称</span
+        ><UiInput
+          v-model="formData.name"
+          :maxlength="60"
+          :placeholder="`例如：${selectedType.label}训练`"
+          aria-label="训练名称"
+      /></label>
+      <label class="field-block"
+        ><span class="field-label">训练时长</span
+        ><UiInput
+          v-model="formData.durationMinutes"
+          type="number"
+          inputmode="numeric"
+          suffix="分钟"
+          placeholder="45"
+          aria-label="训练时长"
+      /></label>
+      <UiTabs
+        :model-value="Number(formData.durationMinutes)"
+        :options="durationPresets.map((value) => ({ value, label: `${value} 分钟` }))"
+        label="快捷训练时长"
+        @update:model-value="formData.durationMinutes = Number($event)"
       />
-    </Popup>
+      <div class="form-meta">
+        <span class="field-label">开始时间</span
+        ><button type="button" @click="datePickerVisible = true">
+          {{ startedAtDisplay }}<UiIcon name="right" />
+        </button>
+      </div>
+      <details
+        class="extra-fields"
+        :open="isEdit || formData.calories !== '' || Boolean(formData.note)"
+      >
+        <summary>热量与备注<span>选填</span><UiIcon name="right" /></summary>
+        <label class="field-block"
+          ><span class="field-label">消耗热量</span
+          ><UiInput
+            v-model="formData.calories"
+            type="number"
+            inputmode="decimal"
+            suffix="kcal"
+            placeholder="例如 320"
+            aria-label="消耗热量" /></label
+        ><label class="field-block"
+          ><span class="field-label">备注</span
+          ><UiTextarea
+            v-model="formData.note"
+            :maxlength="500"
+            :autosize="{ minRows: 3, maxRows: 6 }"
+            placeholder="例如：状态不错、完成 5.2 公里"
+            aria-label="备注"
+        /></label>
+      </details>
+      <UiButton class="form-submit" block :loading="submitting" @click="submit">{{
+        isEdit ? '保存修改' : '保存训练记录'
+      }}</UiButton> </Loading
+    ><UiDateTimePicker
+      v-model:visible="datePickerVisible"
+      :value="formData.startedAt"
+      title="选择开始时间"
+      @confirm="confirmStartedAt"
+    />
   </main>
 </template>
-
 <style scoped lang="scss">
-.workout-form-card {
-  width: 100%;
-  padding: 18px;
-}
-
-.field-block {
-  display: grid;
-  gap: 8px;
-  margin-bottom: 18px;
-}
-
-.field-label {
-  color: var(--color-text-secondary);
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.quick-start {
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--color-border);
-
-  > div {
-    display: grid;
-    gap: 3px;
-
-    small {
-      color: var(--color-text-tertiary);
-      font-size: 0.7rem;
-    }
-  }
-
-  > button {
-    display: flex;
-    width: 100%;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 12px;
-    color: var(--color-text-primary);
-    text-align: left;
-    background: var(--color-surface-muted);
-    border: 0;
-    border-radius: 10px;
-
-    > span:first-child {
-      display: grid;
-      min-width: 0;
-      gap: 3px;
-    }
-
-    strong {
-      font-size: 0.85rem;
-    }
-
-    small {
-      color: var(--color-text-secondary);
-      font-size: 0.72rem;
-    }
-
-    > span:last-child {
-      flex: none;
-      color: var(--color-accent-text);
-      font-size: 0.7rem;
-      font-weight: 500;
-    }
-  }
-}
-
-.workout-type-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-  button {
-    display: flex;
-    min-width: 0;
-    min-height: 40px;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 8px 4px;
-    color: var(--color-text-secondary);
-    background: var(--color-surface-muted);
-    border: 1px solid transparent;
-    border-radius: 6px;
-    strong {
-      font-size: 0.8125rem;
-      font-weight: 400;
-    }
-    &.active {
-      color: var(--color-accent-text);
-      background: var(--color-primary-light);
-      border-color: var(--color-primary-border);
-    }
-  }
-  &__icon {
-    display: flex;
-    font-size: 1rem;
-  }
-}
-
-.preset-row {
+.sport-option {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  button {
-    min-height: 36px;
-    padding: 8px 10px;
-    color: var(--color-text-secondary);
-    background: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
-    font-size: 0.75rem;
-    &.active {
-      color: var(--color-accent-text);
-      background: var(--color-primary-light);
-      border-color: var(--color-primary-border);
-    }
-  }
-}
-
-.note-field {
-  margin-bottom: 22px;
-}
-
-@media (max-width: 360px) {
-  .workout-type-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-.form-meta {
-  display: flex;
-  width: 100%;
-  min-height: 44px;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 0;
-  color: var(--color-text-secondary);
-  background: transparent;
-  border: 0;
-  font-size: 0.75rem;
-  > span:last-child {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  justify-content: center;
+  gap: 6px;
+  svg {
+    width: 18px;
+    height: 18px;
   }
 }
-.workout-extra {
-  margin: 4px 0 18px;
-  summary {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 0;
-    color: var(--color-text-secondary);
-    font-size: 0.8125rem;
-    span {
-      color: var(--color-text-tertiary);
-      font-size: 0.75rem;
-    }
+.workout-reuse {
+  margin-bottom: 24px;
+  p {
+    margin: 10px 0;
+    color: var(--ui-text-secondary);
+    font-size: 12px;
   }
+}
+.field-block .ui-tabs {
+  margin-bottom: 0;
 }
 </style>
