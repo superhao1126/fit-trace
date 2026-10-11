@@ -12,7 +12,8 @@ export type UiIconName =
   | 'left'
   | 'right'
   | 'close'
-  | 'flag';
+  | 'flag'
+  | 'lock';
 defineProps<{ name: UiIconName }>();
 </script>
 <template>
@@ -64,6 +65,10 @@ defineProps<{ name: UiIconName }>();
     <path v-else-if="name === 'left'" d="m14 5-7 7 7 7" />
     <path v-else-if="name === 'right'" d="m10 5 7 7-7 7" />
     <template v-else-if="name === 'close'"><path d="m6 6 12 12M18 6 6 18" /></template>
+    <template v-else-if="name === 'lock'">
+      <rect x="5" y="10" width="14" height="11" rx="3" />
+      <path d="M8 10V7a4 4 0 0 1 8 0v3M12 15v2" />
+    </template>
     <path v-else d="M5 21V4.5M5 5h12l-2 4 2 4H5" />
   </svg>
 </template>

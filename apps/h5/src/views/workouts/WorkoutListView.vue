@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import EmptyState from '@/components/EmptyState.vue';
+import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
+import UiButton from '@/components/ui/UiButton.vue';
+import UiRecordRow from '@/components/ui/UiRecordRow.vue';
+import UiTabs from '@/components/ui/UiTabs.vue';
+import UiEmptyState from '@/components/ui/UiEmptyState.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { WorkoutRecord, WorkoutType } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { Button, DialogPlugin, Loading, ToastPlugin } from 'tdesign-mobile-vue';
-import { AddIcon, DeleteIcon, EditIcon } from 'tdesign-icons-vue-next';
+import { DialogPlugin, Loading, ToastPlugin } from 'tdesign-mobile-vue';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { deleteWorkout, getWorkouts } from '@/api/workouts';
-import SportIcon from '@/components/SportIcon.vue';
-import RecordDetailHeader from '@/components/RecordDetailHeader.vue';
 
 const workoutTypes: Array<{ value: WorkoutType; label: string }> = [
   { value: 'STRENGTH', label: '力量' },
@@ -31,6 +32,7 @@ const filters: Array<{ value: WorkoutType | 'ALL'; label: string }> = [
 const router = useRouter();
 const workouts = ref<WorkoutRecord[]>([]);
 const loading = ref(true);
+const loadError = ref('');
 const loadingMore = ref(false);
 const page = ref(1);
 const total = ref(0);
@@ -38,6 +40,7 @@ const activeType = ref<WorkoutType | 'ALL'>('ALL');
 const pageSize = 20;
 
 async function load(reset = false): Promise<void> {
+  loadError.value = '';
   if (reset) {
     page.value = 1;
     workouts.value = [];
@@ -58,6 +61,7 @@ async function selectType(type: WorkoutType | 'ALL'): Promise<void> {
   try {
     await load(true);
   } catch (error) {
+    loadError.value = '训练记录加载失败，请重试';
     showRequestError(error, '训练记录加载失败');
   } finally {
     loading.value = false;
@@ -113,254 +117,125 @@ function confirmDelete(workout: WorkoutRecord): void {
 onMounted(async () => {
   try {
     await load();
+  } catch (error) {
+    loadError.value = '训练记录加载失败，请重试';
+    showRequestError(error, '训练记录加载失败');
   } finally {
     loading.value = false;
   }
 });
+async function retry(): Promise<void> {
+  loading.value = true;
+  try {
+    await load(true);
+  } catch (error) {
+    loadError.value = '训练记录加载失败，请重试';
+    showRequestError(error, '训练记录加载失败');
+  } finally {
+    loading.value = false;
+  }
+}
 </script>
-
 <template>
-  <main class="view-page workouts-page">
-    <RecordDetailHeader
+  <main class="view-page ui-page workouts-page">
+    <UiDetailHeader
       title="训练记录"
-      subtitle="把练过的留下，和身体变化放在同一条时间线上"
+      subtitle="留下每一次训练，回看自己的节奏"
       action-label="新记录"
       @action="router.push('/workouts/create')"
     />
-
-    <div class="workout-filter filter-tabs" aria-label="按训练类型筛选">
-      <button
-        v-for="filter in filters"
-        :key="filter.value"
-        type="button"
-        :class="{ active: activeType === filter.value }"
-        @click="selectType(filter.value)"
-      >
-        {{ filter.label }}
-      </button>
-    </div>
-
+    <UiTabs
+      :model-value="activeType"
+      :options="filters"
+      :disabled="loading"
+      :columns="4"
+      label="按训练类型筛选"
+      @update:model-value="selectType($event as WorkoutType | 'ALL')"
+    />
     <Loading
       class="page-loading"
       :class="{ 'page-loading--active': loading }"
       :loading="loading"
       text="正在读取训练记录"
     >
-      <EmptyState
-        v-if="!loading && workouts.length === 0"
+      <UiEmptyState
+        v-if="!loading && loadError"
+        :title="loadError"
+        description="请检查网络后再试"
+        action-label="重新加载"
+        @action="retry"
+      />
+      <UiEmptyState
+        v-else-if="!loading && !workouts.length"
+        kind="workout"
         title="还没有训练记录"
-        description="完成一次训练后，在这里留下第一条记录"
-      >
-        <template #action>
-          <Button theme="primary" @click="router.push('/workouts/create')">记录第一次训练</Button>
-        </template>
-      </EmptyState>
-
-      <div v-else class="workout-list">
-        <section
-          v-for="workout in workouts"
-          :key="workout.id"
-          class="surface-card workout-card"
-          role="button"
-          tabindex="0"
-          @click="router.push(`/workouts/${workout.id}`)"
-          @keydown.enter="router.push(`/workouts/${workout.id}`)"
-        >
-          <div class="workout-card__heading">
-            <span class="workout-card__icon"><SportIcon :type="workout.type" /></span>
-            <div class="workout-card__title">
-              <strong>{{ workout.name }}</strong>
-              <span
-                >{{ workoutMeta[workout.type].label }} · {{ dateLabel(workout.startedAt) }}</span
-              >
-            </div>
-            <span class="workout-card__duration"
-              >{{ workout.durationMinutes }}<small>分钟</small></span
-            >
+        description="完成一次训练，留下今天的进步"
+        action-label="记训练"
+        @action="router.push('/workouts/create')"
+      />
+      <div v-else class="history-list">
+        <article v-for="workout in workouts" :key="workout.id" class="history-card">
+          <UiRecordRow
+            kind="workout"
+            :workout-type="workout.type"
+            :title="workout.name"
+            :subtitle="`${dateLabel(workout.startedAt)} · ${workoutMeta[workout.type].label}`"
+            :value="workout.durationMinutes"
+            unit="分钟"
+            @click="router.push(`/workouts/${workout.id}`)"
+          />
+          <p v-if="workout.calories !== null" class="history-note">
+            消耗热量 {{ workout.calories }} kcal
+          </p>
+          <p v-if="workout.note" class="history-note">{{ workout.note }}</p>
+          <div class="history-actions">
+            <UiButton
+              kind="text"
+              @click="router.push({ path: '/workouts/create', query: { copyFrom: workout.id } })"
+              >再练一次</UiButton
+            ><UiButton kind="text" @click="router.push(`/workouts/${workout.id}/edit`)"
+              >编辑</UiButton
+            ><UiButton kind="danger" @click="confirmDelete(workout)">删除</UiButton>
           </div>
-
-          <div v-if="workout.calories !== null" class="workout-card__metrics">
-            <div>
-              <span>消耗热量</span><strong>{{ workout.calories }} kcal</strong>
-            </div>
-          </div>
-
-          <p v-if="workout.note" class="workout-card__note">{{ workout.note }}</p>
-
-          <div class="workout-card__actions">
-            <Button
-              size="small"
-              variant="text"
-              @click.stop="
-                router.push({ path: '/workouts/create', query: { copyFrom: workout.id } })
-              "
-            >
-              <AddIcon /> 再练一次
-            </Button>
-            <Button
-              size="small"
-              variant="text"
-              @click.stop="router.push(`/workouts/${workout.id}/edit`)"
-            >
-              <EditIcon /> 编辑
-            </Button>
-            <Button size="small" variant="text" theme="danger" @click.stop="confirmDelete(workout)">
-              <DeleteIcon /> 删除
-            </Button>
-          </div>
-        </section>
+        </article>
       </div>
-
-      <Button
+      <UiButton
         v-if="workouts.length < total"
         class="load-more"
-        variant="outline"
+        kind="secondary"
         block
         :loading="loadingMore"
         @click="loadMore"
-      >
-        加载更多
-      </Button>
-    </Loading>
+        >加载更多</UiButton
+      ></Loading
+    >
   </main>
 </template>
-
 <style scoped lang="scss">
-.workouts-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 24px 0 18px;
-
-  h1 {
-    margin: 0 0 4px;
-    font-size: 1.55rem;
-    font-weight: 600;
-    letter-spacing: -0.04em;
-  }
-
-  p {
-    margin: 0;
-    color: var(--color-text-secondary);
-    font-size: 0.875rem;
-    line-height: 1.6;
-  }
-}
-
-.workout-list {
+.history-list {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
-
-.workout-card {
-  padding: 15px;
-  cursor: pointer;
-  transition:
-    background-color var(--duration-fast) var(--ease-standard),
-    transform var(--duration-fast) var(--ease-standard);
-
-  &:active {
-    background: var(--color-surface-muted);
-    transform: scale(0.995);
-  }
-
-  &__heading {
-    display: flex;
-    align-items: center;
-    gap: 11px;
-  }
-
-  &__icon {
-    display: grid;
-    width: 38px;
-    height: 38px;
-    flex: none;
-    place-items: center;
-    color: var(--color-text-primary);
-    font-size: 1.15rem;
-    background: var(--color-primary-light);
-    border-radius: 10px;
-  }
-
-  &__title {
-    display: grid;
-    min-width: 0;
-    flex: 1;
-    gap: 3px;
-
-    strong {
-      overflow: hidden;
-      font-size: 0.9375rem;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    span {
-      color: var(--color-text-tertiary);
-      font-size: 0.75rem;
-    }
-  }
-
-  &__duration {
-    flex: none;
-    font-size: 1.05rem;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-
-    small {
-      margin-left: 2px;
-      color: var(--color-text-tertiary);
-      font-size: 0.75rem;
-      font-weight: 500;
-    }
-  }
-
-  &__metrics {
-    display: grid;
-    gap: 6px;
-    margin-top: 13px;
-    padding: 11px 12px;
-    background: var(--color-surface-muted);
-    border-radius: 10px;
-
-    div {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    span {
-      color: var(--color-text-tertiary);
-      font-size: 0.75rem;
-    }
-
-    strong {
-      font-size: 0.875rem;
-    }
-  }
-
-  &__note {
-    margin: 11px 0 0;
-    color: var(--color-text-secondary);
-    font-size: 0.875rem;
-    line-height: 1.55;
-  }
-
-  &__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 4px;
-    margin: 8px -7px -7px 0;
-  }
+.history-card {
+  overflow: hidden;
+  background: var(--color-surface);
+  border-radius: 20px;
 }
-
+.history-note {
+  margin: 0;
+  padding: 0 16px 12px;
+  color: var(--ui-text-secondary);
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.history-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 20px;
+  padding: 0 16px 8px;
+}
 .load-more {
-  margin-top: var(--spacing-md);
-}
-.workout-filter {
-  grid-auto-flow: initial;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 24px;
 }
 </style>

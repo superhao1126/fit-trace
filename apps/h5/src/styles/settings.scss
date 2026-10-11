@@ -10,18 +10,18 @@
 .settings-list {
   overflow: hidden;
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-md);
+  border: 0;
+  border-radius: 20px;
 }
 .settings-row {
   display: flex;
-  min-height: 58px;
+  min-height: 64px;
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
   color: var(--color-text-primary);
   text-decoration: none;
-  font-size: 0.875rem;
+  font-size: 14px;
   + .settings-row {
     border-top: 1px solid var(--color-border);
   }
@@ -73,27 +73,33 @@
     margin-bottom: 0;
   }
   .form-field {
-    padding: 16px;
+    padding: 0;
+    margin-bottom: 24px;
     + .form-field {
-      border-top: 1px solid var(--color-border);
+      border-top: 0;
     }
   }
   .form-label {
     display: block;
     margin-bottom: 10px;
     font-size: 0.8125rem;
-    font-weight: 500;
+    font-weight: 400;
+    color: var(--ui-text-secondary);
   }
   .field-input {
     width: 100%;
     min-width: 0;
-    padding: 10px 0;
+    min-height: 54px;
+    padding: 12px 16px;
     color: var(--color-text-primary);
-    background: transparent;
+    background: var(--color-surface);
     border: 0;
-    border-bottom: 1px solid var(--color-border);
-    border-radius: 0;
+    border-bottom: 0;
+    border-radius: 14px;
     outline: none;
+    &:focus-visible {
+      box-shadow: 0 0 0 1.5px var(--ui-primary);
+    }
     font-size: 1rem;
     &::placeholder {
       color: var(--color-text-tertiary);

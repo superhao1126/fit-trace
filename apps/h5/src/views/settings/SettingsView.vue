@@ -1,10 +1,10 @@
 <script setup lang="ts">
+import UiButton from '@/components/ui/UiButton.vue';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { Button } from 'tdesign-mobile-vue';
-import { ChevronRightIcon, FileIcon, InfoCircleIcon, UserIcon } from 'tdesign-icons-vue-next';
+import UiIcon from '@/components/ui/UiIcon.vue';
 import DisplayModePicker from '@/components/DisplayModePicker.vue';
-import RecordDetailHeader from '@/components/RecordDetailHeader.vue';
+import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
 import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
@@ -15,15 +15,25 @@ const items = [
     title: '账号设置',
     description: '个人资料与登录安全',
     path: '/settings/account',
-    icon: UserIcon,
+    icon: 'user' as const,
   },
-  { title: '用户协议', description: '了解使用条款', path: '/settings/agreement', icon: FileIcon },
-  { title: '隐私政策', description: '了解信息使用方式', path: '/settings/privacy', icon: FileIcon },
+  {
+    title: '用户协议',
+    description: '了解使用条款',
+    path: '/settings/agreement',
+    icon: 'archive' as const,
+  },
+  {
+    title: '隐私政策',
+    description: '了解信息使用方式',
+    path: '/settings/privacy',
+    icon: 'archive' as const,
+  },
   {
     title: '关于循形',
     description: '应用介绍与版本信息',
     path: '/settings/about',
-    icon: InfoCircleIcon,
+    icon: 'home' as const,
   },
 ];
 async function logout(): Promise<void> {
@@ -34,30 +44,30 @@ async function logout(): Promise<void> {
 </script>
 
 <template>
-  <main class="view-page settings-page">
-    <RecordDetailHeader title="设置" />
+  <main class="view-page ui-page settings-page">
+    <UiDetailHeader title="设置" />
     <section class="settings-section" aria-label="设置项目">
-      <div class="settings-list">
+      <div class="settings-menu">
         <RouterLink v-for="item in items" :key="item.path" :to="item.path" class="settings-row">
-          <component :is="item.icon" aria-hidden="true" />
+          <UiIcon :name="item.icon" />
           <span class="settings-row__body"
             >{{ item.title
             }}<span class="settings-row__description">{{ item.description }}</span></span
           >
-          <ChevronRightIcon class="settings-row__chevron" aria-hidden="true" />
+          <UiIcon name="right" class="settings-row__chevron" />
         </RouterLink>
       </div>
     </section>
     <DisplayModePicker />
-    <Button class="logout-button" variant="outline" block @click="logoutDialog?.showModal()"
-      >退出登录</Button
+    <UiButton class="logout-button" kind="secondary" block @click="logoutDialog?.showModal()"
+      >退出登录</UiButton
     >
     <dialog ref="logoutDialog" class="logout-dialog" aria-labelledby="logout-title">
       <h2 id="logout-title">退出当前账号？</h2>
       <p>你的记录会保留，再次登录后仍可查看</p>
       <div>
-        <Button variant="outline" @click="logoutDialog?.close()">取消</Button
-        ><Button theme="primary" @click="logout">退出登录</Button>
+        <UiButton kind="secondary" @click="logoutDialog?.close()">取消</UiButton
+        ><UiButton @click="logout">退出登录</UiButton>
       </div>
     </dialog>
   </main>
@@ -65,8 +75,18 @@ async function logout(): Promise<void> {
 
 <style scoped lang="scss">
 @use '@/styles/settings';
-.logout-button {
-  color: var(--color-danger-text);
+.settings-menu {
+  display: grid;
+  gap: 8px;
+  .settings-row {
+    background: var(--color-surface);
+    border: 0;
+    border-radius: 20px;
+    min-height: 76px;
+  }
+}
+.logout-button.ui-button--secondary.t-button {
+  color: var(--ui-primary);
   background: var(--color-surface);
 }
 .logout-dialog {
@@ -74,8 +94,8 @@ async function logout(): Promise<void> {
   padding: 24px;
   color: var(--color-text-primary);
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-lg);
+  border: 0;
+  border-radius: 24px;
   &::backdrop {
     background: rgb(0 0 0 / 35%);
   }

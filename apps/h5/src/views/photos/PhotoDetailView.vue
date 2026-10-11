@@ -1,13 +1,14 @@
 <script setup lang="ts">
+import UiInfoCard from '@/components/ui/UiInfoCard.vue';
+import UiButton from '@/components/ui/UiButton.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { PhotoType, ProgressPhoto } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { Button, DialogPlugin, Loading, ToastPlugin } from 'tdesign-mobile-vue';
-import { DeleteIcon } from 'tdesign-icons-vue-next';
+import { DialogPlugin, Loading, ToastPlugin } from 'tdesign-mobile-vue';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { deleteProgressPhoto, getProgressPhoto } from '@/api/progress-photos';
-import RecordDetailHeader from '@/components/RecordDetailHeader.vue';
+import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
 
 const photoLabels: Record<PhotoType, string> = {
   FRONT: '正面',
@@ -65,8 +66,8 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="view-page detail-page">
-    <RecordDetailHeader
+  <main class="view-page ui-page detail-page">
+    <UiDetailHeader
       title="身材照片"
       :subtitle="photo ? `${recordedAtText} · ${photoLabels[photo.type]}` : ''"
     />
@@ -80,25 +81,15 @@ onMounted(async () => {
       <template v-if="photo">
         <img class="photo-full" :src="photo.imageUrl" :alt="`${photoLabels[photo.type]}照片`" />
 
-        <section class="surface-card info-card">
-          <div>
-            <span>拍摄类型</span>
-            <strong>{{ photoLabels[photo.type] }}</strong>
-          </div>
-          <div>
-            <span>记录日期</span>
-            <strong>{{ dayjs(photo.recordedAt).format('YYYY年M月D日 HH:mm') }}</strong>
-          </div>
-          <div>
-            <span>备注</span>
-            <strong>{{ photo.note || '无' }}</strong>
-          </div>
-        </section>
-
-        <div class="detail-actions">
-          <Button variant="text" theme="danger" block @click="confirmDelete">
-            <DeleteIcon /> 删除这张照片
-          </Button>
+        <UiInfoCard
+          :items="[
+            { label: '拍摄类型', value: photoLabels[photo.type] },
+            { label: '记录日期', value: dayjs(photo.recordedAt).format('YYYY年M月D日 HH:mm') },
+            { label: '备注', value: photo.note || '无' },
+          ]"
+        />
+        <div class="ui-detail-actions">
+          <UiButton kind="danger" @click="confirmDelete">删除这张照片</UiButton>
         </div>
       </template>
     </Loading>
@@ -109,35 +100,9 @@ onMounted(async () => {
 .photo-full {
   display: block;
   width: 100%;
-  max-height: 70vh;
+  max-height: 60dvh;
   object-fit: contain;
   background: var(--color-surface-muted);
-  border-radius: var(--border-radius-md);
-}
-
-.info-card {
-  display: grid;
-  gap: 14px;
-  margin-top: 12px;
-  padding: 16px;
-
-  > div {
-    display: grid;
-    gap: 5px;
-  }
-
-  span {
-    color: var(--color-text-tertiary);
-    font-size: 0.75rem;
-  }
-
-  strong {
-    font-size: 0.9375rem;
-    font-weight: 600;
-  }
-}
-
-.detail-actions {
-  margin-top: 18px;
+  border-radius: 20px;
 }
 </style>

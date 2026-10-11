@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import UiInput from '@/components/ui/UiInput.vue';
+import UiButton from '@/components/ui/UiButton.vue';
 import axios from 'axios';
 import type { ApiErrorResponse } from '@fit-trace/shared';
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { Button, ToastPlugin } from 'tdesign-mobile-vue';
-import RecordDetailHeader from '@/components/RecordDetailHeader.vue';
+import { ToastPlugin } from 'tdesign-mobile-vue';
+import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
 import { changePassword, sendPasswordCode, setPassword, verifyPasswordCode } from '@/api/auth';
 import { authSession } from '@/api/session';
 import { useAuthStore } from '@/stores/auth';
@@ -173,12 +175,15 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="view-page password-settings-page">
-    <RecordDetailHeader :title="title" />
+  <main class="view-page ui-page password-settings-page">
+    <UiDetailHeader
+      :title="verifying ? '验证身份' : mode === 'email' ? '设置新密码' : title"
+      :subtitle="verifying ? '通过登录邮箱接收验证码' : '验证身份后设置新的登录密码'"
+    />
     <p v-if="loading" class="settings-hint" role="status">正在加载账号信息…</p>
     <div v-else-if="loadFailed" class="load-error">
       <p class="settings-hint">账号信息加载失败</p>
-      <Button variant="outline" @click="load">重新加载</Button>
+      <UiButton kind="secondary" @click="load">重新加载</UiButton>
     </div>
     <form v-else class="settings-form" novalidate @submit.prevent="save">
       <div v-if="mode === 'email'" class="email-note">
@@ -193,13 +198,14 @@ onBeforeUnmount(() => {
           }}
         </p>
       </div>
-      <div class="settings-list">
+      <div class="password-fields">
         <div v-if="verifying" class="form-field">
           <label for="password-email-code" class="form-label">邮箱验证码</label>
           <div class="code-field">
-            <input
+            <UiInput
               id="password-email-code"
               v-model="emailCode"
+              aria-label="邮箱验证码"
               class="field-input"
               inputmode="numeric"
               autocomplete="one-time-code"
@@ -221,9 +227,10 @@ onBeforeUnmount(() => {
         <template v-else>
           <div v-if="mode === 'password'" class="form-field">
             <label for="current-password" class="form-label">当前密码</label>
-            <input
+            <UiInput
               id="current-password"
               v-model="currentPassword"
+              aria-label="当前密码"
               class="field-input"
               :type="visible ? 'text' : 'password'"
               autocomplete="current-password"
@@ -244,9 +251,10 @@ onBeforeUnmount(() => {
           </div>
           <div class="form-field">
             <label for="new-password" class="form-label">新密码</label>
-            <input
+            <UiInput
               id="new-password"
               v-model="password"
+              aria-label="新密码"
               class="field-input"
               :type="visible ? 'text' : 'password'"
               autocomplete="new-password"
@@ -267,9 +275,10 @@ onBeforeUnmount(() => {
           </div>
           <div class="form-field">
             <label for="confirm-password" class="form-label">确认新密码</label>
-            <input
+            <UiInput
               id="confirm-password"
               v-model="confirmPassword"
+              aria-label="确认新密码"
               class="field-input"
               :type="visible ? 'text' : 'password'"
               autocomplete="new-password"
@@ -294,9 +303,9 @@ onBeforeUnmount(() => {
         <label v-if="!verifying"><input v-model="visible" type="checkbox" />显示密码</label>
         <p class="settings-hint">保存后当前设备保持登录，其他设备需要重新登录</p>
       </div>
-      <Button theme="primary" type="submit" size="large" block :loading="saving" :disabled="busy">{{
+      <UiButton type="submit" block :loading="saving" :disabled="busy">{{
         verifying ? '验证并继续' : auth.user?.hasPassword === false ? '确认设置' : '保存密码'
-      }}</Button>
+      }}</UiButton>
       <div class="mode-actions">
         <button
           v-if="mode === 'password'"
@@ -327,7 +336,10 @@ onBeforeUnmount(() => {
 .email-note {
   display: grid;
   gap: 6px;
-  margin-bottom: 16px;
+  margin-bottom: 4px;
+  padding: 16px;
+  background: var(--ui-photo-background);
+  border-radius: 16px;
   font-size: 0.8125rem;
   span {
     color: var(--color-text-secondary);
@@ -343,17 +355,18 @@ onBeforeUnmount(() => {
 .code-field {
   display: flex;
   gap: 8px;
-  .field-input {
+  .ui-input {
     min-width: 0;
     flex: 1;
   }
   button {
     flex: none;
     padding: 0 10px;
+    min-height: 54px;
     color: var(--color-accent-text);
     background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
+    border: 0;
+    border-radius: 14px;
     font-size: 0.8125rem;
     &:disabled {
       color: var(--color-text-tertiary);

@@ -5,8 +5,14 @@ import { computed, nextTick, ref, watch } from 'vue';
 import UiButton from './UiButton.vue';
 import UiIcon from './UiIcon.vue';
 const props = withDefaults(
-  defineProps<{ visible: boolean; modelValue: string; selection?: 'date' | 'month' }>(),
-  { selection: 'date' },
+  defineProps<{
+    visible: boolean;
+    modelValue: string;
+    selection?: 'date' | 'month';
+    minDate?: string;
+    maxDate?: string;
+  }>(),
+  { selection: 'date', minDate: undefined, maxDate: undefined },
 );
 const emit = defineEmits<{
   'update:visible': [visible: boolean];
@@ -18,7 +24,19 @@ const draft = ref(today);
 const jumpVisible = ref(false);
 const panel = ref<HTMLElement | null>(null);
 let opener: HTMLElement | null = null;
-const years = Array.from({ length: dayjs().year() - 1899 }, (_, i) => dayjs().year() - i);
+const maximum = computed(() => props.maxDate || today);
+const years = computed(() => {
+  const newest = dayjs(maximum.value).year();
+  const oldest = props.minDate ? dayjs(props.minDate).year() : 1900;
+  return Array.from({ length: newest - oldest + 1 }, (_, i) => newest - i);
+});
+function unavailable(value: string) {
+  const length = props.selection === 'month' ? 7 : 10;
+  return (
+    value > maximum.value.slice(0, length) ||
+    Boolean(props.minDate && value < props.minDate.slice(0, length))
+  );
+}
 const cells = computed(() => {
   const start = viewed.value.subtract((viewed.value.day() + 6) % 7, 'day');
   return Array.from({ length: 42 }, (_, i) => {
@@ -36,6 +54,7 @@ watch(
     if (visible) {
       opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       draft.value = props.modelValue || (props.selection === 'month' ? today.slice(0, 7) : today);
+      if (unavailable(draft.value)) draft.value = props.minDate || maximum.value;
       viewed.value = dayjs(draft.value.length === 7 ? `${draft.value}-01` : draft.value).startOf(
         'month',
       );
@@ -52,10 +71,14 @@ function close() {
 }
 function move(amount: number) {
   const next = viewed.value.add(amount, props.selection === 'month' ? 'year' : 'month');
-  if (next.format('YYYY-MM') <= today.slice(0, 7)) viewed.value = next;
+  if (
+    next.format('YYYY-MM') <= maximum.value.slice(0, 7) &&
+    (!props.minDate || next.endOf('month').format('YYYY-MM-DD') >= props.minDate)
+  )
+    viewed.value = next;
 }
 function choose(value: string) {
-  if (value <= (props.selection === 'month' ? today.slice(0, 7) : today)) {
+  if (!unavailable(value)) {
     draft.value = value;
     if (props.selection === 'date') viewed.value = dayjs(value).startOf('month');
   }
@@ -117,6 +140,13 @@ function trapFocus(event: KeyboardEvent) {
         <UiButton
           kind="icon"
           :aria-label="selection === 'date' ? '上个月' : '上一年'"
+          :disabled="
+            Boolean(
+              minDate &&
+              viewed.format(selection === 'date' ? 'YYYY-MM' : 'YYYY') <=
+                minDate.slice(0, selection === 'date' ? 7 : 4),
+            )
+          "
           @click="move(-1)"
           ><UiIcon name="left" /></UiButton
         ><UiButton kind="text" @click="jumpVisible = !jumpVisible">{{
@@ -127,7 +157,7 @@ function trapFocus(event: KeyboardEvent) {
           :aria-label="selection === 'date' ? '下个月' : '下一年'"
           :disabled="
             viewed.format(selection === 'date' ? 'YYYY-MM' : 'YYYY') >=
-            today.slice(0, selection === 'date' ? 7 : 4)
+            maximum.slice(0, selection === 'date' ? 7 : 4)
           "
           @click="move(1)"
           ><UiIcon name="right"
@@ -162,7 +192,7 @@ function trapFocus(event: KeyboardEvent) {
             type="button"
             :aria-label="cell.value"
             :aria-pressed="draft === cell.value"
-            :disabled="cell.value > today"
+            :disabled="unavailable(cell.value)"
             :class="{
               selected: draft === cell.value,
               outside: cell.outside,
@@ -180,7 +210,7 @@ function trapFocus(event: KeyboardEvent) {
           :key="month"
           type="button"
           :aria-pressed="draft === `${viewed.year()}-${String(month).padStart(2, '0')}`"
-          :disabled="`${viewed.year()}-${String(month).padStart(2, '0')}` > today.slice(0, 7)"
+          :disabled="unavailable(`${viewed.year()}-${String(month).padStart(2, '0')}`)"
           :class="{ selected: draft === `${viewed.year()}-${String(month).padStart(2, '0')}` }"
           @click="choose(`${viewed.year()}-${String(month).padStart(2, '0')}`)"
         >

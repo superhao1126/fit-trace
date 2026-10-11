@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import UiTabs from '@/components/ui/UiTabs.vue';
+import UiInput from '@/components/ui/UiInput.vue';
+import UiIcon from '@/components/ui/UiIcon.vue';
+import UiButton from '@/components/ui/UiButton.vue';
 import type { UserGender } from '@fit-trace/shared';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { Button, ToastPlugin } from 'tdesign-mobile-vue';
-import { CameraIcon, ChevronRightIcon, LockOnIcon } from 'tdesign-icons-vue-next';
-import RecordDetailHeader from '@/components/RecordDetailHeader.vue';
+import { ToastPlugin } from 'tdesign-mobile-vue';
+import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
 import UserAvatar from '@/components/UserAvatar.vue';
 import { uploadImage } from '@/api/uploads';
 import { updateProfile } from '@/api/users';
@@ -96,12 +99,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="view-page account-settings-page">
-    <RecordDetailHeader title="账号设置" />
+  <main class="view-page ui-page account-settings-page">
+    <UiDetailHeader title="账号设置" />
     <form class="settings-form" novalidate @submit.prevent="save">
       <section class="settings-section" aria-labelledby="profile-title">
         <h2 id="profile-title">个人资料</h2>
-        <div class="settings-list">
+        <div class="account-fields">
           <div class="avatar-field">
             <button
               type="button"
@@ -111,7 +114,7 @@ onBeforeUnmount(() => {
               @click="imageInput?.click()"
             >
               <UserAvatar :url="preview" :name="nickname || '循形用户'" :size="76" />
-              <span class="avatar-picker__camera"><CameraIcon aria-hidden="true" /></span>
+              <span class="avatar-picker__camera"><UiIcon name="photo" /></span>
             </button>
             <div>
               <strong>头像</strong
@@ -144,9 +147,10 @@ onBeforeUnmount(() => {
           </div>
           <div class="form-field">
             <label for="profile-nickname" class="form-label">昵称</label>
-            <input
+            <UiInput
               id="profile-nickname"
               v-model="nickname"
+              aria-label="昵称"
               class="field-input"
               autocomplete="nickname"
               maxlength="80"
@@ -160,31 +164,22 @@ onBeforeUnmount(() => {
               nicknameError
             }}</small>
           </div>
-          <fieldset class="gender-field" :disabled="saving">
-            <legend>性别</legend>
-            <div>
-              <label
-                v-for="item in genderOptions"
-                :key="item.value"
-                :class="{ selected: gender === item.value }"
-                ><input v-model="gender" type="radio" name="gender" :value="item.value" />{{
-                  item.label
-                }}</label
-              >
-            </div>
-          </fieldset>
+          <div class="gender-field">
+            <span class="field-label">性别 · 选填</span
+            ><UiTabs
+              :model-value="gender"
+              :options="genderOptions"
+              label="性别"
+              :disabled="saving"
+              @update:model-value="gender = $event as UserGender"
+            />
+          </div>
         </div>
         <p class="settings-hint">性别可选，不影响记录和使用</p>
       </section>
-      <Button
-        theme="primary"
-        type="submit"
-        size="large"
-        block
-        :loading="saving"
-        :disabled="saving"
-        >{{ saving ? '正在保存' : '保存资料' }}</Button
-      >
+      <UiButton type="submit" block :loading="saving" :disabled="saving">{{
+        saving ? '正在保存' : '保存资料'
+      }}</UiButton>
       <section class="settings-section" aria-labelledby="security-title">
         <h2 id="security-title">登录安全</h2>
         <div class="settings-list">
@@ -196,7 +191,7 @@ onBeforeUnmount(() => {
             class="settings-row"
             :aria-disabled="saving"
             @click="saving && $event.preventDefault()"
-            ><LockOnIcon aria-hidden="true" /><span class="settings-row__body">{{
+            ><UiIcon name="lock" /><span class="settings-row__body">{{
               auth.user?.hasPassword === false
                 ? '设置密码'
                 : auth.user?.hasPassword === true
@@ -206,7 +201,7 @@ onBeforeUnmount(() => {
             ><span v-if="typeof auth.user?.hasPassword === 'boolean'" class="settings-row__value">{{
               auth.user.hasPassword ? '已设置' : '未设置'
             }}</span
-            ><ChevronRightIcon class="settings-row__chevron" aria-hidden="true"
+            ><UiIcon name="right" class="settings-row__chevron"
           /></RouterLink>
         </div>
       </section>
@@ -221,7 +216,9 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 18px;
   padding: 20px 16px;
-  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 28px;
+  background: var(--color-surface);
+  border-radius: 20px;
   > div {
     display: grid;
     gap: 8px;
@@ -274,45 +271,18 @@ onBeforeUnmount(() => {
   clip-path: inset(50%);
 }
 .gender-field {
-  min-width: 0;
-  margin: 0;
-  padding: 16px;
-  border: 0;
-  border-top: 1px solid var(--color-border);
-  legend {
-    float: left;
-    width: 100%;
+  .field-label {
+    display: block;
     margin-bottom: 12px;
-    padding: 0;
-    font-size: 0.8125rem;
-    font-weight: 500;
+    color: var(--ui-text-secondary);
+    font-size: 13px;
   }
-  > div {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-    clear: both;
+  :deep(.ui-tabs) {
+    margin-bottom: 0;
   }
-  label {
-    display: flex;
-    min-height: 42px;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    padding: 6px;
-    color: var(--color-text-secondary);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    font-size: 0.8125rem;
-    &.selected {
-      color: var(--color-accent-text);
-      background: var(--color-primary-light);
-      border-color: var(--color-primary-border);
-    }
-  }
-  input {
-    margin: 0;
-    accent-color: var(--color-accent-text);
-  }
+}
+.avatar-picker__camera :deep(.ui-icon) {
+  width: 14px;
+  height: 14px;
 }
 </style>

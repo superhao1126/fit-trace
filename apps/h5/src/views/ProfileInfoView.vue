@@ -3,7 +3,7 @@ import type { UserGender } from '@fit-trace/shared';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import dayjs from 'dayjs';
-import RecordDetailHeader from '@/components/RecordDetailHeader.vue';
+import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
 import UserAvatar from '@/components/UserAvatar.vue';
 import { useAuthStore } from '@/stores/auth';
 
@@ -24,8 +24,8 @@ const joinedAt = computed(() =>
 </script>
 
 <template>
-  <main class="view-page profile-info-page">
-    <RecordDetailHeader
+  <main class="view-page ui-page profile-info-page">
+    <UiDetailHeader
       title="个人资料"
       action-label="编辑资料"
       @action="router.push('/settings/account')"

@@ -1,12 +1,15 @@
 <script setup lang="ts">
+import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
+import UiTabs from '@/components/ui/UiTabs.vue';
+import UiButton from '@/components/ui/UiButton.vue';
+import UiInput from '@/components/ui/UiInput.vue';
+import UiTextarea from '@/components/ui/UiTextarea.vue';
+import UiEmptyState from '@/components/ui/UiEmptyState.vue';
 import type { PhotoType, ProgressPhoto } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { Button, Loading, ToastPlugin } from 'tdesign-mobile-vue';
-import { ImageIcon } from 'tdesign-icons-vue-next';
+import { Loading, ToastPlugin } from 'tdesign-mobile-vue';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import EmptyState from '@/components/EmptyState.vue';
-import RecordDetailHeader from '@/components/RecordDetailHeader.vue';
 import { createProgressPhoto, getProgressPhotos } from '@/api/progress-photos';
 import { uploadImage } from '@/api/uploads';
 import { showRequestError } from '@/utils/request-error';
@@ -130,28 +133,23 @@ async function savePhoto() {
 watch(activeType, () => void load());
 onMounted(() => void load());
 onBeforeUnmount(clearSelection);
+
+const filters = [{ value: 'ALL', label: '全部' }, ...photoTypes];
 </script>
 <template>
-  <main class="view-page photos-page">
-    <RecordDetailHeader
+  <main class="view-page ui-page photos-page">
+    <UiDetailHeader
       title="身材照片"
-      subtitle="同角度、同光线，留下不同阶段的变化"
+      subtitle="按月份回看身体的变化"
       action-label="添加"
       @action="fileInput?.click()"
     />
-    <div class="filter-tabs" aria-label="按照片角度筛选">
-      <button type="button" :class="{ active: activeType === 'ALL' }" @click="activeType = 'ALL'">
-        全部</button
-      ><button
-        v-for="item in photoTypes"
-        :key="item.value"
-        type="button"
-        :class="{ active: activeType === item.value }"
-        @click="activeType = item.value"
-      >
-        {{ item.label }}
-      </button>
-    </div>
+    <UiTabs
+      :model-value="activeType"
+      :options="filters"
+      label="按照片角度筛选"
+      @update:model-value="activeType = $event as PhotoType | 'ALL'"
+    />
     <input
       ref="fileInput"
       class="visually-hidden"
@@ -167,19 +165,22 @@ onBeforeUnmount(clearSelection);
     >
       <div v-if="loadError" class="photo-error" role="alert">
         <span>{{ loadError }}</span
-        ><Button variant="text" size="small" @click="load()">重试</Button>
+        ><UiButton kind="text" @click="load()">重试</UiButton>
       </div>
-      <EmptyState
+      <UiEmptyState
         v-if="!loading && !loadError && !photos.length"
-        title="还没有这个角度的照片"
-        description="添加一张照片，为以后对比留下起点"
+        kind="photo"
+        title="留下第一张身材照片"
+        description="尽量保持相同光线、距离和拍摄角度"
         action-label="添加照片"
         @action="fileInput?.click()"
-        ><template #image><ImageIcon /></template
-      ></EmptyState>
+      />
       <div v-else class="photo-groups">
         <section v-for="group in groups" :key="group.month">
-          <h2>{{ group.month }}</h2>
+          <div class="group-heading">
+            <h2>{{ group.month }}</h2>
+            <span>{{ group.items.length }} 张</span>
+          </div>
           <div class="photo-grid">
             <button
               v-for="photo in group.items"
@@ -189,61 +190,64 @@ onBeforeUnmount(clearSelection);
               @click="router.push(`/photos/${photo.id}`)"
             >
               <img :src="photo.imageUrl" :alt="`${labels[photo.type]}照片`" loading="lazy" /><span
-                ><strong>{{ labels[photo.type] }}</strong
-                ><small>{{ dayjs(photo.recordedAt).format('M月D日') }}</small></span
+                >{{ dayjs(photo.recordedAt).format('M月D日') }} · {{ labels[photo.type] }}</span
               >
               <p v-if="photo.note">{{ photo.note }}</p>
             </button>
           </div>
         </section>
       </div>
-      <Button
+      <UiButton
         v-if="photos.length < total && !loading"
         class="photo-more"
-        variant="outline"
+        kind="secondary"
         block
         :loading="loadingMore"
         @click="load(true)"
-        >加载更多照片</Button
+        >加载更多照片</UiButton
       >
     </Loading>
     <dialog
       ref="dialog"
-      class="photo-dialog"
+      class="photo-dialog ui-page ui-form"
       aria-labelledby="photo-dialog-title"
       @cancel.prevent="cancel"
     >
       <header>
-        <h2 id="photo-dialog-title">确认照片</h2>
-        <button type="button" :disabled="uploading" @click="cancel">取消</button>
+        <h2 id="photo-dialog-title">添加照片</h2>
+        <UiButton kind="text" :disabled="uploading" @click="cancel">取消</UiButton>
       </header>
+      <p class="field-hint">记录真实的身体变化</p>
       <img v-if="preview" class="photo-preview" :src="preview" alt="待保存照片预览" />
       <form @submit.prevent="savePhoto">
         <fieldset :disabled="uploading">
-          <legend>拍摄角度</legend>
-          <div class="filter-tabs">
-            <button
-              v-for="item in photoTypes"
-              :key="item.value"
-              type="button"
-              :class="{ active: uploadType === item.value }"
-              :aria-pressed="uploadType === item.value"
-              @click="uploadType = item.value"
-            >
-              {{ item.label }}
-            </button>
-          </div>
-          <label
-            >记录日期<input
+          <legend>拍摄类型</legend>
+          <UiTabs
+            :model-value="uploadType"
+            :options="photoTypes"
+            label="拍摄类型"
+            :disabled="uploading"
+            @update:model-value="uploadType = $event as PhotoType"
+          />
+          <label class="field-block"
+            ><span class="field-label">记录日期</span
+            ><UiInput
               v-model="recordedAt"
               type="date"
+              aria-label="照片记录日期"
               :max="dayjs().format('YYYY-MM-DD')"
-              required /></label
-          ><label
-            >备注（选填）<input v-model="note" maxlength="500" placeholder="例如：晨起、训练后"
+              required
+          /></label>
+          <label class="field-block"
+            ><span class="field-label">备注 · 选填</span
+            ><UiTextarea
+              v-model="note"
+              aria-label="照片备注"
+              maxlength="500"
+              placeholder="例如：晨起、训练后"
           /></label>
         </fieldset>
-        <Button theme="primary" block :loading="uploading" type="submit">保存照片</Button>
+        <UiButton block :loading="uploading" :disabled="uploading" type="submit">保存照片</UiButton>
       </form>
     </dialog>
   </main>
@@ -254,129 +258,124 @@ onBeforeUnmount(clearSelection);
 }
 .photo-groups {
   display: grid;
-  gap: 22px;
+  gap: 28px;
+}
+.group-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 16px;
   h2 {
-    margin: 0 0 10px;
-    font-size: 0.9375rem;
-    font-weight: 500;
+    margin: 0;
+    font-size: 19px;
+    font-weight: 600;
+  }
+  span {
+    color: var(--ui-text-secondary);
+    font-size: 12px;
   }
 }
 .photo-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 20px 16px;
 }
 .photo-card {
   display: grid;
   min-width: 0;
   padding: 0;
   text-align: left;
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  background: var(--color-surface);
-  color: var(--color-text-primary);
+  border: 0;
+  background: transparent;
+  color: var(--ui-text-primary);
+  cursor: pointer;
   img {
     width: 100%;
     aspect-ratio: 3/4;
     object-fit: cover;
+    border-radius: 20px;
+    background: var(--color-surface-muted);
   }
   > span {
-    display: flex;
-    justify-content: space-between;
-    gap: 6px;
-    padding: 10px;
-  }
-  strong,
-  small {
-    font-size: 0.75rem;
-    font-weight: 400;
-  }
-  small {
-    color: var(--color-text-secondary);
+    display: block;
+    margin-top: 10px;
+    font-size: 13px;
   }
   p {
-    margin: 0;
-    padding: 0 10px 10px;
+    margin: 6px 0 0;
+    color: var(--ui-text-secondary);
+    font-size: 12px;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 0.75rem;
-    color: var(--color-text-secondary);
+    text-overflow: ellipsis;
   }
 }
 .photo-more {
-  margin-top: 18px;
+  margin-top: 24px;
 }
 .photo-error {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  font-size: 0.8125rem;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
 }
 .photo-dialog {
-  width: min(420px, calc(100% - 24px));
-  max-height: 90dvh;
+  width: min(560px, 100%);
+  max-width: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0 auto;
+  padding: 24px 24px calc(24px + var(--app-safe-area-bottom));
   overflow: auto;
-  padding: 16px;
-  color: var(--color-text-primary);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border: 0;
+  border-radius: 0;
+  background: var(--ui-background);
+  color: var(--ui-text-primary);
+  box-sizing: border-box;
   &::backdrop {
     background: rgb(0 0 0 / 40%);
   }
   header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    justify-content: space-between;
+    gap: 12px;
     h2 {
-      font-size: 1rem;
       margin: 0;
+      font-size: 26px;
+      font-weight: 600;
     }
-    button {
-      min-height: 40px;
-      padding: 0;
-      background: transparent;
-      border: 0;
-      color: var(--color-text-secondary);
-      font-size: 0.8125rem;
-    }
+  }
+  .field-hint {
+    margin: 12px 0 28px;
   }
   fieldset {
     min-width: 0;
+    margin: 28px 0 32px;
     padding: 0;
     border: 0;
-    margin: 12px 0;
   }
   legend {
-    font-size: 0.8125rem;
-    margin-bottom: 8px;
-  }
-  label {
-    display: grid;
-    gap: 7px;
     margin-bottom: 12px;
-    font-size: 0.8125rem;
-  }
-  input {
-    min-width: 0;
-    width: 100%;
-    height: 42px;
-    padding: 8px;
-    color: var(--color-text-primary);
-    background: var(--color-surface-muted);
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
+    font-size: 13px;
+    color: var(--ui-text-secondary);
   }
 }
 .photo-preview {
   display: block;
   width: 100%;
-  max-height: 27dvh;
+  max-height: 30dvh;
   object-fit: contain;
   background: var(--color-surface-muted);
-  border-radius: 6px;
+  border-radius: 20px;
+}
+@media (min-width: 600px) {
+  .photo-dialog {
+    height: auto;
+    max-height: 90dvh;
+    margin: auto;
+    border-radius: 28px;
+  }
 }
 </style>

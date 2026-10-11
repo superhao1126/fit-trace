@@ -36,6 +36,12 @@ withDefaults(
   --td-button-primary-bg-color: var(--ui-primary);
   --td-button-primary-border-color: var(--ui-primary);
   --td-button-primary-color: var(--color-on-primary);
+  :deep(.t-button__content) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
   &:disabled {
     opacity: 0.4;
   }

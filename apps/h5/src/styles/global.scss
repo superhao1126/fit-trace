@@ -371,7 +371,7 @@ textarea:focus-visible {
     display: grid;
     gap: 10px;
     margin-bottom: 28px;
-    > button {
+    > button:not(.ui-button) {
       width: 100%;
       min-height: 54px;
       display: flex;

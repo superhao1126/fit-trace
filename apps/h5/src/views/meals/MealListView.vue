@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import EmptyState from '@/components/EmptyState.vue';
+import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
+import UiButton from '@/components/ui/UiButton.vue';
+import UiRecordRow from '@/components/ui/UiRecordRow.vue';
+import UiTabs from '@/components/ui/UiTabs.vue';
+import UiEmptyState from '@/components/ui/UiEmptyState.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { MealRecord, MealType } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { Button, DialogPlugin, Loading, ToastPlugin } from 'tdesign-mobile-vue';
-import { AddIcon, DeleteIcon, EditIcon, ForkIcon } from 'tdesign-icons-vue-next';
+import { DialogPlugin, Loading, ToastPlugin } from 'tdesign-mobile-vue';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { deleteMeal, getMeals } from '@/api/meals';
-import RecordDetailHeader from '@/components/RecordDetailHeader.vue';
 
 const mealLabels: Record<MealType, string> = {
   BREAKFAST: '早餐',
@@ -27,6 +29,7 @@ const router = useRouter();
 const activeType = ref<MealType | 'ALL'>('ALL');
 const meals = ref<MealRecord[]>([]);
 const loading = ref(true);
+const loadError = ref('');
 const loadingMore = ref(false);
 const page = ref(1);
 const total = ref(0);
@@ -47,6 +50,7 @@ function dateTitle(date: string): string {
   return value.format('M月D日');
 }
 async function load(reset = false): Promise<void> {
+  loadError.value = '';
   if (reset) {
     page.value = 1;
     meals.value = [];
@@ -78,6 +82,7 @@ async function selectType(type: MealType | 'ALL'): Promise<void> {
   try {
     await load(true);
   } catch (error) {
+    loadError.value = '饮食记录加载失败，请重试';
     showRequestError(error, '饮食记录加载失败');
   } finally {
     loading.value = false;
@@ -111,290 +116,150 @@ function confirmDelete(meal: MealRecord): void {
 onMounted(async () => {
   try {
     await load();
+  } catch (error) {
+    loadError.value = '饮食记录加载失败，请重试';
+    showRequestError(error, '饮食记录加载失败');
   } finally {
     loading.value = false;
   }
 });
+async function retry(): Promise<void> {
+  loading.value = true;
+  try {
+    await load(true);
+  } catch (error) {
+    loadError.value = '饮食记录加载失败，请重试';
+    showRequestError(error, '饮食记录加载失败');
+  } finally {
+    loading.value = false;
+  }
+}
 </script>
-
 <template>
-  <main class="view-page meals-page">
-    <RecordDetailHeader
-      title="饮食日记"
-      subtitle="按餐次记录，回顾每天真实的饮食"
-      action-label="添加"
+  <main class="view-page ui-page meals-page">
+    <UiDetailHeader
+      title="饮食记录"
+      subtitle="每一餐，都留下清晰的记录"
+      action-label="新记录"
       @action="router.push('/meals/create')"
     />
-
-    <div class="meal-filter filter-tabs" aria-label="按餐次筛选">
-      <button
-        v-for="filter in filters"
-        :key="filter.value"
-        type="button"
-        :class="{ active: activeType === filter.value }"
-        @click="selectType(filter.value)"
-      >
-        {{ filter.label }}
-      </button>
-    </div>
-
+    <UiTabs
+      :model-value="activeType"
+      :options="filters"
+      :disabled="loading"
+      label="按餐次筛选"
+      @update:model-value="selectType($event as MealType | 'ALL')"
+    />
     <Loading
       class="page-loading"
       :class="{ 'page-loading--active': loading }"
       :loading="loading"
       text="正在读取饮食记录"
     >
-      <EmptyState
-        v-if="!loading && meals.length === 0"
-        class="empty-state"
+      <UiEmptyState
+        v-if="!loading && loadError"
+        :title="loadError"
+        description="请检查网络后再试"
+        action-label="重新加载"
+        @action="retry"
+      />
+      <UiEmptyState
+        v-else-if="!loading && !meals.length"
+        kind="meal"
         title="还没有饮食记录"
-        description="从今天的一餐开始，建立真实的饮食轨迹"
-      >
-        <template #image><ForkIcon class="empty-icon" /></template>
-        <template #action
-          ><Button theme="primary" @click="router.push('/meals/create')"
-            >记录第一餐</Button
-          ></template
-        >
-      </EmptyState>
-
+        description="从今天的一餐开始"
+        action-label="记录第一餐"
+        @action="router.push('/meals/create')"
+      />
       <div v-else class="diary-list">
-        <section v-for="group in groupedMeals" :key="group.date" class="diary-day">
-          <div class="diary-day__heading">
-            <div>
-              <strong>{{ dateTitle(group.date) }}</strong
-              ><span>{{ dayjs(group.date).format('YYYY年M月D日') }}</span>
-            </div>
-            <span>{{ group.items.length }} 条记录</span>
+        <section v-for="group in groupedMeals" :key="group.date">
+          <div class="day-heading">
+            <h2>{{ dateTitle(group.date) }}</h2>
+            <span>{{ dayjs(group.date).format('YYYY年M月D日') }}</span>
           </div>
-          <div class="diary-day__body">
-            <article
-              v-for="meal in group.items"
-              :key="meal.id"
-              class="meal-row"
-              role="button"
-              tabindex="0"
-              @click="router.push(`/meals/${meal.id}`)"
-              @keydown.enter="router.push(`/meals/${meal.id}`)"
-            >
-              <div class="meal-row__time">{{ dayjs(meal.recordedAt).format('HH:mm') }}</div>
-              <div class="meal-row__content">
-                <div class="meal-row__title">
-                  <div class="meal-row__label">
-                    <img
-                      v-if="meal.imageUrl"
-                      class="meal-row__thumb"
-                      :src="meal.imageUrl"
-                      :alt="`${mealLabels[meal.type]}照片`"
-                      loading="lazy"
-                    />
-                    <strong>{{ mealLabels[meal.type] }}</strong>
-                  </div>
-                  <span v-if="meal.totalCalories !== null">{{ meal.totalCalories }} kcal</span>
-                </div>
-                <div class="food-list">
-                  <div v-for="food in meal.foods" :key="food.id">
-                    <span class="food-name"
-                      >{{ food.name
-                      }}<small v-if="food.aiGenerated" class="food-ai-tag">AI</small></span
-                    >
-                    <small>{{
-                      food.amount || (food.calories !== null ? `${food.calories} kcal` : '')
-                    }}</small>
-                  </div>
-                </div>
-                <p v-if="meal.note">{{ meal.note }}</p>
-                <div class="meal-row__actions">
-                  <Button
-                    size="small"
-                    variant="text"
-                    @click.stop="
-                      router.push({ path: '/meals/create', query: { copyFrom: meal.id } })
-                    "
-                    ><AddIcon /> 再记一次</Button
-                  >
-                  <Button
-                    size="small"
-                    variant="text"
-                    @click.stop="router.push(`/meals/${meal.id}/edit`)"
-                    ><EditIcon /> 编辑</Button
-                  >
-                  <Button
-                    size="small"
-                    variant="text"
-                    theme="danger"
-                    @click.stop="confirmDelete(meal)"
-                    ><DeleteIcon /> 删除</Button
-                  >
-                </div>
+          <div class="history-list">
+            <article v-for="meal in group.items" :key="meal.id" class="history-card">
+              <UiRecordRow
+                kind="meal"
+                :image="meal.imageUrl || undefined"
+                :title="mealLabels[meal.type]"
+                :subtitle="`${dayjs(meal.recordedAt).format('HH:mm')} · ${meal.foods.map((food) => food.name).join('、')}`"
+                :value="meal.totalCalories ?? '未记热量'"
+                :unit="meal.totalCalories !== null ? 'kcal' : ''"
+                @click="router.push(`/meals/${meal.id}`)"
+              />
+              <p v-if="meal.foods.some((food) => food.aiGenerated)" class="history-note">
+                含 AI 识别食物，已确认保存
+              </p>
+              <p v-if="meal.note" class="history-note">{{ meal.note }}</p>
+              <div class="history-actions">
+                <UiButton
+                  kind="text"
+                  @click="router.push({ path: '/meals/create', query: { copyFrom: meal.id } })"
+                  >再记一次</UiButton
+                ><UiButton kind="text" @click="router.push(`/meals/${meal.id}/edit`)">编辑</UiButton
+                ><UiButton kind="danger" @click="confirmDelete(meal)">删除</UiButton>
               </div>
             </article>
           </div>
         </section>
       </div>
-
-      <Button
+      <UiButton
         v-if="meals.length < total"
         class="load-more"
-        variant="outline"
+        kind="secondary"
         block
         :loading="loadingMore"
         @click="loadMore"
-        >加载更多</Button
-      >
-    </Loading>
+        >加载更多</UiButton
+      ></Loading
+    >
   </main>
 </template>
-
 <style scoped lang="scss">
-.meals-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
+.history-list {
+  display: grid;
   gap: 12px;
-  padding: 24px 0 18px;
-  h1 {
-    margin: 0 0 4px;
-    font-size: 1.55rem;
-    font-weight: 600;
-  }
-  p {
-    margin: 0;
-    color: var(--color-text-secondary);
-    font-size: 0.875rem;
-  }
 }
-
-.empty-icon {
-  color: var(--color-text-tertiary);
-  font-size: 1.5rem;
+.history-card {
+  overflow: hidden;
+  background: var(--color-surface);
+  border-radius: 20px;
+}
+.history-note {
+  margin: 0;
+  padding: 0 16px 12px;
+  color: var(--ui-text-secondary);
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.history-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 20px;
+  padding: 0 16px 8px;
+}
+.load-more {
+  margin-top: 24px;
 }
 .diary-list {
   display: grid;
-  gap: 24px;
+  gap: 28px;
 }
-.diary-day__heading {
+.day-heading {
   display: flex;
-  align-items: flex-end;
+  align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 9px;
-  > div {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-  }
-  strong {
-    font-size: 1rem;
+  gap: 12px;
+  margin-bottom: 12px;
+  h2 {
+    margin: 0;
+    font-size: 18px;
   }
   span {
-    color: var(--color-text-tertiary);
-    font-size: 0.75rem;
+    color: var(--ui-text-secondary);
+    font-size: 12px;
   }
-}
-.diary-day__body {
-  overflow: hidden;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-md);
-}
-.meal-row {
-  display: grid;
-  grid-template-columns: 45px minmax(0, 1fr);
-  padding: 15px 14px;
-  cursor: pointer;
-  transition:
-    background-color var(--duration-fast) var(--ease-standard),
-    transform var(--duration-fast) var(--ease-standard);
-
-  &:active {
-    background: var(--color-surface-muted);
-    transform: scale(0.995);
-  }
-  + .meal-row {
-    border-top: 1px solid var(--color-border);
-  }
-  &__time {
-    padding-top: 2px;
-    color: var(--color-text-tertiary);
-    font-size: 0.75rem;
-    font-variant-numeric: tabular-nums;
-  }
-  &__content {
-    min-width: 0;
-  }
-  &__title {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 9px;
-    strong {
-      font-size: 0.9375rem;
-    }
-    span {
-      color: var(--color-text-secondary);
-      font-size: 0.75rem;
-    }
-  }
-  &__label {
-    display: flex;
-    min-width: 0;
-    align-items: center;
-    gap: 8px;
-  }
-  &__thumb {
-    width: 32px;
-    height: 32px;
-    flex: none;
-    object-fit: cover;
-    background: var(--color-surface-muted);
-    border-radius: 8px;
-  }
-  p {
-    margin: 9px 0 0;
-    color: var(--color-text-secondary);
-    font-size: 0.75rem;
-    line-height: 1.5;
-  }
-  &__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 2px;
-    margin: 5px -8px -8px 0;
-  }
-}
-.food-list {
-  display: grid;
-  gap: 7px;
-  div {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-  }
-  span {
-    overflow: hidden;
-    color: var(--color-text-primary);
-    font-size: 0.875rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  small {
-    flex: none;
-    color: var(--color-text-tertiary);
-    font-size: 0.75rem;
-  }
-
-  .food-ai-tag {
-    margin-left: 5px;
-    padding: 1px 4px;
-    color: var(--color-text-secondary);
-    font-size: 0.75rem;
-    font-weight: 500;
-    background: var(--color-surface-muted);
-    border-radius: 4px;
-  }
-}
-.load-more {
-  margin-top: var(--spacing-md);
 }
 </style>

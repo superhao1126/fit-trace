@@ -2,9 +2,9 @@
 import { onMounted, ref } from 'vue';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
-import { ChevronRightIcon } from 'tdesign-icons-vue-next';
+import UiIcon from '@/components/ui/UiIcon.vue';
 import { version as webVersion } from '../../../package.json';
-import RecordDetailHeader from '@/components/RecordDetailHeader.vue';
+import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
 
 const version = ref(webVersion);
 onMounted(() => {
@@ -19,11 +19,12 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="view-page about-page">
-    <RecordDetailHeader title="关于循形" />
+  <main class="view-page ui-page about-page">
+    <UiDetailHeader title="关于循形" />
     <section class="about-brand" aria-label="循形 FitTrace">
       <img src="/brand/app-icon-512.png" width="76" height="76" alt="循形应用图标" />
-      <h2>循形 <span>FitTrace</span></h2>
+      <h2>循形</h2>
+      <span class="brand-en">FitTrace</span>
       <p>记录日常，看见改变</p>
     </section>
     <section class="settings-section" aria-label="应用信息">
@@ -33,7 +34,7 @@ onMounted(() => {
         </div>
         <RouterLink to="/settings/agreement" class="settings-row"
           ><span class="settings-row__body">用户协议</span
-          ><ChevronRightIcon class="settings-row__chevron" aria-hidden="true"
+          ><UiIcon name="right" class="settings-row__chevron"
         /></RouterLink>
       </div>
       <p class="about-description">
@@ -48,7 +49,7 @@ onMounted(() => {
 .about-brand {
   display: grid;
   justify-items: center;
-  padding: 18px 0 32px;
+  padding: 32px 0 48px;
   img {
     border-radius: 18px;
   }
@@ -68,6 +69,11 @@ onMounted(() => {
     color: var(--color-text-secondary);
     font-size: 0.8125rem;
   }
+}
+.brand-en {
+  margin-top: 8px;
+  color: var(--ui-text-secondary);
+  font-size: 13px;
 }
 .about-description {
   margin: 20px 12px 0;

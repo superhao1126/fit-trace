@@ -1,9 +1,15 @@
 <script setup lang="ts">
-import RecordDetailHeader from '@/components/RecordDetailHeader.vue';
+import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
+import UiTabs from '@/components/ui/UiTabs.vue';
+import UiButton from '@/components/ui/UiButton.vue';
+import UiInput from '@/components/ui/UiInput.vue';
+import UiMetricCard from '@/components/ui/UiMetricCard.vue';
+import UiDateSheet from '@/components/ui/UiDateSheet.vue';
+import UiIcon from '@/components/ui/UiIcon.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { FitnessGoalType } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { Button, Input, Loading, ToastPlugin } from 'tdesign-mobile-vue';
+import { Loading, ToastPlugin } from 'tdesign-mobile-vue';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { getLatestBodyRecord } from '@/api/body-records';
@@ -92,12 +98,13 @@ onMounted(async () => {
     loading.value = false;
   }
 });
+
+const dateVisible = ref(false);
+const goalTabs = goalOptions.map((item) => ({ value: item.value, label: item.title }));
 </script>
-
 <template>
-  <main class="view-page record-form goal-page">
-    <RecordDetailHeader title="我的目标" subtitle="选择适合自己的目标和节奏" />
-
+  <main class="view-page ui-page ui-form goal-page">
+    <UiDetailHeader title="我的目标" subtitle="找到适合自己的节奏" />
     <Loading
       class="page-loading"
       :class="{ 'page-loading--active': loading }"
@@ -105,155 +112,77 @@ onMounted(async () => {
       text="正在读取身体数据"
     >
       <section class="goal-section">
-        <div class="section-heading">
-          <h2>你现在更关注什么？</h2>
-          <span>之后可以随时调整</span>
-        </div>
-        <div class="goal-options">
-          <button
-            v-for="item in goalOptions"
-            :key="item.value"
-            type="button"
-            :class="{ active: goalType === item.value }"
-            @click="goalType = item.value"
-          >
-            <strong>{{ item.title }}</strong>
-            <span>{{ item.description }}</span>
-          </button>
-        </div>
+        <h2>你现在更关注什么？</h2>
+        <UiTabs
+          :model-value="goalType"
+          :options="goalTabs"
+          label="健身目标"
+          @update:model-value="goalType = $event as FitnessGoalType"
+        />
+        <p class="field-hint">{{ selectedGoal?.description }}</p>
       </section>
-
-      <section class="goal-section">
-        <div class="section-heading">
-          <h2>体重目标</h2>
-          <span>{{ selectedGoal?.title }}</span>
-        </div>
-        <div class="surface-card weight-settings">
-          <label>
-            <span>当前体重</span>
-            <strong class="goal-current"
-              >{{ currentWeight || '尚未记录' }}<small v-if="currentWeight"> kg</small></strong
-            >
-            <button type="button" class="goal-record-link" @click="router.push('/body/create')">
-              {{ currentWeight ? '记录新的体重' : '先记录一次体重' }}
-            </button>
-          </label>
-          <label>
-            <span>目标体重</span>
-            <Input v-model="targetWeight" type="number" inputmode="decimal" suffix="kg" />
-          </label>
-          <label>
-            <span>目标日期（选填）</span>
-            <input v-model="targetDate" class="date-input" type="date" />
-            <small>日期只是节奏参考，不会影响记录功能</small>
-          </label>
-        </div>
-      </section>
-
-      <Button theme="primary" size="large" block :loading="submitting" @click="submit">
-        保存目标
-      </Button>
-    </Loading>
+      <UiMetricCard
+        kind="body"
+        label="当前体重"
+        :value="currentWeight || '尚未记录'"
+        :unit="currentWeight ? 'kg' : ''"
+        ><UiButton class="goal-record-link" kind="text" @click="router.push('/body/create')"
+          >{{ currentWeight ? '记录新的体重' : '先记录一次体重' }}<UiIcon name="right" /></UiButton
+      ></UiMetricCard>
+      <label class="field-block target-weight"
+        ><span class="field-label">目标体重</span
+        ><UiInput
+          v-model="targetWeight"
+          type="number"
+          inputmode="decimal"
+          suffix="kg"
+          aria-label="目标体重"
+          placeholder="填写目标体重"
+      /></label>
+      <div class="form-meta">
+        <span class="field-label">目标日期 · 选填</span
+        ><button type="button" @click="dateVisible = true">
+          {{ targetDate ? dayjs(targetDate).format('YYYY年M月D日') : '选择目标日期'
+          }}<UiIcon name="right" /></button
+        ><UiButton v-if="targetDate" kind="text" @click="targetDate = ''">清除日期</UiButton
+        ><small class="field-hint">日期只是节奏参考，不影响日常记录</small>
+      </div>
+      <UiButton class="form-submit" block :loading="submitting" @click="submit"
+        >保存目标</UiButton
+      ></Loading
+    >
+    <UiDateSheet
+      v-model:visible="dateVisible"
+      v-model="targetDate"
+      :min-date="dayjs().format('YYYY-MM-DD')"
+      :max-date="dayjs().add(20, 'year').format('YYYY-MM-DD')"
+    />
   </main>
 </template>
-
 <style scoped lang="scss">
-.goal-current {
-  font-size: 1.125rem;
-  font-weight: 500;
+.goal-section {
+  margin-bottom: 28px;
+  h2 {
+    margin: 0 0 16px;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  :deep(.ui-tabs) {
+    margin-bottom: 12px;
+  }
 }
 .goal-record-link {
-  min-height: 40px;
-  padding: 0;
-  text-align: left;
-  background: transparent;
-  border: 0;
-  color: var(--color-accent-text);
-  font-size: 0.8125rem;
-}
-.goal-section {
-  margin-bottom: 26px;
-}
-
-.section-heading {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 11px;
-
-  h2 {
-    margin: 0;
-    font-size: 1rem;
-  }
-
-  span {
-    color: var(--color-text-tertiary);
-    font-size: 0.75rem;
-  }
+  margin-left: auto;
 }
-
-.goal-options {
-  display: grid;
-  gap: 8px;
-
-  button {
-    display: grid;
-    gap: 4px;
-    padding: 14px 15px;
-    color: var(--color-text-primary);
-    text-align: left;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-md);
-
-    &.active {
-      background: var(--color-primary-light);
-      border-color: var(--color-primary-border);
-      box-shadow: inset 3px 0 0 var(--color-primary);
-    }
-
-    strong {
-      font-size: 0.9375rem;
-    }
-
-    span {
-      color: var(--color-text-secondary);
-      font-size: 0.8rem;
-    }
-  }
+.target-weight {
+  margin-top: 28px;
 }
-
-.weight-settings {
-  label {
-    display: grid;
-    gap: 8px;
-    padding: 15px;
-
-    + label {
-      border-top: 1px solid var(--color-border);
-    }
-
-    > span {
-      font-size: 0.82rem;
-      font-weight: 500;
-    }
-
-    small {
-      color: var(--color-text-tertiary);
-      font-size: 0.72rem;
-      line-height: 1.5;
-    }
-  }
+.form-meta .field-hint {
+  display: block;
+  margin-top: 12px;
 }
-
-.date-input {
-  width: 100%;
-  min-height: 44px;
-  padding: 0 12px;
-  color: var(--color-text-primary);
-  background: var(--color-surface-muted);
-  border: 0;
-  border-radius: var(--border-radius-sm);
+.form-submit {
+  margin-top: 44px;
 }
 </style>
