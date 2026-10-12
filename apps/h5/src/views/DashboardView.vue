@@ -204,20 +204,23 @@ onActivated(() => {
 
       <nav class="quick-actions" aria-label="快速记录">
         <button type="button" @click="addRecord('/body/create')">
-          <span class="quick-actions__icon quick-actions__icon--body"><UiIcon name="body" /></span
+          <span class="quick-actions__icon quick-actions__icon--body"
+            ><img src="/images/tools/scale.webp" alt="" width="44" height="44" /></span
           ><span>记体重</span>
         </button>
         <button type="button" @click="addRecord('/meals')">
-          <span class="quick-actions__icon quick-actions__icon--meal"><UiIcon name="meal" /></span
+          <span class="quick-actions__icon quick-actions__icon--meal"
+            ><img src="/images/foods/rice.webp" alt="" width="44" height="44" /></span
           ><span>记饮食</span>
         </button>
         <button type="button" @click="addRecord('/training')">
           <span class="quick-actions__icon quick-actions__icon--workout"
-            ><UiIcon name="workout" /></span
+            ><img src="/images/tools/dumbbells.webp" alt="" width="44" height="44" /></span
           ><span>记训练</span>
         </button>
         <button type="button" @click="addRecord('/photos')">
-          <span class="quick-actions__icon quick-actions__icon--photo"><UiIcon name="photo" /></span
+          <span class="quick-actions__icon quick-actions__icon--photo"
+            ><img src="/images/tools/camera.webp" alt="" width="44" height="44" /></span
           ><span>记照片</span>
         </button>
       </nav>
@@ -415,8 +418,14 @@ onActivated(() => {
   &__icon {
     display: grid;
     place-items: center;
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
+    img {
+      width: 44px;
+      height: 44px;
+      object-fit: cover;
+      border-radius: 10px;
+    }
     border-radius: 12px;
     &--body {
       color: var(--ui-body-foreground);

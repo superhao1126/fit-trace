@@ -13,24 +13,28 @@ const entries = [
     description: '体重、体脂和身体围度',
     kind: 'body' as const,
     path: '/body/create',
+    image: '/images/tools/scale.webp',
   },
   {
     title: '饮食记录',
     description: '记录每一餐和食物',
     kind: 'meal' as const,
     path: '/meals',
+    image: '/images/foods/rice.webp',
   },
   {
     title: '运动工具',
     description: '动作库、模板、计划与训练记录',
     kind: 'workout' as const,
     path: '/training',
+    image: '/images/tools/dumbbells.webp',
   },
   {
     title: '身材照片',
     description: '留下不同阶段的变化',
     kind: 'photo' as const,
     path: '/photos',
+    image: '/images/tools/camera.webp',
   },
 ];
 </script>
@@ -47,6 +51,7 @@ const entries = [
         :key="entry.path"
         :kind="entry.kind"
         :title="entry.title"
+        :image="entry.image"
         :subtitle="entry.description"
         @click="openRecord(entry.path)"
       />

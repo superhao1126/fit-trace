@@ -4,7 +4,14 @@ import { Popup, ToastPlugin } from 'tdesign-mobile-vue';
 import UiInput from '@/components/ui/UiInput.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import UiTabs from '@/components/ui/UiTabs.vue';
-import { foodLibrary, foodCalories, type LibraryFood } from '@/data/food-library';
+import UiIcon from '@/components/ui/UiIcon.vue';
+import {
+  foodLibrary,
+  foodCategories,
+  searchFoods,
+  foodCalories,
+  type LibraryFood,
+} from '@/data/food-library';
 import { authSession } from '@/api/session';
 defineProps<{ visible: boolean; mealLabel: string }>();
 const emit = defineEmits<{
@@ -25,19 +32,9 @@ function readFavorites(): string[] {
   }
 }
 const favorites = ref(readFavorites());
-const categories = ['全部', '常用', ...new Set(foodLibrary.map((f) => f.category))].map(
-  (value) => ({ value, label: value }),
-);
-const foods = computed(() =>
-  foodLibrary.filter(
-    (food) =>
-      (category.value === '全部' ||
-        (category.value === '常用'
-          ? favorites.value.includes(food.id)
-          : food.category === category.value)) &&
-      food.name.includes(query.value.trim()),
-  ),
-);
+const categories = ['全部', '常用', ...foodCategories];
+const foods = computed(() => searchFoods(query.value, category.value, favorites.value));
+const foodList = ref<HTMLElement | null>(null);
 const calories = computed(() => {
   if (!selected.value) return null;
   try {
@@ -50,6 +47,7 @@ watch(
   () => category.value,
   () => {
     selected.value = null;
+    foodList.value?.scrollTo({ top: 0 });
   },
 );
 function toggleFavorite(food: LibraryFood) {
@@ -92,9 +90,14 @@ function confirm() {
       </header>
       <template v-if="selected">
         <div class="library-card">
-          <h3>{{ selected.name }}</h3>
-          <p>{{ selected.kcalPer100g }} kcal / 100 g</p>
-          <small>{{ selected.source }}</small
+          <div class="selected-food">
+            <img :src="selected.imageUrl" alt="" width="80" height="80" />
+            <div>
+              <h3>{{ selected.name }}</h3>
+              <p>{{ selected.kcalPer100g }} kcal / 100 g</p>
+            </div>
+          </div>
+          <small>{{ selected.source }} · {{ selected.ndbNumber }}</small
           ><a :href="selected.sourceUrl" target="_blank" rel="noopener noreferrer">查看数据来源</a>
         </div>
         <label class="library-field"
@@ -115,6 +118,11 @@ function confirm() {
         />
         <div class="library-card">
           <h3>本次热量 {{ calories ?? '—' }} kcal</h3>
+          <p v-if="calories !== null" class="nutrients">
+            蛋白质 {{ ((selected.proteinPer100g * Number(grams)) / 100).toFixed(1) }} g · 脂肪
+            {{ ((selected.fatPer100g * Number(grams)) / 100).toFixed(1) }} g · 碳水
+            {{ ((selected.carbsPer100g * Number(grams)) / 100).toFixed(1) }} g
+          </p>
           <p>按实际可食份量换算，加入后仍可修改。</p>
         </div>
         <p v-if="calories === null" class="library-hint">份量需大于 0 且不超过 10000 克</p>
@@ -124,32 +132,60 @@ function confirm() {
       </template>
       <template v-else>
         <UiInput v-model="query" placeholder="搜索食物名称" aria-label="搜索食品库" />
-        <div class="category-scroll">
-          <UiTabs v-model="category" :options="categories" label="食品分类" />
-        </div>
-        <div class="library-list">
-          <article v-for="food in foods" :key="food.id" class="library-row">
-            <button type="button" class="food-select" @click="choose(food)">
-              <strong>{{ food.name }}</strong
-              ><span>{{ food.kcalPer100g }} kcal / 100 g</span>
-            </button>
-            <UiButton
-              kind="text"
-              :aria-pressed="favorites.includes(food.id)"
-              :aria-label="`${favorites.includes(food.id) ? '移除常用' : '设为常用'}${food.name}`"
-              @click="toggleFavorite(food)"
-              >{{ favorites.includes(food.id) ? '已常用' : '常用' }}</UiButton
+        <div class="library-browser">
+          <nav class="library-categories" aria-label="食品分类">
+            <button
+              v-for="value in categories"
+              :key="value"
+              type="button"
+              :aria-pressed="category === value"
+              :class="{ active: category === value }"
+              @click="category = value"
             >
-          </article>
-          <p v-if="!foods.length" class="library-hint">
-            {{
-              category === '常用'
-                ? '暂无常用食物，可在其他分类中添加'
-                : '未找到食物，可以返回手动填写'
-            }}
-          </p>
+              {{ value }}
+            </button>
+          </nav>
+          <div ref="foodList" class="library-list">
+            <p class="list-summary">{{ category }} · {{ foods.length }} 种</p>
+            <article v-for="food in foods" :key="food.id" class="library-row">
+              <button type="button" class="food-select" @click="choose(food)">
+                <img
+                  :src="food.imageUrl"
+                  alt=""
+                  width="52"
+                  height="52"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="food-info"
+                  ><strong>{{ food.name }}</strong
+                  ><span>{{ food.kcalPer100g }} kcal / 100 g</span></span
+                >
+              </button>
+              <button
+                type="button"
+                class="favorite-button"
+                :class="{ active: favorites.includes(food.id) }"
+                :aria-pressed="favorites.includes(food.id)"
+                :aria-label="`${favorites.includes(food.id) ? '移除常用' : '设为常用'}${food.name}`"
+                @click="toggleFavorite(food)"
+              >
+                <UiIcon name="star" />
+              </button>
+            </article>
+            <p v-if="!foods.length" class="library-hint">
+              {{
+                category === '常用'
+                  ? '暂无常用食物，可点击食物右侧星标添加'
+                  : '未找到食物，可以返回手动填写'
+              }}
+            </p>
+          </div>
         </div>
-        <p class="library-hint">基础食品库 · 数值均为参考值；注意生熟状态与实际烹饪用油。</p>
+        <p class="library-hint">
+          基础食品库 · {{ foodLibrary.length }} 种 /
+          {{ foodCategories.length }} 类<br />数值为参考值，注意生熟状态与用油；图片为食品示意。
+        </p>
       </template>
     </section>
   </Popup>
@@ -177,15 +213,61 @@ header {
     color: var(--ui-text-secondary);
   }
 }
-.category-scroll {
-  overflow-x: auto;
+.library-browser {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 10px;
+  height: min(49dvh, 520px);
+  min-height: 200px;
   margin-top: 16px;
-  :deep(.ui-tabs) {
-    min-width: 480px;
-    margin-bottom: 16px;
+}
+.library-categories,
+.library-list {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.library-categories {
+  border-radius: 12px;
+  background: var(--ui-border);
+  button {
+    display: block;
+    width: 100%;
+    min-height: 46px;
+    padding: 10px 4px;
+    border: 0;
+    background: transparent;
+    color: var(--ui-text-secondary);
+    font-size: 12px;
+  }
+  .active {
+    color: var(--ui-primary);
+    background: var(--ui-meal-background);
+    font-weight: 600;
+    border-radius: 8px;
   }
 }
-.library-list,
+.list-summary {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--ui-text-secondary);
+}
+.library-card {
+  background: var(--color-surface);
+  border-radius: 16px;
+}
+.selected-food {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  img {
+    border-radius: 12px;
+    object-fit: cover;
+  }
+  div {
+    min-width: 0;
+  }
+}
 .library-card {
   background: var(--color-surface);
   border-radius: 16px;
@@ -214,33 +296,62 @@ header {
 .library-row {
   display: flex;
   align-items: center;
-  border-bottom: 1px solid var(--ui-border);
-  padding: 4px 16px;
-  gap: 8px;
-  &:last-child {
-    border-bottom: 0;
-  }
+  background: var(--color-surface);
+  border-radius: 12px;
+  margin-bottom: 4px;
+  padding: 8px;
+  gap: 4px;
 }
 .food-select {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   flex: 1;
   min-width: 0;
-  padding: 14px 0;
+  padding: 0;
   text-align: left;
   border: 0;
   background: transparent;
   color: var(--ui-text-primary);
   cursor: pointer;
+  img {
+    flex-shrink: 0;
+    border-radius: 8px;
+    object-fit: cover;
+  }
+}
+.food-info {
+  min-width: 0;
   strong,
   span {
     display: block;
   }
   strong {
-    font-size: 15px;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.5;
   }
   span {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--ui-text-secondary);
-    margin-top: 6px;
+    margin-top: 4px;
+  }
+}
+.favorite-button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  min-height: 44px;
+  padding: 0;
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ui-text-secondary);
+  cursor: pointer;
+  &.active {
+    color: var(--ui-primary);
+    background: var(--ui-meal-background);
+    border-radius: 8px;
   }
 }
 .library-field {

@@ -29,9 +29,24 @@ async function load() {
 }
 onMounted(load);
 const entries = [
-  { title: '动作库', subtitle: '按部位和器械筛选，查看动作要点', path: '/training/exercises' },
-  { title: '训练模板', subtitle: '组合动作，设置组数、次数和休息', path: '/training/templates' },
-  { title: '我的计划', subtitle: '按周安排训练与休息日', path: '/training/plan' },
+  {
+    title: '动作库',
+    subtitle: '按部位和器械筛选，查看动作要点',
+    image: '/images/tools/dumbbells.webp',
+    path: '/training/exercises',
+  },
+  {
+    title: '训练模板',
+    subtitle: '组合动作，设置组数、次数和休息',
+    image: '/images/tools/template.webp',
+    path: '/training/templates',
+  },
+  {
+    title: '我的计划',
+    subtitle: '按周安排训练与休息日',
+    image: '/images/tools/calendar.webp',
+    path: '/training/plan',
+  },
 ];
 </script>
 <template>
@@ -53,7 +68,12 @@ const entries = [
       ><UiButton
         v-else-if="today"
         kind="text"
-        @click="router.push({ path: '/training/session', query: { template: today.id } })"
+        @click="
+          router.push({
+            path: '/training/session',
+            query: { template: today.id },
+          })
+        "
         >开始训练</UiButton
       ><UiButton v-else kind="text" @click="router.push('/training/plan')">安排计划</UiButton>
     </section>
@@ -62,6 +82,7 @@ const entries = [
       :key="entry.path"
       kind="workout"
       :title="entry.title"
+      :image="entry.image"
       :subtitle="entry.subtitle"
       @click="router.push(entry.path)"
     />

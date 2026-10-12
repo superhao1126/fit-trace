@@ -1,7 +1,14 @@
 /* global structuredClone */
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { foodLibrary, foodCalories } from '../src/data/food-library.ts';
+import { access } from 'node:fs/promises';
+import { URL } from 'node:url';
+import {
+  foodLibrary,
+  foodCalories,
+  foodCategories,
+  searchFoods,
+} from '../src/data/food-library.ts';
 import { completedTraining, trainingValidation } from '../src/utils/training-validation.ts';
 test('food calories convert actual grams and reject invalid portions', () => {
   const rice = foodLibrary.find((f) => f.id === '168878');
@@ -9,8 +16,39 @@ test('food calories convert actual grams and reject invalid portions', () => {
   assert.equal(foodCalories(rice, 0.5), 1);
   for (const grams of [0, -1, NaN, Infinity, 10001]) assert.throws(() => foodCalories(rice, grams));
   assert.equal(new Set(foodLibrary.map((f) => f.id)).size, foodLibrary.length);
-  for (const food of foodLibrary)
-    assert.match(food.sourceUrl, /^https:\/\/fdc\.nal\.usda\.gov\/food-details\/\d+\/nutrients$/);
+  for (const food of foodLibrary) {
+    assert.equal(new URL(food.sourceUrl).hostname, 'fdc.nal.usda.gov');
+    assert.match(food.ndbNumber, /^\d{5}$/);
+  }
+});
+test('expanded catalog has valid provenance, nutrients and bundled food images', async () => {
+  assert.ok(foodLibrary.length >= 140);
+  assert.equal(foodCategories.length, 7);
+  for (const food of foodLibrary) {
+    assert.ok(food.sourceDescription);
+    assert.ok(
+      Number.isFinite(food.kcalPer100g) && food.kcalPer100g >= 0 && food.kcalPer100g <= 900,
+    );
+    for (const nutrient of [food.proteinPer100g, food.fatPer100g, food.carbsPer100g])
+      assert.ok(Number.isFinite(nutrient) && nutrient >= 0 && nutrient <= 100);
+    await access(new URL(`../public${food.imageUrl}`, import.meta.url));
+  }
+  assert.equal(new Set(foodLibrary.map((food) => food.imageUrl)).size, 64);
+});
+test('aliases, category filtering and existing account favorites remain usable', () => {
+  assert.ok(searchFoods('西红柿').every((food) => food.name.includes('番茄')));
+  assert.ok(searchFoods('西红柿').length);
+  assert.ok(searchFoods('番茄 生').every((food) => food.name.includes('生')));
+  assert.ok(searchFoods('', '水产').every((food) => food.category === '水产'));
+  assert.deepEqual(
+    searchFoods('', '常用', ['168878']).map((food) => food.id),
+    ['168878'],
+  );
+  assert.equal(searchFoods('不存在的食物').length, 0);
+  assert.equal(searchFoods('', '常用', []).length, 0);
+  const rice = foodLibrary.find((food) => food.id === '168878');
+  const raw = foodLibrary.find((food) => food.name === '大米（生）');
+  assert.ok(raw.kcalPer100g > rice.kcalPer100g * 2);
 });
 const sample = [
   {
