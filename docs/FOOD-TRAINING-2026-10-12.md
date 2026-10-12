@@ -26,7 +26,7 @@
 
 迁移文件：`apps/api/prisma/migrations/20261012030000_training_tools/migration.sql`。
 
-发布时必须先按项目部署流程备份数据库、执行 Prisma migrate deploy、部署新 API 和 shared 构建产物，再发布 H5/APK。shared 增加 require 导出供 Nest CommonJS 使用；项目要求 Node >=22.12。此轮没有执行数据库迁移、生产部署或安装这一版 APK。
+发布时必须先按项目部署流程备份数据库、执行 Prisma migrate deploy、部署新 API 和 shared 构建产物，再发布 H5/APK。shared 增加 require 导出供 Nest CommonJS 使用；项目要求 Node >=22.12。后续用户已授权并完成线上迁移、部署与 APK 0.1.4 覆盖安装，见下方发布记录。
 
 ## 验证
 
@@ -38,3 +38,14 @@
 - 相机、相册打开和取消的真机验证来自本轮较早的 APK 修复；新运动工具尚未真机验证，AI 实际识别上传也未提交。
 
 现有未跟踪的旧 UI/登录压缩包和设计文件未改动；未提交 Git。
+
+## 发布记录（2026-10-12）
+
+- 功能提交：bcbe53e；APK 0.1.4，versionCode 6。
+- 发布目录：/opt/fittrace/releases/20261012-bcbe53e；previous 保留 /opt/fittrace/releases/20261011-94fff88。
+- 数据库备份：/var/backups/fittrace/20261012-bcbe53e/fit_trace.dump，pg_restore --list 核验通过。按用户选择，仅留在服务器，未复制生产用户数据到本机。
+- 线上迁移 20261012030000_training_tools 成功；API active，重启计数 0。
+- 真实线上 smoke 通过：登录、四类记录、模板创建/编辑、周计划写入/读取、逐组训练保存/读取、首页、图片上传、续期和退出。临时账号/记录/图片已清理。
+- 公网健康返回 OK；训练接口匿名请求返回 401；新页面 History 路由成功。
+- 公网下载与本地 APK SHA-256 一致：392f00b74f09b591e4a05b681f81312da9a8ac2790421993d303813237ec8f4f。
+- ADB 覆盖安装 Success；连接设备 9517edfa 确认 versionCode=6/versionName=0.1.4，启动成功且原登录保留。
