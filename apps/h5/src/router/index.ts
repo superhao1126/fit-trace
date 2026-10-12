@@ -160,6 +160,28 @@ const router = createRouter({
           name: 'workouts',
           component: () => import('@/views/workouts/WorkoutListView.vue'),
         },
+        { path: 'training', component: () => import('@/views/training/TrainingToolsView.vue') },
+        {
+          path: 'training/exercises',
+          component: () => import('@/views/training/ExerciseLibraryView.vue'),
+        },
+        {
+          path: 'training/templates',
+          component: () => import('@/views/training/TrainingTemplatesView.vue'),
+        },
+        {
+          path: 'training/templates/create',
+          component: () => import('@/views/training/TrainingTemplateFormView.vue'),
+        },
+        {
+          path: 'training/templates/:id/edit',
+          component: () => import('@/views/training/TrainingTemplateFormView.vue'),
+        },
+        { path: 'training/plan', component: () => import('@/views/training/TrainingPlanView.vue') },
+        {
+          path: 'training/session',
+          component: () => import('@/views/training/TrainingSessionView.vue'),
+        },
         {
           path: 'workouts/create',
           name: 'workout-create',

@@ -1,7 +1,9 @@
 import type { ApiListResponse, ApiResponse, WorkoutRecord, WorkoutType } from '@fit-trace/shared';
 import { http } from './http';
+import type { TrainingExercise } from '@fit-trace/shared';
 
 export interface WorkoutInput {
+  exercises?: TrainingExercise[];
   type: WorkoutType;
   name: string;
   startedAt?: string;

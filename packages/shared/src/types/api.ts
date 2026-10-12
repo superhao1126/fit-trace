@@ -187,6 +187,7 @@ export interface WorkoutRecord {
   durationMinutes: number;
   calories: number | null;
   note: string | null;
+  exercises?: import('../training.js').TrainingExercise[];
   createdAt: string;
   updatedAt: string;
 }

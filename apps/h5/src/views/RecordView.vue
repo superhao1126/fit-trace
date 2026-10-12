@@ -18,13 +18,13 @@ const entries = [
     title: '饮食记录',
     description: '记录每一餐和食物',
     kind: 'meal' as const,
-    path: '/meals/create',
+    path: '/meals',
   },
   {
-    title: '训练记录',
-    description: '训练类型、时长与消耗',
+    title: '运动工具',
+    description: '动作库、模板、计划与训练记录',
     kind: 'workout' as const,
-    path: '/workouts/create',
+    path: '/training',
   },
   {
     title: '身材照片',

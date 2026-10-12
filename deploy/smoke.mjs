@@ -56,6 +56,34 @@ try {
     durationMinutes: 10,
   });
   await request(`/workouts/${workout.id}`);
+  const presets = await request('/training/templates');
+  assert.equal(presets.filter((value) => value.preset).length, 3);
+  const template = await request('/training/templates', 'POST', {
+    name: '部署验收模板',
+    durationMinutes: 20,
+    exercises: presets[0].exercises,
+  });
+  const edited = await request(`/training/templates/${template.id}`, 'PATCH', {
+    name: '部署验收模板编辑',
+    durationMinutes: 25,
+    exercises: template.exercises,
+  });
+  assert.equal(edited.name, '部署验收模板编辑');
+  const days = Array.from({ length: 7 }, (_, weekday) => ({
+    weekday,
+    templateId: weekday === 1 ? template.id : null,
+  }));
+  await request('/training/plan', 'PUT', { days });
+  assert.deepEqual(await request('/training/plan'), days);
+  const exercise = structuredClone(template.exercises[0]);
+  exercise.sets = [{ reps: 12, weightKg: 0, completed: true }];
+  const strength = await request('/workouts', 'POST', {
+    type: 'STRENGTH',
+    name: '部署验收逐组训练',
+    durationMinutes: 10,
+    exercises: [exercise],
+  });
+  assert.deepEqual((await request(`/workouts/${strength.id}`)).exercises, [exercise]);
   assert.equal((await request('/dashboard?tzOffset=480')).latestBodyRecord.id, body.id);
 
   const image = Buffer.from(
@@ -80,7 +108,7 @@ try {
     (await fetch(`${base}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })).status,
     401,
   );
-  console.log('PASS: 数据库、登录、四类记录、首页聚合、图片上传、续期及退出撤销。');
+  console.log('PASS: 数据库、登录、四类记录、训练模板与计划、逐组训练、首页、图片、续期及退出。');
 } finally {
   if (uploaded) {
     const directory = process.env.STORAGE_LOCAL_DIR;

@@ -12,13 +12,14 @@ import UiDateTimePicker from '@/components/ui/UiDateTimePicker.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { MealRecord, MealType } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { Loading, ToastPlugin } from 'tdesign-mobile-vue';
+import { ActionSheet, Loading, ToastPlugin } from 'tdesign-mobile-vue';
 import { AddIcon, CheckIcon, DeleteIcon } from 'tdesign-icons-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { recognizeFood } from '@/api/ai';
 import { createMeal, getMeal, getMeals, updateMeal, type MealInput } from '@/api/meals';
 import { uploadImage } from '@/api/uploads';
+import FoodLibraryPicker from '@/components/meals/FoodLibraryPicker.vue';
 
 interface EditableFood {
   key: number;
@@ -58,10 +59,15 @@ const recognitionProvider = ref('');
 const estimatingFoods = ref(new Set<number>());
 const suggestions = ref<FoodSuggestion[]>([]);
 const fileInput = ref<HTMLInputElement | null>(null);
+const cameraInput = ref<HTMLInputElement | null>(null);
+const photoSourceVisible = ref(false);
 const recentMeals = ref<MealRecord[]>([]);
 const templateSource = ref('');
-const entryMode = ref<'manual' | 'photo' | 'recent'>('manual');
+type EntryMode = 'library' | 'manual' | 'photo' | 'recent';
+const entryMode = ref<EntryMode>(route.query.mode === 'photo' ? 'photo' : 'library');
+const libraryVisible = ref(false);
 const entryModes = [
+  { value: 'library', label: '食品库' },
   { value: 'manual', label: '手动填写' },
   { value: 'photo', label: '拍照识别' },
   { value: 'recent', label: '最近吃过' },
@@ -82,6 +88,13 @@ const formData = reactive({
     { key: foodKey, name: '', amount: '', calories: '', aiGenerated: false },
   ] as EditableFood[],
 });
+
+if (mealTypes.some((meal) => meal.value === route.query.type))
+  formData.type = route.query.type as MealType;
+function addLibraryFood(food: { name: string; amount: string; calories: number }) {
+  addRecentFood(food);
+  entryMode.value = 'library';
+}
 const recordedAtDisplay = computed(() => dayjs(formData.recordedAt).format('YYYY-MM-DD HH:mm'));
 const recentFoods = computed(() => {
   const result: Array<{ name: string; amount: string; calories: number | null }> = [];
@@ -147,8 +160,14 @@ function confirmRecordedAt(value: string | number): void {
 }
 
 function pickPhoto(): void {
-  if (uploadingPhoto.value) return;
-  fileInput.value?.click();
+  if (uploadingPhoto.value || recognizing.value) return;
+  photoSourceVisible.value = true;
+}
+
+function selectPhotoSource(_selected: unknown, index: number): void {
+  photoSourceVisible.value = false;
+  if (index === 0) cameraInput.value?.click();
+  else fileInput.value?.click();
 }
 
 async function onPhotoChange(event: Event): Promise<void> {
@@ -325,7 +344,9 @@ async function submit(): Promise<void> {
       await router.replace(
         route.query.returnTo === '/dashboard'
           ? { path: '/dashboard', query: { date: dayjs(formData.recordedAt).format('YYYY-MM-DD') } }
-          : `/meals/${created.id}`,
+          : route.query.returnTo === '/meals'
+            ? { path: '/meals', query: { date: dayjs(formData.recordedAt).format('YYYY-MM-DD') } }
+            : `/meals/${created.id}`,
       );
     }
   } catch (error) {
@@ -411,7 +432,18 @@ onMounted(async () => {
           :options="entryModes"
           label="添加食物方式"
           :disabled="uploadingPhoto || recognizing || estimatingFoods.size > 0"
-          @update:model-value="entryMode = $event as 'manual' | 'photo' | 'recent'"
+          @update:model-value="entryMode = $event as EntryMode"
+        />
+        <div v-if="entryMode === 'library'" class="field-block">
+          <UiButton kind="secondary" block @click="libraryVisible = true"
+            >从食品库添加食物</UiButton
+          >
+          <p class="suggestion-tip">按实际份量换算热量，找不到的食物可手动填写。</p>
+        </div>
+        <FoodLibraryPicker
+          v-model:visible="libraryVisible"
+          :meal-label="mealTypes.find((meal) => meal.value === formData.type)?.label ?? '本餐'"
+          @select="addLibraryFood"
         />
         <p v-if="templateSource" class="template-hint">
           已带入 {{ templateSource }}，确认下方内容后保存
@@ -560,8 +592,21 @@ onMounted(async () => {
           class="file-input"
           type="file"
           accept="image/jpeg,image/png,image/webp"
+          @change="onPhotoChange"
+        />
+        <input
+          ref="cameraInput"
+          class="file-input"
+          type="file"
+          accept="image/*"
           capture="environment"
           @change="onPhotoChange"
+        />
+        <ActionSheet
+          v-model:visible="photoSourceVisible"
+          :items="['拍照', '从相册选择']"
+          cancel-text="取消"
+          @selected="selectPhotoSource"
         />
 
         <div class="foods-heading">

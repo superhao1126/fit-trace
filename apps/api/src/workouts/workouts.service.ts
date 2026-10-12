@@ -1,7 +1,9 @@
 import { recordRange } from '../common/dto/record-range-query.dto';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { WorkoutRecord as WorkoutRecordResponse } from '@fit-trace/shared';
-import type { Prisma, WorkoutRecord } from '@prisma/client';
+import { Prisma, type WorkoutRecord } from '@prisma/client';
+import type { TrainingExercise } from '@fit-trace/shared';
+import { normalizeExercises } from '../training/training.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateWorkoutDto } from './dto/create-workout.dto';
 import { ListWorkoutsDto } from './dto/list-workouts.dto';
@@ -23,6 +25,9 @@ export class WorkoutsService {
         durationMinutes: dto.durationMinutes,
         calories: dto.calories ?? null,
         note: dto.note?.trim() || null,
+        ...(dto.exercises
+          ? { exercises: normalizeExercises(dto.exercises) as unknown as Prisma.InputJsonValue }
+          : {}),
       },
     });
     this.logger.log(
@@ -73,6 +78,9 @@ export class WorkoutsService {
         ...(dto.durationMinutes !== undefined ? { durationMinutes: dto.durationMinutes } : {}),
         ...(dto.calories !== undefined ? { calories: dto.calories } : {}),
         ...(dto.note !== undefined ? { note: dto.note.trim() || null } : {}),
+        ...(dto.exercises !== undefined
+          ? { exercises: normalizeExercises(dto.exercises) as unknown as Prisma.InputJsonValue }
+          : {}),
       },
     });
     this.logger.log(`更新训练记录 user=${this.short(userId)} id=${this.short(id)}`);
@@ -106,6 +114,9 @@ export class WorkoutsService {
       durationMinutes: workout.durationMinutes,
       calories: workout.calories,
       note: workout.note,
+      exercises: workout.exercises
+        ? (workout.exercises as unknown as TrainingExercise[])
+        : undefined,
       createdAt: workout.createdAt.toISOString(),
       updatedAt: workout.updatedAt.toISOString(),
     };

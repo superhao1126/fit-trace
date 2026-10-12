@@ -99,6 +99,18 @@ onMounted(async () => {
             { label: '备注', value: workout.note || '无' },
           ]"
         />
+        <section v-if="workout.exercises?.length" class="recorded-exercises">
+          <article
+            v-for="(exercise, index) in workout.exercises"
+            :key="`${exercise.exerciseId}-${index}`"
+          >
+            <h2>{{ exercise.name }}</h2>
+            <p v-for="(set, setIndex) in exercise.sets" :key="setIndex">
+              第 {{ setIndex + 1 }} 组 · {{ set.reps }}
+              {{ exercise.unit === 'seconds' ? '秒' : '次' }} · {{ set.weightKg }} kg
+            </p>
+          </article>
+        </section>
         <div class="ui-detail-actions">
           <UiButton kind="danger" @click="confirmDelete">删除这条记录</UiButton>
         </div></template
@@ -106,3 +118,23 @@ onMounted(async () => {
     >
   </main>
 </template>
+<style scoped lang="scss">
+.recorded-exercises {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  article {
+    padding: 16px;
+    background: var(--color-surface);
+    border-radius: var(--ui-radius-card);
+  }
+  h2 {
+    font-size: 16px;
+    margin: 0 0 12px;
+  }
+  p {
+    font-size: 13px;
+    color: var(--ui-text-secondary);
+  }
+}
+</style>

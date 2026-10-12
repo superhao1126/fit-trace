@@ -207,11 +207,11 @@ onActivated(() => {
           <span class="quick-actions__icon quick-actions__icon--body"><UiIcon name="body" /></span
           ><span>记体重</span>
         </button>
-        <button type="button" @click="addRecord('/meals/create')">
+        <button type="button" @click="addRecord('/meals')">
           <span class="quick-actions__icon quick-actions__icon--meal"><UiIcon name="meal" /></span
           ><span>记饮食</span>
         </button>
-        <button type="button" @click="addRecord('/workouts/create')">
+        <button type="button" @click="addRecord('/training')">
           <span class="quick-actions__icon quick-actions__icon--workout"
             ><UiIcon name="workout" /></span
           ><span>记训练</span>

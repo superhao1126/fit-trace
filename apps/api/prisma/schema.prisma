@@ -28,6 +28,8 @@ model User {
   workoutRecords WorkoutRecord[]
   progressPhotos ProgressPhoto[]
   authSessions   AuthSession[]
+  trainingTemplates TrainingTemplate[]
+  trainingPlan TrainingPlan?
 
   @@map("users")
 }
@@ -177,6 +179,7 @@ model WorkoutRecord {
   durationMinutes Int
   calories        Int?
   note            String?
+  exercises       Json?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
@@ -184,6 +187,29 @@ model WorkoutRecord {
 
   @@index([userId, startedAt])
   @@map("workout_records")
+}
+
+model TrainingTemplate {
+  id String @id @default(uuid())
+  userId String
+  name String
+  durationMinutes Int
+  exercises Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@map("training_templates")
+}
+
+model TrainingPlan {
+  id String @id @default(uuid())
+  userId String @unique
+  days Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@map("training_plans")
 }
 
 enum PhotoType {

@@ -1,5 +1,10 @@
 import { Type } from 'class-transformer';
 import {
+  IsArray,
+  ArrayMinSize,
+  ArrayMaxSize,
+  ValidateNested,
+  ValidateIf,
   IsDateString,
   IsIn,
   IsInt,
@@ -11,6 +16,7 @@ import {
   Min,
 } from 'class-validator';
 import type { WorkoutType } from '@fit-trace/shared';
+import { TrainingExerciseDto } from '../../training/training.dto';
 
 export const WORKOUT_TYPES: WorkoutType[] = [
   'STRENGTH',
@@ -22,6 +28,13 @@ export const WORKOUT_TYPES: WorkoutType[] = [
 ];
 
 export class CreateWorkoutDto {
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(20)
+  @ValidateNested({ each: true })
+  @Type(() => TrainingExerciseDto)
+  exercises?: TrainingExerciseDto[];
   @IsIn(WORKOUT_TYPES, { message: '请选择正确的训练类型' })
   type!: WorkoutType;
 

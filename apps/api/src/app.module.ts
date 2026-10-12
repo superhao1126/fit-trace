@@ -14,6 +14,7 @@ import { StorageModule } from './providers/storage/storage.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { UsersModule } from './users/users.module';
 import { WorkoutsModule } from './workouts/workouts.module';
+import { TrainingModule } from './training/training.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { WorkoutsModule } from './workouts/workouts.module';
     BodyRecordsModule,
     MealsModule,
     WorkoutsModule,
+    TrainingModule,
     UploadsModule,
     ProgressPhotosModule,
     InsightsModule,
