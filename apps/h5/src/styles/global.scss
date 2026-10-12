@@ -26,6 +26,19 @@ body {
   margin: 0;
 }
 
+/* Edge-to-edge WebView 中，顶部 padding 会随文档滚走；系统栏区域始终遮住滚动内容。 */
+html.native-app::before {
+  position: fixed;
+  z-index: 20000;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: var(--app-safe-area-top);
+  background: var(--ui-background);
+  pointer-events: none;
+  content: '';
+}
+
 button,
 input,
 textarea,
