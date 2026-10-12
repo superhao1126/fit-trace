@@ -68,10 +68,10 @@ onMounted(load);
       </section>
       <UiButton block :loading="saving" @click="save">保存计划</UiButton></template
     ><ActionSheet
-      :visible="selectedDay !== null"
+      :model-value="selectedDay !== null"
       :items="['休息', ...templates.map((t) => t.name)]"
       cancel-text="取消"
-      @update:visible="!$event && (selectedDay = null)"
+      @update:model-value="!$event && (selectedDay = null)"
       @selected="choose"
     />
   </main>

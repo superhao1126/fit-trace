@@ -112,7 +112,7 @@ onMounted(load);
           aria-label="模板预计时长" /></label
       ><UiButton block :loading="saving" @click="save">保存模板</UiButton></template
     ><ActionSheet
-      v-model:visible="picker"
+      v-model="picker"
       :items="exerciseLibrary.map((e) => `${e.name} · ${e.equipment}`)"
       cancel-text="取消"
       @selected="add"

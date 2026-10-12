@@ -239,7 +239,7 @@ onMounted(load);
           aria-label="实际训练时长" /></label
       ><UiButton block :loading="saving" @click="finish">完成并保存训练</UiButton></template
     ><ActionSheet
-      v-model:visible="picker"
+      v-model="picker"
       :items="exerciseLibrary.map((e) => `${e.name} · ${e.equipment}`)"
       cancel-text="取消"
       @selected="add"

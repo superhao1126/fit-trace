@@ -603,7 +603,7 @@ onMounted(async () => {
           @change="onPhotoChange"
         />
         <ActionSheet
-          v-model:visible="photoSourceVisible"
+          v-model="photoSourceVisible"
           :items="['拍照', '从相册选择']"
           cancel-text="取消"
           @selected="selectPhotoSource"
