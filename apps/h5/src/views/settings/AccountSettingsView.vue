@@ -6,7 +6,7 @@ import UiButton from '@/components/ui/UiButton.vue';
 import type { UserGender } from '@fit-trace/shared';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { ToastPlugin } from 'tdesign-mobile-vue';
+import { uiToast as ToastPlugin } from '@/components/ui/toast';
 import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
 import UserAvatar from '@/components/UserAvatar.vue';
 import { uploadImage } from '@/api/uploads';

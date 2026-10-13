@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ToastPlugin } from 'tdesign-mobile-vue';
 import { computed, ref, watch } from 'vue';
+import { uiToast as ToastPlugin } from '@/components/ui/toast';
 import UiBottomSheet from '@/components/ui/UiBottomSheet.vue';
 import UiNumberInput from '@/components/ui/UiNumberInput.vue';
 import UiInput from '@/components/ui/UiInput.vue';

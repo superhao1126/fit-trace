@@ -12,7 +12,7 @@ import UiRecordRow from '@/components/ui/UiRecordRow.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { WorkoutRecord, WorkoutType } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { ToastPlugin } from 'tdesign-mobile-vue';
+import { uiToast as ToastPlugin } from '@/components/ui/toast';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {

@@ -3,6 +3,7 @@ import { nextTick, ref } from 'vue';
 import router from './router';
 import { useAuthStore } from '@/stores/auth';
 import { finishBrandLaunch } from '@/utils/brand-splash';
+import UiToastHost from '@/components/ui/UiToastHost.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 
 const auth = useAuthStore();
@@ -29,6 +30,7 @@ void start();
 </script>
 
 <template>
+  <UiToastHost />
   <RouterView v-if="ready" />
   <main v-else-if="startupError" class="startup-error" role="alert">
     <p>启动失败，请重新打开循形</p>

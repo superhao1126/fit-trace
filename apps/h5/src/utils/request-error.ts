@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { ToastPlugin } from 'tdesign-mobile-vue';
+import { uiToast as ToastPlugin } from '../components/ui/toast';
 
 const notifiedErrors = new WeakSet<object>();
 let lastMessage = '';
@@ -31,5 +31,5 @@ export function showRequestError(error: unknown, fallback = '请求失败，请�
   if (message === lastMessage && now - lastNotifiedAt < 2000) return;
   lastMessage = message;
   lastNotifiedAt = now;
-  ToastPlugin.error({ message, duration: 3000 });
+  ToastPlugin.error(message);
 }

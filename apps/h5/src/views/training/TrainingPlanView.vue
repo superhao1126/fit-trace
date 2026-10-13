@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { ActionSheet, ToastPlugin } from 'tdesign-mobile-vue';
+import { ActionSheet } from 'tdesign-mobile-vue';
+import { uiToast as ToastPlugin } from '@/components/ui/toast';
 import type { TrainingPlanDay, TrainingTemplate } from '@fit-trace/shared';
 import { getTrainingPlan, getTrainingTemplates, saveTrainingPlan } from '@/api/training';
 import { showRequestError } from '@/utils/request-error';

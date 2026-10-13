@@ -2,7 +2,8 @@
 import { confirmDialog } from '@/components/ui/confirm';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ActionSheet, ToastPlugin } from 'tdesign-mobile-vue';
+import { ActionSheet } from 'tdesign-mobile-vue';
+import { uiToast as ToastPlugin } from '@/components/ui/toast';
 import {
   exerciseLibrary,
   makeTrainingExercise,

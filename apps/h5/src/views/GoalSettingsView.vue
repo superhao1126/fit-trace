@@ -10,7 +10,7 @@ import UiIcon from '@/components/ui/UiIcon.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { FitnessGoalType } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { ToastPlugin } from 'tdesign-mobile-vue';
+import { uiToast as ToastPlugin } from '@/components/ui/toast';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { getLatestBodyRecord } from '@/api/body-records';

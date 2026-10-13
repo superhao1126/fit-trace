@@ -4,7 +4,7 @@ import UiLoading from '@/components/ui/UiLoading.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { MealRecord, MealType } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { ToastPlugin } from 'tdesign-mobile-vue';
+import { uiToast as ToastPlugin } from '@/components/ui/toast';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { deleteMeal, getMeal } from '@/api/meals';

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ActionSheet, ToastPlugin } from 'tdesign-mobile-vue';
+import { ActionSheet } from 'tdesign-mobile-vue';
+import { uiToast as ToastPlugin } from '@/components/ui/toast';
 import {
   exerciseLibrary,
   makeTrainingExercise,

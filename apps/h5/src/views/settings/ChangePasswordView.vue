@@ -5,7 +5,7 @@ import axios from 'axios';
 import type { ApiErrorResponse } from '@fit-trace/shared';
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { ToastPlugin } from 'tdesign-mobile-vue';
+import { uiToast as ToastPlugin } from '@/components/ui/toast';
 import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
 import { changePassword, sendPasswordCode, setPassword, verifyPasswordCode } from '@/api/auth';
 import { authSession } from '@/api/session';

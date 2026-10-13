@@ -6,7 +6,7 @@ import UiButton from '@/components/ui/UiButton.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { PhotoType, ProgressPhoto } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { ToastPlugin } from 'tdesign-mobile-vue';
+import { uiToast as ToastPlugin } from '@/components/ui/toast';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { deleteProgressPhoto, getProgressPhoto } from '@/api/progress-photos';

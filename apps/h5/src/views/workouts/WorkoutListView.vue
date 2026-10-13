@@ -9,7 +9,7 @@ import UiEmptyState from '@/components/ui/UiEmptyState.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { WorkoutRecord, WorkoutType } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { ToastPlugin } from 'tdesign-mobile-vue';
+import { uiToast as ToastPlugin } from '@/components/ui/toast';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { deleteWorkout, getWorkouts } from '@/api/workouts';

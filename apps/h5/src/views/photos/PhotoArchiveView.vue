@@ -8,7 +8,7 @@ import UiTextarea from '@/components/ui/UiTextarea.vue';
 import UiEmptyState from '@/components/ui/UiEmptyState.vue';
 import type { PhotoType, ProgressPhoto } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { ToastPlugin } from 'tdesign-mobile-vue';
+import { uiToast as ToastPlugin } from '@/components/ui/toast';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { createProgressPhoto, getProgressPhotos } from '@/api/progress-photos';
