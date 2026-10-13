@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { Popup } from 'tdesign-mobile-vue';
+import UiBottomSheet from '@/components/ui/UiBottomSheet.vue';
 import { exerciseLibrary, type Exercise } from '@fit-trace/shared';
 import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
 import UiButton from '@/components/ui/UiButton.vue';
@@ -46,16 +46,12 @@ const exercises = computed(() =>
       />
       <p v-if="!exercises.length">没有匹配的动作，试试其他条件</p>
     </div>
-    <Popup
+    <UiBottomSheet
       :visible="Boolean(selected)"
-      placement="bottom"
+      :title="selected?.name || '动作详情'"
       @update:visible="!$event && (selected = null)"
     >
       <section v-if="selected" class="exercise-detail">
-        <header>
-          <h2>{{ selected.name }}</h2>
-          <UiButton kind="text" @click="selected = null">关闭</UiButton>
-        </header>
         <p>{{ selected.bodyPart }} · {{ selected.equipment }} · {{ selected.difficulty }}</p>
         <h3>动作步骤</h3>
         <ol>
@@ -74,7 +70,7 @@ const exercises = computed(() =>
           >加入我的模板</UiButton
         >
       </section>
-    </Popup>
+    </UiBottomSheet>
   </main>
 </template>
 <style scoped lang="scss">
@@ -92,11 +88,7 @@ const exercises = computed(() =>
   gap: 12px;
 }
 .exercise-detail {
-  padding: 24px 24px calc(24px + var(--app-safe-area-bottom));
-  max-height: 85dvh;
-  overflow-y: auto;
-  border-radius: 20px 20px 0 0;
-  background: var(--ui-background);
+  padding: 0;
   header {
     display: flex;
     align-items: center;

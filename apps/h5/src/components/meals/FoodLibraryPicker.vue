@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { ToastPlugin } from 'tdesign-mobile-vue';
 import { computed, ref, watch } from 'vue';
-import { Popup, ToastPlugin } from 'tdesign-mobile-vue';
-import UiInput from '@/components/ui/UiInput.vue';
+import UiBottomSheet from '@/components/ui/UiBottomSheet.vue';
 import UiNumberInput from '@/components/ui/UiNumberInput.vue';
+import UiInput from '@/components/ui/UiInput.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import UiTabs from '@/components/ui/UiTabs.vue';
 import UiIcon from '@/components/ui/UiIcon.vue';
@@ -78,17 +79,16 @@ function confirm() {
 }
 </script>
 <template>
-  <Popup :visible="visible" placement="bottom" @update:visible="emit('update:visible', $event)">
+  <UiBottomSheet
+    :visible="visible"
+    :title="selected ? '选择份量' : '食品库'"
+    :subtitle="mealLabel"
+    @update:visible="emit('update:visible', $event)"
+  >
+    <template v-if="selected" #leading
+      ><UiButton kind="text" @click="selected = null">返回</UiButton></template
+    >
     <section class="food-library ui-page" aria-label="食品库">
-      <header>
-        <UiButton
-          kind="text"
-          @click="selected ? (selected = null) : emit('update:visible', false)"
-          >{{ selected ? '返回' : '取消' }}</UiButton
-        >
-        <h2>{{ selected ? '选择份量' : '食品库' }}</h2>
-        <span>{{ mealLabel }}</span>
-      </header>
       <template v-if="selected">
         <div class="library-card">
           <div class="selected-food">
@@ -190,30 +190,12 @@ function confirm() {
         </p>
       </template>
     </section>
-  </Popup>
+  </UiBottomSheet>
 </template>
 <style scoped lang="scss">
 .food-library {
-  max-height: 85dvh;
-  overflow-y: auto;
-  padding: 20px 24px calc(24px + var(--app-safe-area-bottom));
-  border-radius: 20px 20px 0 0;
-  background: var(--ui-background);
-}
-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-  h2 {
-    flex: 1;
-    margin: 0;
-    font-size: 20px;
-  }
-  span {
-    font-size: 13px;
-    color: var(--ui-text-secondary);
-  }
+  padding: 0;
+  background: transparent;
 }
 .library-browser {
   display: grid;
