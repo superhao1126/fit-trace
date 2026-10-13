@@ -83,7 +83,7 @@ function move(amount: number) {
 function choose(value: string) {
   if (!unavailable(value)) {
     draft.value = value;
-    if (props.selection === 'date') viewed.value = dayjs(value).startOf('month');
+    viewed.value = dayjs(value.length === 7 ? `${value}-01` : value).startOf('month');
   }
 }
 function confirm() {
