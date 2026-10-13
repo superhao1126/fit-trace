@@ -17,6 +17,9 @@ install -d -m 700 "$backup_dir"
 runuser -u postgres -- pg_dump -Fc fit_trace > "$backup_dir/fit_trace.dump"
 cp -a /usr/local/nginx/conf/nginx.conf "$backup_dir/nginx.conf"
 install -m 600 /etc/fittrace/api.env "$backup_dir/api.env"
+if test -f /var/lib/fittrace/downloads/fittrace.apk; then
+  cp -a /var/lib/fittrace/downloads/fittrace.apk "$backup_dir/fittrace.apk"
+fi
 if test -f /usr/local/nginx/conf/fittrace.conf; then
   cp -a /usr/local/nginx/conf/fittrace.conf "$backup_dir/fittrace.conf"
 fi
@@ -74,4 +77,5 @@ if test -f /tmp/app-release.apk; then
 fi
 runuser -u fittrace -- /opt/fittrace/runtime/bin/node "$release_dir/deploy/smoke.mjs"
 systemctl show fittrace-api -p ActiveState -p MemoryCurrent -p MemoryPeak -p MemoryMax -p NRestarts
+bash "$release_dir/deploy/prune-server-releases.sh" "$backup_dir"
 printf '\n数据库与配置备份：%s\n' "$backup_dir"

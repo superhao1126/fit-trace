@@ -61,6 +61,7 @@ API 的 `.env` 链接至 `/etc/fittrace/api.env`；其他目录不复制环境�
 4. 切换 `current` 链接，重启 `fittrace-api`，确认本机 `/api/v1/health` 成功。
 5. 安装独立站点配置，`nginx -t` 成功后再 reload。
 6. 运行 `deploy/smoke.mjs`，检查公网 H5、API、图片和 APK 下载。
+7. 验收通过后运行 `deploy/prune-server-releases.sh <本次发布前备份目录>`：只保留当前版本、前一个版本及本次发布前的完整备份，清理更早发布和备份；备份必须包含数据库、APK 与 API 配置。`activate-server.sh` 已在成功验收后执行这一清理。
 
 只进行接口验收，不会发送真实验证码邮件或调用付费 AI：
 
@@ -85,3 +86,5 @@ curl -fsS https://fittrace.idoit.icu/api/v1/health
 回滚时将 `current` 指向上一个发布目录并重启 API；数据库迁移与代码回滚分开处理。
 代码更新不清理数据库、上传目录、签名证书或其他项目的容器与文件。
 数据库备份须另外保存在服务器之外，并定期确认可恢复。
+
+保留版本的 API 运行包必须是完整目录或链接到 `/opt/fittrace/runtime/` 内的稳定运行包；不得引用即将删除的旧发布目录。清理脚本会检查保留版本中的失效链接及跨旧发布目录依赖，并在发现问题时拒绝删除。当前 API 运行包位于 `/opt/fittrace/runtime/api-bcbe53e/api`，发布目录内的部署脚本已独立保存。
