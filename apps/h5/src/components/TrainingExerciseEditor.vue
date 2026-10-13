@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TrainingExercise, TrainingSet } from '@fit-trace/shared';
-import UiInput from '@/components/ui/UiInput.vue';
+import UiNumberInput from '@/components/ui/UiNumberInput.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 const props = defineProps<{ modelValue: TrainingExercise[]; session?: boolean }>();
 const emit = defineEmits<{
@@ -71,7 +71,7 @@ function removeExercise(index: number) {
       </div>
       <div v-for="(set, setIndex) in exercise.sets" :key="setIndex" class="set-row">
         <span>{{ setIndex + 1 }}</span
-        ><UiInput
+        ><UiNumberInput
           :model-value="set.reps || ''"
           type="number"
           inputmode="numeric"
@@ -80,7 +80,7 @@ function removeExercise(index: number) {
           :step="1"
           :aria-label="`${exercise.name}第${setIndex + 1}组${exercise.unit === 'seconds' ? '秒数' : '次数'}`"
           @update:model-value="setValue(index, setIndex, 'reps', $event)"
-        /><UiInput
+        /><UiNumberInput
           :model-value="set.weightKg"
           type="number"
           inputmode="decimal"
@@ -109,7 +109,7 @@ function removeExercise(index: number) {
         <UiButton kind="text" :disabled="exercise.sets.length >= 20" @click="addSet(index)"
           >＋ 加一组</UiButton
         ><label
-          >休息（秒）<UiInput
+          >休息（秒）<UiNumberInput
             :model-value="exercise.restSeconds"
             type="number"
             inputmode="numeric"

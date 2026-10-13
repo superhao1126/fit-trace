@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { Popup, ToastPlugin } from 'tdesign-mobile-vue';
 import UiInput from '@/components/ui/UiInput.vue';
+import UiNumberInput from '@/components/ui/UiNumberInput.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import UiTabs from '@/components/ui/UiTabs.vue';
 import UiIcon from '@/components/ui/UiIcon.vue';
@@ -101,8 +102,9 @@ function confirm() {
           ><a :href="selected.sourceUrl" target="_blank" rel="noopener noreferrer">查看数据来源</a>
         </div>
         <label class="library-field"
-          >份量（克）<UiInput
+          >份量（克）<UiNumberInput
             v-model="grams"
+            unit="g"
             type="number"
             inputmode="decimal"
             :min="0.1"
