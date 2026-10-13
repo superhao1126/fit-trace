@@ -247,8 +247,10 @@ function trapFocus(event: KeyboardEvent) {
           :aria-label="selection === 'date' ? '选择年月' : '选择年份'"
           @click="openJump"
           ><span class="year-trigger"
-            >{{ viewed.format(selection === 'date' ? 'YYYY年M月' : 'YYYY年')
-            }}<UiIcon name="right" class="year-trigger__chevron" /></span></UiButton
+            ><span :key="viewed.year()" class="calendar-period-label">{{
+              viewed.format(selection === 'date' ? 'YYYY年M月' : 'YYYY年')
+            }}</span
+            ><UiIcon name="right" class="year-trigger__chevron" /></span></UiButton
         ><UiButton
           kind="icon"
           :aria-label="selection === 'date' ? '下个月' : '下一年'"
@@ -313,7 +315,7 @@ function trapFocus(event: KeyboardEvent) {
           </button>
         </div></template
       >
-      <div v-else-if="!jumpVisible" class="month-grid">
+      <div v-else-if="!jumpVisible" :key="viewed.year()" class="month-grid">
         <button
           v-for="month in 12"
           :key="month"
@@ -421,6 +423,29 @@ header,
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
+}
+.calendar-period-label {
+  display: inline-block;
+}
+.calendar-period-label,
+.month-grid {
+  animation: calendar-browse 220ms var(--ease-standard);
+}
+@keyframes calendar-browse {
+  from {
+    opacity: 0.45;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .calendar-period-label,
+  .month-grid {
+    animation: none;
+  }
 }
 .year-trigger {
   display: flex;
