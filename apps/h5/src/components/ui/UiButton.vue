@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { h } from 'vue';
+import UiBrandMark from './UiBrandMark.vue';
 import { Button } from 'tdesign-mobile-vue';
 withDefaults(
   defineProps<{
@@ -19,6 +21,8 @@ withDefaults(
     :theme="kind === 'primary' ? 'primary' : 'default'"
     :type="type"
     :loading="loading"
+    :aria-busy="loading"
+    :loading-props="{ indicator: () => h(UiBrandMark, { size: 20 }), inheritColor: true }"
     :disabled="disabled"
     :block="block"
     ><slot

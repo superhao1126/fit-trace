@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { h } from 'vue';
+import UiBrandMark from '@/components/ui/UiBrandMark.vue';
 import type { ApiErrorResponse, LoginCaptcha } from '@fit-trace/shared';
 import axios from 'axios';
 import { Button, ToastPlugin } from 'tdesign-mobile-vue';
@@ -362,6 +364,10 @@ async function submit(): Promise<void> {
                 aria-describedby="email-code-hint"
               />
               <Button
+                :loading-props="{
+                  indicator: () => h(UiBrandMark, { size: 20 }),
+                  inheritColor: true,
+                }"
                 variant="text"
                 size="small"
                 :loading="sendingCode"
@@ -498,6 +504,7 @@ async function submit(): Promise<void> {
             }}</small>
           </div>
           <Button
+            :loading-props="{ indicator: () => h(UiBrandMark, { size: 20 }), inheritColor: true }"
             class="submit-button"
             type="submit"
             theme="primary"
