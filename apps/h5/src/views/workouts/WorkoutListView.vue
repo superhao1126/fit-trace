@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { confirmDialog } from '@/components/ui/confirm';
 import UiLoading from '@/components/ui/UiLoading.vue';
 import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
 import UiButton from '@/components/ui/UiButton.vue';
@@ -8,7 +9,7 @@ import UiEmptyState from '@/components/ui/UiEmptyState.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { WorkoutRecord, WorkoutType } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { DialogPlugin, ToastPlugin } from 'tdesign-mobile-vue';
+import { ToastPlugin } from 'tdesign-mobile-vue';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { deleteWorkout, getWorkouts } from '@/api/workouts';
@@ -91,7 +92,7 @@ function dateLabel(value: string): string {
 
 function confirmDelete(workout: WorkoutRecord): void {
   let deleting = false;
-  const dialog = DialogPlugin.confirm({
+  const dialog = confirmDialog({
     title: '删除这条训练记录？',
     content: `${dayjs(workout.startedAt).format('YYYY年M月D日')} · ${workout.name}，删除后无法恢复`,
     confirmBtn: { content: '删除', theme: 'danger' },

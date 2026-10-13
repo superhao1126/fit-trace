@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { confirmDialog } from '@/components/ui/confirm';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ActionSheet, DialogPlugin, ToastPlugin } from 'tdesign-mobile-vue';
+import { ActionSheet, ToastPlugin } from 'tdesign-mobile-vue';
 import {
   exerciseLibrary,
   makeTrainingExercise,
@@ -158,7 +159,7 @@ function finish() {
     ToastPlugin.warning('请先标记至少一组完成');
     return;
   }
-  const dialog = DialogPlugin.confirm({
+  const dialog = confirmDialog({
     title: '完成本次训练？',
     content: `已完成 ${completed.value} / ${total.value} 组，只保存标记完成的组。`,
     confirmBtn: '完成并保存',

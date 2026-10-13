@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import { confirmDialog } from '@/components/ui/confirm';
 import UiLoading from '@/components/ui/UiLoading.vue';
 import UiInfoCard from '@/components/ui/UiInfoCard.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { PhotoType, ProgressPhoto } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { DialogPlugin, ToastPlugin } from 'tdesign-mobile-vue';
+import { ToastPlugin } from 'tdesign-mobile-vue';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { deleteProgressPhoto, getProgressPhoto } from '@/api/progress-photos';
@@ -31,7 +32,7 @@ function confirmDelete(): void {
   const target = photo.value;
   if (!target) return;
   let deleting = false;
-  const dialog = DialogPlugin.confirm({
+  const dialog = confirmDialog({
     title: '删除这张照片？',
     content: `${recordedAtText.value} · ${photoLabels[target.type]}，删除后无法恢复`,
     confirmBtn: { content: '删除', theme: 'danger' },

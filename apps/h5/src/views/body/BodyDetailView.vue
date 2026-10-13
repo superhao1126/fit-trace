@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { confirmDialog } from '@/components/ui/confirm';
 import UiLoading from '@/components/ui/UiLoading.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { BodyRecord } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { DialogPlugin, ToastPlugin } from 'tdesign-mobile-vue';
+import { ToastPlugin } from 'tdesign-mobile-vue';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { deleteBodyRecord, getBodyRecord } from '@/api/body-records';
@@ -31,7 +32,7 @@ function confirmDelete(): void {
   const target = record.value;
   if (!target) return;
   let deleting = false;
-  const dialog = DialogPlugin.confirm({
+  const dialog = confirmDialog({
     title: '删除这条记录？',
     content: `${dayjs(target.recordedAt).format('YYYY年M月D日')} · ${target.weight} kg，删除后无法恢复`,
     confirmBtn: { content: '删除', theme: 'danger' },
