@@ -1,13 +1,16 @@
 import { Capacitor, SystemBars, SystemBarsStyle } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { watch } from 'vue';
+import { brandSplashVisible } from './brand-splash';
 import { resolvedTheme } from './theme';
 import router from '@/router';
 import { authSession } from '@/api/session';
 
 export function setupNativeShell(): void {
   if (!Capacitor.isNativePlatform()) return;
-  document.documentElement.classList.add('native-app');
+  document.documentElement.classList.add('native-app', 'brand-launching');
+  brandSplashVisible.value = true;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#26735b');
   document.addEventListener('contextmenu', (event) => {
     if (
       !(event.target instanceof Element) ||
@@ -32,10 +35,10 @@ export function setupNativeShell(): void {
   }).catch((error: unknown) => console.warn('系统返回键初始化失败', error));
 
   watch(
-    resolvedTheme,
-    (theme) => {
+    [resolvedTheme, brandSplashVisible],
+    ([theme, launching]) => {
       void SystemBars.setStyle({
-        style: theme === 'dark' ? SystemBarsStyle.Dark : SystemBarsStyle.Light,
+        style: launching || theme === 'dark' ? SystemBarsStyle.Dark : SystemBarsStyle.Light,
       }).catch((error: unknown) => console.warn('系统栏主题设置失败', error));
     },
     { immediate: true },
