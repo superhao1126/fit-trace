@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import dayjs from 'dayjs';
-import { Popup } from 'tdesign-mobile-vue';
+import { Picker, Popup } from 'tdesign-mobile-vue';
 import { nextTick, ref, watch } from 'vue';
 import UiDateSheet from './UiDateSheet.vue';
 import UiButton from './UiButton.vue';
@@ -13,7 +13,28 @@ const dateVisible = ref(false),
   timeVisible = ref(false),
   date = ref(''),
   time = ref('');
-const timeInput = ref<HTMLInputElement | null>(null);
+const timeValues = ref<string[]>([]);
+const timeColumns = [24, 60].map((length) =>
+  Array.from({ length }, (_, index) => {
+    const value = String(index).padStart(2, '0');
+    return { label: value, value };
+  }),
+);
+function pickTime(values: (string | number)[]) {
+  time.value = values.join(':');
+}
+function scrollTime(event: WheelEvent) {
+  if (!event.deltaY || !(event.currentTarget instanceof HTMLElement)) return;
+  const bounds = event.currentTarget.getBoundingClientRect();
+  const column = event.clientX < bounds.left + bounds.width / 2 ? 0 : 1;
+  const values = time.value.split(':');
+  const maximum = column === 0 ? 23 : 59;
+  values[column] = String(
+    Math.min(maximum, Math.max(0, Number(values[column]) + Math.sign(event.deltaY))),
+  ).padStart(2, '0');
+  timeValues.value = values;
+  pickTime(values);
+}
 const timePanel = ref<HTMLElement | null>(null);
 let opener: HTMLElement | null = null;
 watch(
@@ -21,7 +42,8 @@ watch(
   (visible) => {
     if (visible) {
       opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-      const current = dayjs(props.value);
+      const parsed = dayjs(props.value);
+      const current = parsed.isValid() ? parsed : dayjs();
       date.value = current.format('YYYY-MM-DD');
       time.value = current.format('HH:mm');
       dateVisible.value = true;
@@ -34,11 +56,16 @@ watch(
 );
 function trapFocus(event: KeyboardEvent) {
   if (event.key !== 'Tab') return;
-  const controls = timePanel.value?.querySelectorAll<HTMLElement>('button:not([disabled]), input');
+  const controls = timePanel.value?.querySelectorAll<HTMLElement>(
+    'button:not([disabled]), [tabindex="0"]',
+  );
   if (!controls?.length) return;
   const first = controls[0],
     last = controls[controls.length - 1];
-  if (event.shiftKey && document.activeElement === first) {
+  if (
+    event.shiftKey &&
+    (document.activeElement === first || document.activeElement === timePanel.value)
+  ) {
     event.preventDefault();
     last?.focus();
   } else if (!event.shiftKey && document.activeElement === last) {
@@ -50,7 +77,8 @@ function selectDate(value: string) {
   date.value = value;
   dateVisible.value = false;
   timeVisible.value = true;
-  void nextTick(() => timeInput.value?.focus());
+  timeValues.value = time.value.split(':');
+  void nextTick(() => timePanel.value?.focus());
 }
 function close() {
   emit('update:visible', false);
@@ -89,10 +117,12 @@ function back() {
       class="ui-time-sheet"
       role="dialog"
       aria-modal="true"
+      tabindex="-1"
       :aria-label="title"
       @keydown.esc="close"
       @keydown="trapFocus"
     >
+      <div class="ui-time-sheet__handle" />
       <header>
         <h2>{{ title }}</h2>
         <UiButton kind="text" aria-label="关闭时间选择" @click="close"
@@ -101,17 +131,19 @@ function back() {
       </header>
       <UiButton kind="text" @click="back"
         >{{ dayjs(date).format('YYYY年M月D日') }} · 更换日期</UiButton
-      ><label
-        >选择时间<input
-          ref="timeInput"
-          v-model="time"
-          type="time"
-          aria-label="记录时分"
-          step="60"
-          required
-          @keydown.enter="confirm"
-      /></label>
-      <p>记录发生的当地时间</p>
+      >
+      <div class="time-labels" aria-hidden="true"><span>小时</span><span>分钟</span></div>
+      <Picker
+        v-if="timeVisible"
+        :value="timeValues"
+        :columns="timeColumns"
+        :cancel-btn="false"
+        :confirm-btn="false"
+        aria-label="上下滑动选择小时和分钟"
+        @pick="pickTime"
+        @wheel.prevent="scrollTime"
+      />
+      <p aria-live="polite">已选 {{ time }} · 24 小时制</p>
       <UiButton block :disabled="!time" @click="confirm">确定时间</UiButton>
     </section></Popup
   >
@@ -120,10 +152,11 @@ function back() {
 .ui-time-sheet {
   max-width: 560px;
   margin: auto;
-  padding: 24px 24px calc(24px + var(--app-safe-area-bottom));
+  padding: 10px 24px calc(24px + var(--app-safe-area-bottom));
   border-radius: 28px 28px 0 0;
   background: var(--color-surface);
   color: var(--ui-text-primary);
+  outline: none;
   header {
     display: flex;
     align-items: center;
@@ -134,31 +167,47 @@ function back() {
       font-weight: 600;
     }
   }
-  label {
+  .time-labels {
     display: grid;
-    gap: 12px;
-    margin: 20px 0;
+    grid-template-columns: 1fr 1fr;
+    margin-top: 20px;
+    text-align: center;
     color: var(--ui-text-secondary);
     font-size: 13px;
   }
-  input {
-    width: 100%;
-    min-width: 0;
-    min-height: 72px;
-    padding: 12px 16px;
-    background: var(--ui-background);
-    color: var(--ui-text-primary);
-    border: 0;
-    border-radius: 16px;
-    font-family: inherit;
-    font-size: 32px;
-    text-align: center;
-    box-sizing: border-box;
+  :deep(.t-picker) {
+    --td-picker-bg-color: var(--color-surface);
+    --td-picker-item-color: var(--ui-text-tertiary);
+    --td-picker-item-active-color: var(--ui-text-primary);
+    --td-picker-indicator-bg-color: var(--ui-primary-light);
+    --td-picker-indicator-border-radius: 12px;
+    --td-picker-item-height: 44px;
+    --td-picker-group-height: 220px;
+    --td-bg-color-container: var(--color-surface);
+    margin: 8px 0 16px;
+  }
+  :deep(.t-picker__toolbar) {
+    display: none;
+  }
+  :deep(.t-picker-item__item) {
+    font-size: 24px;
+    font-variant-numeric: tabular-nums;
+  }
+  :deep(.t-picker-item__item--active) {
+    font-weight: 600;
   }
   p {
     margin: 0 0 28px;
     color: var(--ui-text-secondary);
     font-size: 12px;
   }
+}
+
+.ui-time-sheet__handle {
+  width: 36px;
+  height: 4px;
+  margin: 0 auto 12px;
+  background: var(--ui-border);
+  border-radius: 4px;
 }
 </style>
