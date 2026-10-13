@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import dayjs from 'dayjs';
-import { Popup } from 'tdesign-mobile-vue';
+import { Picker, Popup } from 'tdesign-mobile-vue';
 import { computed, nextTick, ref, watch } from 'vue';
 import UiButton from './UiButton.vue';
 import UiIcon from './UiIcon.vue';
@@ -23,6 +23,9 @@ const viewed = ref(dayjs().startOf('month'));
 const draft = ref(today);
 const jumpVisible = ref(false);
 const panel = ref<HTMLElement | null>(null);
+const jumpPanel = ref<HTMLElement | null>(null);
+const jumpValues = ref<string[]>([]);
+const jumpColumn = ref(0);
 let opener: HTMLElement | null = null;
 const maximum = computed(() => props.maxDate || today);
 const years = computed(() => {
@@ -87,17 +90,88 @@ function confirm() {
   emit('update:modelValue', draft.value);
   close();
 }
-function jump(year: number, month = viewed.value.month()) {
-  viewed.value = dayjs(`${year}-${String(month + 1).padStart(2, '0')}-01`);
+const jumpMonths = computed(() => {
+  const year = Number(jumpValues.value[0] || viewed.value.year());
+  const first =
+    props.minDate && dayjs(props.minDate).year() === year ? dayjs(props.minDate).month() : 0;
+  const last = dayjs(maximum.value).year() === year ? dayjs(maximum.value).month() : 11;
+  return Array.from({ length: Math.max(0, last - first + 1) }, (_, i) => {
+    const month = first + i;
+    return { label: `${month + 1} 月`, value: String(month) };
+  });
+});
+const jumpColumns = computed(() => {
+  const yearColumn = years.value.map((year) => ({ label: `${year} 年`, value: String(year) }));
+  return props.selection === 'month' ? [yearColumn] : [yearColumn, jumpMonths.value];
+});
+function pickJump(values: (string | number)[]) {
+  const year = String(values[0] ?? viewed.value.year());
+  if (!years.value.includes(Number(year))) return;
+  jumpValues.value = [year];
+  if (props.selection === 'date') {
+    const months = jumpMonths.value;
+    const month = Math.min(
+      Number(months.at(-1)?.value ?? 11),
+      Math.max(Number(months[0]?.value ?? 0), Number(values[1] ?? viewed.value.month())),
+    );
+    jumpValues.value = [year, String(month)];
+  }
+}
+async function openJump() {
+  pickJump([viewed.value.year(), viewed.value.month()]);
+  jumpColumn.value = 0;
+  jumpVisible.value = true;
+  await nextTick();
+  jumpPanel.value?.focus();
+}
+async function returnToCalendar() {
+  jumpVisible.value = false;
+  await nextTick();
+  panel.value?.querySelector<HTMLElement>('[data-year-jump-trigger]')?.focus();
+}
+function confirmJump() {
+  const year = Number(jumpValues.value[0]);
+  const month = props.selection === 'date' ? Number(jumpValues.value[1]) : viewed.value.month();
+  // Preserve the browsed month where possible, clamping at the date boundaries.
+  const value = dayjs(`${year}-${String(month + 1).padStart(2, '0')}-01`);
+  const first = props.minDate ? dayjs(props.minDate).startOf('month') : dayjs('1900-01-01');
+  const last = dayjs(maximum.value).startOf('month');
+  viewed.value = value.isBefore(first) ? first : value.isAfter(last) ? last : value;
+  void returnToCalendar();
+}
+function stepJump(column: number, amount: number) {
+  const options = jumpColumns.value[column];
+  if (!options?.length) return;
+  const index = options.findIndex((option) => option.value === jumpValues.value[column]);
+  const next = Math.min(options.length - 1, Math.max(0, index + amount));
+  const values = [...jumpValues.value];
+  values[column] = options[next].value;
+  pickJump(values);
+}
+function scrollJump(event: WheelEvent) {
+  if (!event.deltaY || !(event.currentTarget instanceof HTMLElement)) return;
+  const bounds = event.currentTarget.getBoundingClientRect();
+  const column =
+    props.selection === 'date' && event.clientX > bounds.left + bounds.width / 2 ? 1 : 0;
+  stepJump(column, Math.sign(event.deltaY));
+}
+function keyJump(event: KeyboardEvent) {
+  if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+    jumpColumn.value = event.key === 'ArrowRight' && props.selection === 'date' ? 1 : 0;
+  } else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+    stepJump(jumpColumn.value, event.key === 'ArrowDown' ? 1 : -1);
+  } else return;
+  event.preventDefault();
 }
 function trapFocus(event: KeyboardEvent) {
   if (event.key === 'Escape') {
-    close();
+    if (jumpVisible.value) void returnToCalendar();
+    else close();
     return;
   }
   if (event.key !== 'Tab' || !panel.value) return;
   const controls = [
-    ...panel.value.querySelectorAll<HTMLElement>('button:not(:disabled), select, [tabindex="0"]'),
+    ...panel.value.querySelectorAll<HTMLElement>('button:not(:disabled), [tabindex="0"]'),
   ].filter((el) => el.getClientRects().length);
   const first = controls[0],
     last = controls[controls.length - 1];
@@ -125,18 +199,36 @@ function trapFocus(event: KeyboardEvent) {
       class="ui-date-sheet"
       role="dialog"
       aria-modal="true"
-      :aria-label="selection === 'date' ? '选择日期' : '选择月份'"
+      :aria-label="
+        jumpVisible
+          ? selection === 'date'
+            ? '选择年月'
+            : '选择年份'
+          : selection === 'date'
+            ? '选择日期'
+            : '选择月份'
+      "
       tabindex="-1"
       @keydown="trapFocus"
     >
       <div class="ui-date-sheet__handle" />
       <header>
-        <h2>{{ selection === 'date' ? '选择日期' : '选择月份' }}</h2>
+        <h2>
+          {{
+            jumpVisible
+              ? selection === 'date'
+                ? '选择年月'
+                : '选择年份'
+              : selection === 'date'
+                ? '选择日期'
+                : '选择月份'
+          }}
+        </h2>
         <UiButton kind="text" aria-label="关闭日期选择" @click="close"
           ><UiIcon name="close"
         /></UiButton>
       </header>
-      <div class="month-heading">
+      <div v-if="!jumpVisible" class="month-heading">
         <UiButton
           kind="icon"
           :aria-label="selection === 'date' ? '上个月' : '上一年'"
@@ -149,9 +241,14 @@ function trapFocus(event: KeyboardEvent) {
           "
           @click="move(-1)"
           ><UiIcon name="left" /></UiButton
-        ><UiButton kind="text" @click="jumpVisible = !jumpVisible">{{
-          viewed.format(selection === 'date' ? 'YYYY年M月' : 'YYYY年')
-        }}</UiButton
+        ><UiButton
+          kind="text"
+          data-year-jump-trigger
+          :aria-label="selection === 'date' ? '选择年月' : '选择年份'"
+          @click="openJump"
+          ><span class="year-trigger"
+            >{{ viewed.format(selection === 'date' ? 'YYYY年M月' : 'YYYY年')
+            }}<UiIcon name="right" class="year-trigger__chevron" /></span></UiButton
         ><UiButton
           kind="icon"
           :aria-label="selection === 'date' ? '下个月' : '下一年'"
@@ -164,22 +261,34 @@ function trapFocus(event: KeyboardEvent) {
         /></UiButton>
       </div>
       <div v-if="jumpVisible" class="date-jump">
-        <select
-          aria-label="选择年份"
-          :value="viewed.year()"
-          @change="jump(Number(($event.target as HTMLSelectElement).value))"
+        <div
+          ref="jumpPanel"
+          class="date-jump__wheel"
+          tabindex="0"
+          role="group"
+          :aria-label="
+            selection === 'month'
+              ? '上下滚动选择年份'
+              : `选择年月，上下调整${jumpColumn === 0 ? '年份' : '月份'}，左右切换`
+          "
+          @wheel.prevent="scrollJump"
+          @keydown="keyJump"
         >
-          <option v-for="year in years" :key="year" :value="year">{{ year }} 年</option></select
-        ><select
-          v-if="selection === 'date'"
-          aria-label="选择月份"
-          :value="viewed.month()"
-          @change="jump(viewed.year(), Number(($event.target as HTMLSelectElement).value))"
-        >
-          <option v-for="month in 12" :key="month" :value="month - 1">{{ month }} 月</option>
-        </select>
+          <Picker
+            :value="jumpValues"
+            :columns="jumpColumns"
+            :cancel-btn="false"
+            :confirm-btn="false"
+            @pick="pickJump"
+          />
+        </div>
+        <p aria-live="polite">
+          已选 {{ jumpValues[0] }} 年{{
+            selection === 'date' ? ` ${Number(jumpValues[1]) + 1} 月` : ''
+          }}
+        </p>
       </div>
-      <template v-if="selection === 'date'"
+      <template v-if="!jumpVisible && selection === 'date'"
         ><div class="week-labels">
           <span v-for="label in ['一', '二', '三', '四', '五', '六', '日']" :key="label">{{
             label
@@ -204,7 +313,7 @@ function trapFocus(event: KeyboardEvent) {
           </button>
         </div></template
       >
-      <div v-else class="month-grid">
+      <div v-else-if="!jumpVisible" class="month-grid">
         <button
           v-for="month in 12"
           :key="month"
@@ -217,7 +326,13 @@ function trapFocus(event: KeyboardEvent) {
           {{ month }} 月
         </button>
       </div>
-      <footer>
+      <footer v-if="jumpVisible">
+        <UiButton kind="secondary" @click="returnToCalendar">返回</UiButton>
+        <UiButton :disabled="!jumpValues.length" @click="confirmJump"
+          >确定{{ selection === 'date' ? '年月' : '年份' }}</UiButton
+        >
+      </footer>
+      <footer v-else>
         <UiButton
           kind="secondary"
           @click="choose(selection === 'date' ? today : today.slice(0, 7))"
@@ -307,19 +422,50 @@ header,
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
 }
-.date-jump {
+.year-trigger {
   display: flex;
-  gap: 12px;
-  margin-bottom: 12px;
-  select {
-    flex: 1;
-    min-width: 0;
-    height: 40px;
-    padding: 0 12px;
-    border: 1px solid var(--ui-border);
-    border-radius: 12px;
-    color: var(--ui-text-primary);
-    background: var(--color-surface);
+  align-items: center;
+  gap: 6px;
+}
+.year-trigger__chevron {
+  width: 16px;
+  height: 16px;
+  transform: rotate(90deg);
+}
+.date-jump {
+  margin-top: 16px;
+  p {
+    margin: 8px 0 0;
+    color: var(--ui-text-secondary);
+    font-size: 12px;
+  }
+  :deep(.t-picker) {
+    --td-picker-bg-color: var(--color-surface);
+    --td-picker-item-color: var(--ui-text-tertiary);
+    --td-picker-item-active-color: var(--ui-primary);
+    --td-picker-indicator-bg-color: var(--ui-primary-light);
+    --td-picker-indicator-border-radius: 12px;
+    --td-picker-item-height: 44px;
+    --td-picker-group-height: 220px;
+    --td-bg-color-container: var(--color-surface);
+  }
+  :deep(.t-picker__toolbar) {
+    display: none;
+  }
+  :deep(.t-picker-item__item) {
+    font-size: 19px;
+    font-variant-numeric: tabular-nums;
+  }
+  :deep(.t-picker-item__item--active) {
+    font-weight: 600;
+  }
+}
+.date-jump__wheel {
+  border-radius: 12px;
+  outline: none;
+  &:focus-visible {
+    outline: 2px solid var(--ui-primary);
+    outline-offset: 2px;
   }
 }
 footer {
