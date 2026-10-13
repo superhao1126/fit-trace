@@ -10,7 +10,7 @@ import {
   watch,
 } from 'vue';
 import UiBrandMark from './UiBrandMark.vue';
-import { PullRefreshGesture } from './pull-refresh';
+import { PullRefreshGesture, refreshWithMinimumDuration } from './pull-refresh';
 import { uiToast } from './toast';
 
 const props = withDefaults(defineProps<{ refresh: () => Promise<void>; disabled?: boolean }>(), {
@@ -24,6 +24,8 @@ const offset = ref(0);
 const active = ref(true);
 let touchId: number | null = null;
 let attached = false;
+let holdTimer: ReturnType<typeof setTimeout> | undefined;
+let finishHold: (() => void) | undefined;
 const progress = computed(() => Math.min(1, gesture.distance / gesture.threshold));
 const status = computed(() =>
   refreshing.value ? '正在刷新' : gesture.phase === 'armed' ? '松手刷新' : '下拉刷新',
@@ -108,13 +110,29 @@ async function runRefresh(fromKeyboard = false): Promise<void> {
   visible.value = true;
   offset.value = 56;
   try {
-    await props.refresh();
+    await refreshWithMinimumDuration(props.refresh, {
+      now: () => performance.now(),
+      wait: (duration) => {
+        if (!active.value) return Promise.resolve();
+        return new Promise<void>((resolve) => {
+          finishHold = resolve;
+          holdTimer = setTimeout(cancelHold, duration);
+        });
+      },
+    });
   } catch {
     if (active.value) uiToast.error('刷新失败，当前内容已保留，请稍后重试');
   } finally {
     refreshing.value = false;
     settle();
   }
+}
+
+function cancelHold(): void {
+  clearTimeout(holdTimer);
+  holdTimer = undefined;
+  finishHold?.();
+  finishHold = undefined;
 }
 
 function end(): void {
@@ -140,6 +158,7 @@ function attach(): void {
 }
 function detach(): void {
   active.value = false;
+  cancelHold();
   root.value?.removeEventListener('touchstart', start);
   root.value?.removeEventListener('touchmove', move);
   root.value?.removeEventListener('touchend', end);

@@ -1,5 +1,24 @@
 export type PullRefreshPhase = 'idle' | 'tracking' | 'pulling' | 'armed';
 
+export const MINIMUM_REFRESH_DURATION = 600;
+
+/** Data updates immediately; only completion of the indicator waits. */
+export async function refreshWithMinimumDuration(
+  refresh: () => Promise<void>,
+  timing = {
+    now: () => performance.now(),
+    wait: (duration: number) => new Promise<void>((resolve) => setTimeout(resolve, duration)),
+  },
+): Promise<void> {
+  const startedAt = timing.now();
+  try {
+    await refresh();
+  } finally {
+    const remaining = MINIMUM_REFRESH_DURATION - (timing.now() - startedAt);
+    if (remaining > 0) await timing.wait(remaining);
+  }
+}
+
 /** The page stays still; only the indicator follows a damped vertical gesture. */
 export class PullRefreshGesture {
   phase: PullRefreshPhase = 'idle';
