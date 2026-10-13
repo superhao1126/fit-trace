@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import UiPullRefresh from '@/components/ui/UiPullRefresh.vue';
+import { uiToast } from '@/components/ui/toast';
 import UiLoading from '@/components/ui/UiLoading.vue';
 import UiPageHeader from '@/components/ui/UiPageHeader.vue';
 import UiButton from '@/components/ui/UiButton.vue';
@@ -52,6 +54,7 @@ const selectedMetric = ref<BodyTrendMetric>('weight');
 const trendData = ref<BodyTrendData | null>(null);
 const insights = ref<InsightOverview | null>(null);
 const loading = ref(true);
+const requestPending = ref(false);
 const errorMessage = ref('');
 const insightError = ref(false);
 const chartElement = ref<HTMLDivElement | null>(null);
@@ -302,24 +305,43 @@ async function renderCharts(): Promise<void> {
   }
 }
 
+let requestId = 0;
 async function loadTrends(silent = false): Promise<void> {
+  const request = ++requestId;
+  const range = selectedRange.value;
+  requestPending.value = true;
   if (!silent) loading.value = true;
   errorMessage.value = '';
   try {
     const [trend, insight] = await Promise.all([
-      getBodyTrends(selectedRange.value),
-      getInsightOverview(selectedRange.value).catch(() => null),
+      getBodyTrends(range),
+      getInsightOverview(range).catch(() => null),
     ]);
+    if (request !== requestId) return;
     trendData.value = trend;
-    insights.value = insight;
+    if (insight !== null || !silent) insights.value = insight;
     insightError.value = insight === null;
   } catch {
-    trendData.value = null;
-    insights.value = null;
-    errorMessage.value = '趋势数据加载失败，请稍后重试';
+    if (request !== requestId) return;
+    if (!silent) {
+      trendData.value = null;
+      insights.value = null;
+    }
+    errorMessage.value = silent
+      ? '刷新失败，当前展示的是上次加载的数据'
+      : '趋势数据加载失败，请稍后重试';
   } finally {
-    if (!silent) loading.value = false;
+    if (request === requestId) {
+      loading.value = false;
+      requestPending.value = false;
+    }
   }
+}
+
+async function refreshPage(): Promise<void> {
+  await loadTrends(true);
+  if (errorMessage.value) uiToast.error(errorMessage.value);
+  else if (insightError.value) uiToast.warning('趋势已更新，分析暂时无法刷新，请稍后重试');
 }
 
 async function selectRange(range: BodyTrendDays): Promise<void> {
@@ -374,124 +396,132 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="view-page ui-page trends-page">
-    <UiPageHeader title="趋势" subtitle="看清变化，找到自己的节奏"
-      ><template #action
-        ><UiButton kind="text" @click="router.push('/body/create')">记录</UiButton></template
-      ></UiPageHeader
-    >
-    <UiTabs
-      :model-value="selectedRange"
-      :options="ranges.map((range) => ({ value: range, label: `${range} 天` }))"
-      label="趋势时间范围"
-      @update:model-value="selectRange($event as BodyTrendDays)"
-    />
-    <UiLoading
-      class="page-loading"
-      :class="{ 'page-loading--active': loading }"
-      :loading="loading"
-      text="正在计算趋势"
-    >
-      <section class="surface-card trend-card">
-        <UiTabs
-          :model-value="selectedMetric"
-          :options="metrics.map((item) => ({ value: item.key, label: item.label }))"
-          label="趋势指标"
-          tone="body"
-          @update:model-value="selectedMetric = $event as BodyTrendMetric"
-        />
-
-        <div v-if="errorMessage" class="error-state">
-          <span>{{ errorMessage }}</span>
-          <UiButton kind="secondary" @click="loadTrends()"> <RefreshIcon /> 重新加载 </UiButton>
-        </div>
-
-        <template v-else-if="series?.points.length && stats">
-          <div class="trend-heading">
-            <div>
-              <span>{{ selectedRange }} 天{{ metric.label }}趋势</span>
-              <strong
-                >{{ formatValue(stats.current) }} <small>{{ metric.unit }}</small></strong
-              >
-            </div>
-            <span class="change-badge" :class="{ rise: stats.change > 0, fall: stats.change < 0 }">
-              {{ formatChange(stats.change) }} {{ metric.unit }}
-            </span>
-          </div>
-
-          <div
-            ref="chartElement"
-            class="trend-chart"
-            role="img"
-            :aria-label="`${metric.label}趋势图`"
+  <UiPullRefresh :refresh="refreshPage" :disabled="requestPending">
+    <main class="view-page ui-page trends-page">
+      <UiPageHeader title="趋势" subtitle="看清变化，找到自己的节奏"
+        ><template #action
+          ><UiButton kind="text" @click="router.push('/body/create')">记录</UiButton></template
+        ></UiPageHeader
+      >
+      <UiTabs
+        :model-value="selectedRange"
+        :options="ranges.map((range) => ({ value: range, label: `${range} 天` }))"
+        label="趋势时间范围"
+        @update:model-value="selectRange($event as BodyTrendDays)"
+      />
+      <UiLoading
+        class="page-loading"
+        :class="{ 'page-loading--active': loading }"
+        :loading="loading"
+        text="正在计算趋势"
+      >
+        <section class="surface-card trend-card">
+          <UiTabs
+            :model-value="selectedMetric"
+            :options="metrics.map((item) => ({ value: item.key, label: item.label }))"
+            label="趋势指标"
+            tone="body"
+            @update:model-value="selectedMetric = $event as BodyTrendMetric"
           />
 
-          <section class="trend-details" aria-label="详细统计">
-            <h2>详细统计</h2>
-            <div class="stats-grid">
-              <div v-for="item in statItems(stats)" :key="item.label">
-                <span>{{ item.label }}</span>
+          <div v-if="errorMessage" class="error-state">
+            <span>{{ errorMessage }}</span>
+            <UiButton kind="secondary" @click="loadTrends()"> <RefreshIcon /> 重新加载 </UiButton>
+          </div>
+
+          <template v-if="series?.points.length && stats">
+            <div class="trend-heading">
+              <div>
+                <span>{{ selectedRange }} 天{{ metric.label }}趋势</span>
                 <strong
-                  :class="{
-                    rise: item.change !== undefined && item.change > 0,
-                    fall: item.change !== undefined && item.change < 0,
-                  }"
+                  >{{ formatValue(stats.current) }} <small>{{ metric.unit }}</small></strong
                 >
-                  {{ item.value }} <small>{{ metric.unit }}</small>
-                </strong>
+              </div>
+              <span
+                class="change-badge"
+                :class="{ rise: stats.change > 0, fall: stats.change < 0 }"
+              >
+                {{ formatChange(stats.change) }} {{ metric.unit }}
+              </span>
+            </div>
+
+            <div
+              ref="chartElement"
+              data-pull-refresh-ignore
+              class="trend-chart"
+              role="img"
+              :aria-label="`${metric.label}趋势图`"
+            />
+
+            <section class="trend-details" aria-label="详细统计">
+              <h2>详细统计</h2>
+              <div class="stats-grid">
+                <div v-for="item in statItems(stats)" :key="item.label">
+                  <span>{{ item.label }}</span>
+                  <strong
+                    :class="{
+                      rise: item.change !== undefined && item.change > 0,
+                      fall: item.change !== undefined && item.change < 0,
+                    }"
+                  >
+                    {{ item.value }} <small>{{ metric.unit }}</small>
+                  </strong>
+                </div>
+              </div>
+            </section>
+          </template>
+
+          <EmptyState
+            v-else-if="!loading"
+            title="暂无该指标数据"
+            :description="`${selectedRange} 天内还没有${metric.label}记录，记录后会自动生成趋势`"
+          >
+            <template #image><ChartLineIcon class="empty-icon" /></template>
+            <template #action>
+              <UiButton @click="router.push('/body/create')">记录身体数据</UiButton>
+            </template>
+          </EmptyState>
+        </section>
+
+        <section class="content-section">
+          <div class="section-heading">
+            <h2>饮食与训练</h2>
+            <span>同期饮食与训练</span>
+          </div>
+
+          <div v-if="insightError" class="insight-error">饮食与训练数据暂时无法加载</div>
+          <template v-else-if="insights && hasInsightRecords">
+            <div class="insight-grid">
+              <div v-for="card in insightCards" :key="card.label">
+                <span>{{ card.label }}</span>
+                <strong
+                  >{{ card.value }} <small>{{ card.unit }}</small></strong
+                >
               </div>
             </div>
-          </section>
-        </template>
-
-        <EmptyState
-          v-else-if="!loading"
-          title="暂无该指标数据"
-          :description="`${selectedRange} 天内还没有${metric.label}记录，记录后会自动生成趋势`"
-        >
-          <template #image><ChartLineIcon class="empty-icon" /></template>
-          <template #action>
-            <UiButton @click="router.push('/body/create')">记录身体数据</UiButton>
+            <p class="insight-summary">
+              {{ insightSummary }}。热量仅汇总已填写的食物，不代表完整全天摄入。
+            </p>
+            <div
+              v-if="hasInsightChartData"
+              ref="insightElement"
+              data-pull-refresh-ignore
+              class="insight-chart"
+              role="img"
+              :aria-label="`${selectedRange} 天热量与体重对照图`"
+            />
+            <p v-if="hasInsightChartData" class="insight-legend">
+              <span class="insight-legend__bar" />已记录热量
+              <span class="insight-legend__line" />体重
+            </p>
           </template>
-        </EmptyState>
-      </section>
-
-      <section class="content-section">
-        <div class="section-heading">
-          <h2>饮食与训练</h2>
-          <span>同期饮食与训练</span>
-        </div>
-
-        <div v-if="insightError" class="insight-error">饮食与训练数据暂时无法加载</div>
-        <template v-else-if="insights && hasInsightRecords">
-          <div class="insight-grid">
-            <div v-for="card in insightCards" :key="card.label">
-              <span>{{ card.label }}</span>
-              <strong
-                >{{ card.value }} <small>{{ card.unit }}</small></strong
-              >
-            </div>
-          </div>
-          <p class="insight-summary">
-            {{ insightSummary }}。热量仅汇总已填写的食物，不代表完整全天摄入。
+          <p v-else-if="!loading && insights" class="insight-empty">
+            记录饮食与训练后，在这里查看同期的饮食与训练
           </p>
-          <div
-            v-if="hasInsightChartData"
-            ref="insightElement"
-            class="insight-chart"
-            role="img"
-            :aria-label="`${selectedRange} 天热量与体重对照图`"
-          />
-          <p v-if="hasInsightChartData" class="insight-legend">
-            <span class="insight-legend__bar" />已记录热量 <span class="insight-legend__line" />体重
-          </p>
-        </template>
-        <p v-else-if="!loading && insights" class="insight-empty">
-          记录饮食与训练后，在这里查看同期的饮食与训练
-        </p>
-      </section>
-    </UiLoading>
-  </main>
+        </section>
+      </UiLoading>
+    </main>
+  </UiPullRefresh>
 </template>
 
 <style scoped lang="scss">

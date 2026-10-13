@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import UiPullRefresh from '@/components/ui/UiPullRefresh.vue';
+import { uiToast } from '@/components/ui/toast';
 import type { DashboardOverview, MealType, WorkoutType } from '@fit-trace/shared';
 import dayjs from 'dayjs';
 import { Skeleton } from 'tdesign-mobile-vue';
@@ -41,6 +43,7 @@ function openDayArchive() {
 }
 
 const loading = ref(true);
+const requestPending = ref(false);
 const overview = ref<DashboardOverview | null>(null);
 const errorMessage = ref('');
 const calendarVisible = ref(false);
@@ -111,6 +114,7 @@ defineOptions({ name: 'DashboardView' });
 let requestId = 0;
 async function loadOverview(silent = false): Promise<void> {
   const request = ++requestId;
+  requestPending.value = true;
   const date = selectedDate.value;
   if (!silent) {
     loading.value = true;
@@ -127,8 +131,16 @@ async function loadOverview(silent = false): Promise<void> {
       ? '刷新失败，当前展示的是上次加载的数据'
       : '首页加载失败，请稍后重试';
   } finally {
-    if (request === requestId) loading.value = false;
+    if (request === requestId) {
+      loading.value = false;
+      requestPending.value = false;
+    }
   }
+}
+
+async function refreshPage(): Promise<void> {
+  await loadOverview(true);
+  if (errorMessage.value) uiToast.error(errorMessage.value);
 }
 
 watch(selectedDate, () => {
@@ -155,180 +167,184 @@ onActivated(() => {
 </script>
 
 <template>
-  <main class="view-page ui-page dashboard">
-    <UiPageHeader :title="isToday ? '今天' : '日记'" :subtitle="todayLabel">
-      <template #action
-        ><UiButton kind="text" aria-label="选择日记日期" @click="calendarVisible = true"
-          >日历</UiButton
-        ></template
-      >
-    </UiPageHeader>
-    <UiDateSheet v-model:visible="calendarVisible" v-model="selectedDate" />
-    <DiaryDateStrip v-model="selectedDate" />
-    <Skeleton v-if="loading" :loading="true" animation="gradient" :row-col="[1, 1, 1]" />
-    <section v-if="errorMessage" class="load-error" role="alert">
-      <span>{{ errorMessage }}</span
-      ><UiButton kind="text" :disabled="loading" @click="loadOverview(!!overview)">重试</UiButton>
-    </section>
-
-    <template v-if="!loading && overview">
-      <section class="surface-card today-overview" aria-label="当天概览">
-        <div class="overview-grid">
-          <button
-            type="button"
-            @click="todayBody ? router.push(`/body/${todayBody.id}`) : addRecord('/body/create')"
-          >
-            <span>{{
-              todayBody
-                ? '体重'
-                : latestBody
-                  ? `最近体重 · ${dayjs(latestBody.recordedAt).format('M/D')}`
-                  : '体重'
-            }}</span
-            ><strong>{{ (todayBody ?? latestBody)?.weight ?? '—' }}<small>kg</small></strong>
-          </button>
-          <button type="button" @click="openDayArchive">
-            <span>已记录热量</span><strong>{{ todayCalories ?? '—' }}<small>kcal</small></strong>
-          </button>
-          <button type="button" @click="openDayArchive">
-            <span>训练时长</span><strong>{{ todayWorkoutMinutes }}<small>分钟</small></strong>
-          </button>
-        </div>
-        <button v-if="isToday" class="goal-row" type="button" @click="router.push('/goal')">
-          <span v-if="auth.user?.goal"
-            >{{ goalLabels[auth.user.goal.type] }} · 目标 {{ auth.user.goal.targetWeight }} kg</span
-          ><span v-else>设置体重目标</span>
-          <small>{{ auth.user?.goal ? goalRemaining || goalDateText : '给记录一个方向' }}</small>
-        </button>
+  <UiPullRefresh :refresh="refreshPage" :disabled="requestPending">
+    <main class="view-page ui-page dashboard">
+      <UiPageHeader :title="isToday ? '今天' : '日记'" :subtitle="todayLabel">
+        <template #action
+          ><UiButton kind="text" aria-label="选择日记日期" @click="calendarVisible = true"
+            >日历</UiButton
+          ></template
+        >
+      </UiPageHeader>
+      <UiDateSheet v-model:visible="calendarVisible" v-model="selectedDate" />
+      <DiaryDateStrip v-model="selectedDate" />
+      <Skeleton v-if="loading" :loading="true" animation="gradient" :row-col="[1, 1, 1]" />
+      <section v-if="errorMessage" class="load-error" role="alert">
+        <span>{{ errorMessage }}</span
+        ><UiButton kind="text" :disabled="loading" @click="loadOverview(!!overview)">重试</UiButton>
       </section>
 
-      <nav class="quick-actions" aria-label="快速记录">
-        <button type="button" @click="addRecord('/body/create')">
-          <span class="quick-actions__icon quick-actions__icon--body"
-            ><img src="/images/tools/scale.webp" alt="" width="44" height="44" /></span
-          ><span>记体重</span>
-        </button>
-        <button type="button" @click="addRecord('/meals')">
-          <span class="quick-actions__icon quick-actions__icon--meal"
-            ><img src="/images/foods/rice.webp" alt="" width="44" height="44" /></span
-          ><span>记饮食</span>
-        </button>
-        <button type="button" @click="addRecord('/training')">
-          <span class="quick-actions__icon quick-actions__icon--workout"
-            ><img src="/images/tools/dumbbells.webp" alt="" width="44" height="44" /></span
-          ><span>记训练</span>
-        </button>
-        <button type="button" @click="addRecord('/photos')">
-          <span class="quick-actions__icon quick-actions__icon--photo"
-            ><img src="/images/tools/camera.webp" alt="" width="44" height="44" /></span
-          ><span>记照片</span>
-        </button>
-      </nav>
-
-      <section v-if="!hasTodayRecords" class="start-today">
-        <h2>{{ isToday ? '从今天的一次记录开始' : '补上一条当天记录' }}</h2>
-        <p>体重、饮食、训练或照片，选一项记下来</p>
-      </section>
-      <section v-else class="content-section">
-        <div class="section-heading">
-          <h2>当天记录</h2>
-          <button type="button" @click="openDayArchive">查看当天 <UiIcon name="right" /></button>
-        </div>
-        <div class="diary-list">
-          <UiRecordRow
-            v-if="todayBody"
-            kind="body"
-            title="身体数据"
-            :subtitle="`${dayjs(todayBody.recordedAt).format('HH:mm')}${weightChange === null ? '' : ` · 较上次 ${weightChange > 0 ? '+' : ''}${weightChange.toFixed(1)} kg`}`"
-            :value="todayBody.weight"
-            unit="kg"
-            @click="router.push(`/body/${todayBody.id}`)"
-          />
-          <UiRecordRow
-            v-for="meal in todayMeals"
-            :key="meal.id"
-            kind="meal"
-            :title="mealLabels[meal.type]"
-            :subtitle="`${dayjs(meal.recordedAt).format('HH:mm')} · ${meal.foodNames.join('、')}`"
-            :value="meal.totalCalories ?? '—'"
-            unit="kcal"
-            @click="router.push(`/meals/${meal.id}`)"
-          />
-          <UiButton
-            v-if="todayMealCount > todayMeals.length"
-            kind="secondary"
-            block
-            @click="openDayArchive"
-            >查看全部 {{ todayMealCount }} 餐</UiButton
-          >
-          <UiRecordRow
-            v-for="workout in todayWorkouts"
-            :key="workout.id"
-            kind="workout"
-            :workout-type="workout.type"
-            :title="workout.name"
-            :subtitle="`${dayjs(workout.startedAt).format('HH:mm')} · ${workoutLabels[workout.type]}`"
-            :value="workout.durationMinutes"
-            unit="分钟"
-            @click="router.push(`/workouts/${workout.id}`)"
-          />
-          <UiButton
-            v-if="todayWorkoutCount > todayWorkouts.length"
-            kind="secondary"
-            block
-            @click="openDayArchive"
-            >查看全部 {{ todayWorkoutCount }} 次训练</UiButton
-          >
-          <UiRecordRow
-            v-for="photo in todayPhotos"
-            :key="photo.id"
-            kind="photo"
-            :title="`${photoLabels[photo.type]}照片`"
-            :subtitle="`${dayjs(photo.recordedAt).format('HH:mm')} · 身材记录`"
-            :image="photo.imageUrl"
-            @click="router.push(`/photos/${photo.id}`)"
-          />
-          <UiButton
-            v-if="(overview.today.photoCount ?? 0) > todayPhotos.length"
-            kind="secondary"
-            block
-            @click="openDayArchive"
-            >查看全部 {{ overview.today.photoCount }} 张照片</UiButton
-          >
-        </div>
-      </section>
-
-      <section v-if="recentTrend && hasRecentRecords" class="content-section">
-        <div class="section-heading">
-          <h2>近 7 天</h2>
-          <button type="button" @click="router.push('/trends')">
-            查看趋势 <UiIcon name="right" />
-          </button>
-        </div>
-        <div class="trend-summary">
-          <div>
-            <span>体重变化</span><strong>{{ recentWeightText }}</strong>
+      <template v-if="!loading && overview">
+        <section class="surface-card today-overview" aria-label="当天概览">
+          <div class="overview-grid">
+            <button
+              type="button"
+              @click="todayBody ? router.push(`/body/${todayBody.id}`) : addRecord('/body/create')"
+            >
+              <span>{{
+                todayBody
+                  ? '体重'
+                  : latestBody
+                    ? `最近体重 · ${dayjs(latestBody.recordedAt).format('M/D')}`
+                    : '体重'
+              }}</span
+              ><strong>{{ (todayBody ?? latestBody)?.weight ?? '—' }}<small>kg</small></strong>
+            </button>
+            <button type="button" @click="openDayArchive">
+              <span>已记录热量</span><strong>{{ todayCalories ?? '—' }}<small>kcal</small></strong>
+            </button>
+            <button type="button" @click="openDayArchive">
+              <span>训练时长</span><strong>{{ todayWorkoutMinutes }}<small>分钟</small></strong>
+            </button>
           </div>
-          <div>
-            <span>饮食记录</span
-            ><strong>{{ recentTrend.mealRecordedDays }} <small>天</small></strong>
+          <button v-if="isToday" class="goal-row" type="button" @click="router.push('/goal')">
+            <span v-if="auth.user?.goal"
+              >{{ goalLabels[auth.user.goal.type] }} · 目标
+              {{ auth.user.goal.targetWeight }} kg</span
+            ><span v-else>设置体重目标</span>
+            <small>{{ auth.user?.goal ? goalRemaining || goalDateText : '给记录一个方向' }}</small>
+          </button>
+        </section>
+
+        <nav class="quick-actions" aria-label="快速记录">
+          <button type="button" @click="addRecord('/body/create')">
+            <span class="quick-actions__icon quick-actions__icon--body"
+              ><img src="/images/tools/scale.webp" alt="" width="44" height="44" /></span
+            ><span>记体重</span>
+          </button>
+          <button type="button" @click="addRecord('/meals')">
+            <span class="quick-actions__icon quick-actions__icon--meal"
+              ><img src="/images/foods/rice.webp" alt="" width="44" height="44" /></span
+            ><span>记饮食</span>
+          </button>
+          <button type="button" @click="addRecord('/training')">
+            <span class="quick-actions__icon quick-actions__icon--workout"
+              ><img src="/images/tools/dumbbells.webp" alt="" width="44" height="44" /></span
+            ><span>记训练</span>
+          </button>
+          <button type="button" @click="addRecord('/photos')">
+            <span class="quick-actions__icon quick-actions__icon--photo"
+              ><img src="/images/tools/camera.webp" alt="" width="44" height="44" /></span
+            ><span>记照片</span>
+          </button>
+        </nav>
+
+        <section v-if="!hasTodayRecords" class="start-today">
+          <h2>{{ isToday ? '从今天的一次记录开始' : '补上一条当天记录' }}</h2>
+          <p>体重、饮食、训练或照片，选一项记下来</p>
+        </section>
+        <section v-else class="content-section">
+          <div class="section-heading">
+            <h2>当天记录</h2>
+            <button type="button" @click="openDayArchive">查看当天 <UiIcon name="right" /></button>
           </div>
-          <div>
-            <span>训练时长</span
-            ><strong>{{ recentTrend.workoutMinutes }} <small>分钟</small></strong>
+          <div class="diary-list">
+            <UiRecordRow
+              v-if="todayBody"
+              kind="body"
+              title="身体数据"
+              :subtitle="`${dayjs(todayBody.recordedAt).format('HH:mm')}${weightChange === null ? '' : ` · 较上次 ${weightChange > 0 ? '+' : ''}${weightChange.toFixed(1)} kg`}`"
+              :value="todayBody.weight"
+              unit="kg"
+              @click="router.push(`/body/${todayBody.id}`)"
+            />
+            <UiRecordRow
+              v-for="meal in todayMeals"
+              :key="meal.id"
+              kind="meal"
+              :title="mealLabels[meal.type]"
+              :subtitle="`${dayjs(meal.recordedAt).format('HH:mm')} · ${meal.foodNames.join('、')}`"
+              :value="meal.totalCalories ?? '—'"
+              unit="kcal"
+              @click="router.push(`/meals/${meal.id}`)"
+            />
+            <UiButton
+              v-if="todayMealCount > todayMeals.length"
+              kind="secondary"
+              block
+              @click="openDayArchive"
+              >查看全部 {{ todayMealCount }} 餐</UiButton
+            >
+            <UiRecordRow
+              v-for="workout in todayWorkouts"
+              :key="workout.id"
+              kind="workout"
+              :workout-type="workout.type"
+              :title="workout.name"
+              :subtitle="`${dayjs(workout.startedAt).format('HH:mm')} · ${workoutLabels[workout.type]}`"
+              :value="workout.durationMinutes"
+              unit="分钟"
+              @click="router.push(`/workouts/${workout.id}`)"
+            />
+            <UiButton
+              v-if="todayWorkoutCount > todayWorkouts.length"
+              kind="secondary"
+              block
+              @click="openDayArchive"
+              >查看全部 {{ todayWorkoutCount }} 次训练</UiButton
+            >
+            <UiRecordRow
+              v-for="photo in todayPhotos"
+              :key="photo.id"
+              kind="photo"
+              :title="`${photoLabels[photo.type]}照片`"
+              :subtitle="`${dayjs(photo.recordedAt).format('HH:mm')} · 身材记录`"
+              :image="photo.imageUrl"
+              @click="router.push(`/photos/${photo.id}`)"
+            />
+            <UiButton
+              v-if="(overview.today.photoCount ?? 0) > todayPhotos.length"
+              kind="secondary"
+              block
+              @click="openDayArchive"
+              >查看全部 {{ overview.today.photoCount }} 张照片</UiButton
+            >
           </div>
-          <p>
-            {{ dayjs(recentTrend.from).format('M/D') }}–{{ dayjs(recentTrend.to).format('M/D') }} ·
-            {{
-              recentTrend.bodyRecordedDays < 2
-                ? '至少记录两天体重后可查看变化'
-                : `体重按每天最后一次记录计算 · 已记录 ${recentTrend.bodyRecordedDays} 天`
-            }}
-          </p>
-        </div>
-      </section>
-    </template>
-  </main>
+        </section>
+
+        <section v-if="recentTrend && hasRecentRecords" class="content-section">
+          <div class="section-heading">
+            <h2>近 7 天</h2>
+            <button type="button" @click="router.push('/trends')">
+              查看趋势 <UiIcon name="right" />
+            </button>
+          </div>
+          <div class="trend-summary">
+            <div>
+              <span>体重变化</span><strong>{{ recentWeightText }}</strong>
+            </div>
+            <div>
+              <span>饮食记录</span
+              ><strong>{{ recentTrend.mealRecordedDays }} <small>天</small></strong>
+            </div>
+            <div>
+              <span>训练时长</span
+              ><strong>{{ recentTrend.workoutMinutes }} <small>分钟</small></strong>
+            </div>
+            <p>
+              {{ dayjs(recentTrend.from).format('M/D') }}–{{ dayjs(recentTrend.to).format('M/D') }}
+              ·
+              {{
+                recentTrend.bodyRecordedDays < 2
+                  ? '至少记录两天体重后可查看变化'
+                  : `体重按每天最后一次记录计算 · 已记录 ${recentTrend.bodyRecordedDays} 天`
+              }}
+            </p>
+          </div>
+        </section>
+      </template>
+    </main>
+  </UiPullRefresh>
 </template>
 
 <style scoped lang="scss">

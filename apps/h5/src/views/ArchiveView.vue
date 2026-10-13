@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import UiPullRefresh from '@/components/ui/UiPullRefresh.vue';
+import { uiToast } from '@/components/ui/toast';
 import UiLoading from '@/components/ui/UiLoading.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import type {
@@ -99,6 +101,7 @@ function chooseMonth(value: string) {
 }
 
 const loading = ref(true);
+const requestPending = ref(false);
 const loadError = ref('');
 const activeFilter = ref<ArchiveFilter>('ALL');
 const bodyRecords = ref<BodyRecord[]>([]);
@@ -167,6 +170,7 @@ defineOptions({ name: 'ArchiveView' });
 let requestId = 0;
 async function loadRecords(silent = false, more = false): Promise<void> {
   const request = ++requestId;
+  requestPending.value = true;
   const nextPage = more ? page.value + 1 : 1;
   if (more) loadingMore.value = true;
   else if (!silent) loading.value = true;
@@ -200,9 +204,15 @@ async function loadRecords(silent = false, more = false): Promise<void> {
     if (request === requestId) {
       loading.value = false;
       loadingMore.value = false;
+      requestPending.value = false;
     }
   }
 }
+async function refreshPage(): Promise<void> {
+  await loadRecords(true);
+  if (loadError.value) uiToast.error('刷新失败，当前记录已保留，请稍后重试');
+}
+
 watch(selectedDate, (date) => {
   if (date) selectedMonth.value = date.slice(0, 7);
 });
@@ -236,122 +246,127 @@ onActivated(() => {
 </script>
 
 <template>
-  <main class="view-page ui-page archive-page">
-    <UiPageHeader
-      title="档案"
-      :subtitle="`${selectedDate ? dayjs(selectedDate).format('M月D日') : dayjs(`${selectedMonth}-01`).format('YYYY年M月')} · ${total} 条记录`"
-      ><template #action
-        ><UiButton kind="text" @click="addRecord">记录</UiButton></template
-      ></UiPageHeader
-    >
-    <div class="archive-dates">
-      <UiButton kind="secondary" aria-label="选择档案月份" @click="monthPickerVisible = true">
-        <span class="archive-date-trigger"
-          >{{ dayjs(`${selectedMonth}-01`).format('YYYY年M月') }}<UiIcon name="right"
-        /></span>
-      </UiButton>
-      <UiButton kind="secondary" aria-label="查找记录日期" @click="datePickerVisible = true">
-        <span class="archive-date-trigger"
-          >{{ selectedDate ? dayjs(selectedDate).format('M月D日') : '查找日期'
-          }}<UiIcon name="calendar"
-        /></span>
-      </UiButton>
-    </div>
-    <UiButton v-if="selectedDate" kind="text" @click="chooseMonth(selectedDate.slice(0, 7))"
-      >查看整月记录</UiButton
-    >
-    <UiDateSheet
-      v-model:visible="monthPickerVisible"
-      :model-value="selectedMonth"
-      selection="month"
-      @update:model-value="chooseMonth"
-    />
-    <UiDateSheet v-model:visible="datePickerVisible" v-model="calendarDate" />
-    <UiTabs
-      :model-value="activeFilter"
-      :options="filters"
-      label="按记录类型筛选"
-      @update:model-value="activeFilter = $event as ArchiveFilter"
-    />
-    <UiLoading
-      class="page-loading"
-      :class="{ 'page-loading--active': loading }"
-      :loading="loading"
-      text="正在整理记录"
-    >
-      <div v-if="loadError" class="archive-error" role="alert">
-        <span>{{ loadError }}</span
-        ><UiButton kind="text" @click="loadRecords()">重试</UiButton>
-      </div>
-      <EmptyState
-        v-if="!loading && !loadError && items.length === 0"
-        title="这段时间还没有记录"
-        description="换一个日期查看，或为当天补上一条记录"
-        action-label="添加记录"
-        @action="addRecord"
-      />
-      <div v-else class="archive-list">
-        <section v-for="group in groups" :key="group.date" class="archive-group">
-          <header>
-            <strong>{{ dateTitle(group.date) }}</strong
-            ><span>{{ dayjs(group.date).format('M月D日') }}</span>
-          </header>
-          <div class="archive-group__body">
-            <template v-for="item in group.items" :key="item.id">
-              <UiRecordRow
-                v-if="item.kind === 'BODY'"
-                kind="body"
-                title="身体数据"
-                :subtitle="`${dayjs(item.recordedAt).format('HH:mm')} · ${[item.body.bodyFat !== null ? `体脂 ${item.body.bodyFat}%` : '', item.body.waist !== null ? `腰围 ${item.body.waist} cm` : '', item.body.note ?? ''].filter(Boolean).join(' · ')}`"
-                :value="item.body.weight"
-                unit="kg"
-                @click="openItem(item)"
-              />
-              <UiRecordRow
-                v-else-if="item.kind === 'MEAL'"
-                kind="meal"
-                :title="mealLabels[item.meal.type]"
-                :subtitle="`${dayjs(item.recordedAt).format('HH:mm')} · ${item.meal.foods.map((food) => food.name).join('、')}`"
-                :value="item.meal.totalCalories ?? '—'"
-                unit="kcal"
-                @click="openItem(item)"
-              />
-              <UiRecordRow
-                v-else-if="item.kind === 'WORKOUT'"
-                kind="workout"
-                :workout-type="item.workout.type"
-                :title="item.workout.name"
-                :subtitle="`${dayjs(item.recordedAt).format('HH:mm')} · ${workoutLabels[item.workout.type]}`"
-                :value="item.workout.durationMinutes"
-                unit="分钟"
-                @click="openItem(item)"
-              />
-              <UiRecordRow
-                v-else
-                kind="photo"
-                :title="`${photoLabels[item.photo.type]}照片`"
-                :subtitle="`${dayjs(item.recordedAt).format('HH:mm')} · ${item.photo.note || '身材记录'}`"
-                :image="item.photo.imageUrl"
-                @click="openItem(item)"
-              />
-            </template>
-          </div>
-        </section>
-      </div>
-      <UiButton
-        v-if="hasMore && !loading"
-        class="archive-more"
-        kind="secondary"
-        block
-        :loading="loadingMore"
-        @click="loadRecords(false, true)"
-        >加载更多</UiButton
+  <UiPullRefresh :refresh="refreshPage" :disabled="requestPending">
+    <main class="view-page ui-page archive-page">
+      <UiPageHeader
+        title="档案"
+        :subtitle="`${selectedDate ? dayjs(selectedDate).format('M月D日') : dayjs(`${selectedMonth}-01`).format('YYYY年M月')} · ${total} 条记录`"
+        ><template #action
+          ><UiButton kind="text" @click="addRecord">记录</UiButton></template
+        ></UiPageHeader
       >
-      <p v-if="!loading && !loadError && total" class="archive-count">
-        已显示 {{ items.length }} / {{ total }} 条{{ hasMore ? '，继续加载可查看更早的记录' : '' }}
-      </p>
-    </UiLoading>
-  </main>
+      <div class="archive-dates">
+        <UiButton kind="secondary" aria-label="选择档案月份" @click="monthPickerVisible = true">
+          <span class="archive-date-trigger"
+            >{{ dayjs(`${selectedMonth}-01`).format('YYYY年M月') }}<UiIcon name="right"
+          /></span>
+        </UiButton>
+        <UiButton kind="secondary" aria-label="查找记录日期" @click="datePickerVisible = true">
+          <span class="archive-date-trigger"
+            >{{ selectedDate ? dayjs(selectedDate).format('M月D日') : '查找日期'
+            }}<UiIcon name="calendar"
+          /></span>
+        </UiButton>
+      </div>
+      <UiButton v-if="selectedDate" kind="text" @click="chooseMonth(selectedDate.slice(0, 7))"
+        >查看整月记录</UiButton
+      >
+      <UiDateSheet
+        v-model:visible="monthPickerVisible"
+        :model-value="selectedMonth"
+        selection="month"
+        @update:model-value="chooseMonth"
+      />
+      <UiDateSheet v-model:visible="datePickerVisible" v-model="calendarDate" />
+      <UiTabs
+        :model-value="activeFilter"
+        :options="filters"
+        label="按记录类型筛选"
+        @update:model-value="activeFilter = $event as ArchiveFilter"
+      />
+      <UiLoading
+        class="page-loading"
+        :class="{ 'page-loading--active': loading }"
+        :loading="loading"
+        text="正在整理记录"
+      >
+        <div v-if="loadError" class="archive-error" role="alert">
+          <span>{{ loadError }}</span
+          ><UiButton kind="text" @click="loadRecords()">重试</UiButton>
+        </div>
+        <EmptyState
+          v-if="!loading && !loadError && items.length === 0"
+          title="这段时间还没有记录"
+          description="换一个日期查看，或为当天补上一条记录"
+          action-label="添加记录"
+          @action="addRecord"
+        />
+        <div v-else class="archive-list">
+          <section v-for="group in groups" :key="group.date" class="archive-group">
+            <header>
+              <strong>{{ dateTitle(group.date) }}</strong
+              ><span>{{ dayjs(group.date).format('M月D日') }}</span>
+            </header>
+            <div class="archive-group__body">
+              <template v-for="item in group.items" :key="item.id">
+                <UiRecordRow
+                  v-if="item.kind === 'BODY'"
+                  kind="body"
+                  title="身体数据"
+                  :subtitle="`${dayjs(item.recordedAt).format('HH:mm')} · ${[item.body.bodyFat !== null ? `体脂 ${item.body.bodyFat}%` : '', item.body.waist !== null ? `腰围 ${item.body.waist} cm` : '', item.body.note ?? ''].filter(Boolean).join(' · ')}`"
+                  :value="item.body.weight"
+                  unit="kg"
+                  @click="openItem(item)"
+                />
+                <UiRecordRow
+                  v-else-if="item.kind === 'MEAL'"
+                  kind="meal"
+                  :title="mealLabels[item.meal.type]"
+                  :subtitle="`${dayjs(item.recordedAt).format('HH:mm')} · ${item.meal.foods.map((food) => food.name).join('、')}`"
+                  :value="item.meal.totalCalories ?? '—'"
+                  unit="kcal"
+                  @click="openItem(item)"
+                />
+                <UiRecordRow
+                  v-else-if="item.kind === 'WORKOUT'"
+                  kind="workout"
+                  :workout-type="item.workout.type"
+                  :title="item.workout.name"
+                  :subtitle="`${dayjs(item.recordedAt).format('HH:mm')} · ${workoutLabels[item.workout.type]}`"
+                  :value="item.workout.durationMinutes"
+                  unit="分钟"
+                  @click="openItem(item)"
+                />
+                <UiRecordRow
+                  v-else
+                  kind="photo"
+                  :title="`${photoLabels[item.photo.type]}照片`"
+                  :subtitle="`${dayjs(item.recordedAt).format('HH:mm')} · ${item.photo.note || '身材记录'}`"
+                  :image="item.photo.imageUrl"
+                  @click="openItem(item)"
+                />
+              </template>
+            </div>
+          </section>
+        </div>
+        <UiButton
+          v-if="hasMore && !loading"
+          class="archive-more"
+          kind="secondary"
+          block
+          :loading="loadingMore"
+          :disabled="requestPending"
+          @click="loadRecords(false, true)"
+          >加载更多</UiButton
+        >
+        <p v-if="!loading && !loadError && total" class="archive-count">
+          已显示 {{ items.length }} / {{ total }} 条{{
+            hasMore ? '，继续加载可查看更早的记录' : ''
+          }}
+        </p>
+      </UiLoading>
+    </main>
+  </UiPullRefresh>
 </template>
 <style scoped lang="scss">
 .archive-dates {
