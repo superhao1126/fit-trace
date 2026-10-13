@@ -22,3 +22,12 @@ apps/h5/android/keystore.properties
 /.uploads
 apps/api/prisma/*.db
 apps/api/prisma/*.db-journal
+# 历史设计备份仅保留本地，定稿和后续设计产物继续入库。
+/docs/fittrace-auth-flow-2026-10-10.zip
+/docs/fittrace-home-balanced-2026-10-10.zip
+/docs/fittrace-home-neutral-2026-10-10.zip
+/docs/fittrace-ui-2026-10-10.fig
+/docs/fittrace-ui-all-pages-2026-10-10.fig
+/docs/fittrace-ui-balanced-theme-2026-10-10.fig
+/docs/fittrace-ui-neutral-theme-2026-10-10.fig
+/docs/fittrace-ui-rounded-icons-2026-10-10.fig
