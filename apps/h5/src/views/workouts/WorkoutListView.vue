@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UiLoading from '@/components/ui/UiLoading.vue';
 import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import UiRecordRow from '@/components/ui/UiRecordRow.vue';
@@ -7,7 +8,7 @@ import UiEmptyState from '@/components/ui/UiEmptyState.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { WorkoutRecord, WorkoutType } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { DialogPlugin, Loading, ToastPlugin } from 'tdesign-mobile-vue';
+import { DialogPlugin, ToastPlugin } from 'tdesign-mobile-vue';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { deleteWorkout, getWorkouts } from '@/api/workouts';
@@ -152,7 +153,7 @@ async function retry(): Promise<void> {
       label="按训练类型筛选"
       @update:model-value="selectType($event as WorkoutType | 'ALL')"
     />
-    <Loading
+    <UiLoading
       class="page-loading"
       :class="{ 'page-loading--active': loading }"
       :loading="loading"
@@ -207,7 +208,7 @@ async function retry(): Promise<void> {
         :loading="loadingMore"
         @click="loadMore"
         >加载更多</UiButton
-      ></Loading
+      ></UiLoading
     >
   </main>
 </template>

@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import UiLoading from '@/components/ui/UiLoading.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { BodyRecord } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { DialogPlugin, Loading, ToastPlugin } from 'tdesign-mobile-vue';
+import { DialogPlugin, ToastPlugin } from 'tdesign-mobile-vue';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { deleteBodyRecord, getBodyRecord } from '@/api/body-records';
@@ -72,7 +73,7 @@ onMounted(async () => {
       :subtitle="recordedAtText"
       action-label="编辑"
       @action="router.push(`/body/${recordId}/edit`)"
-    /><Loading
+    /><UiLoading
       class="page-loading"
       :class="{ 'page-loading--active': loading }"
       :loading="loading"
@@ -100,7 +101,7 @@ onMounted(async () => {
         <div class="ui-detail-actions">
           <UiButton kind="danger" @click="confirmDelete">删除这条记录</UiButton>
         </div></template
-      ></Loading
+      ></UiLoading
     >
   </main>
 </template>

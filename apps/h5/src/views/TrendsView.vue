@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UiLoading from '@/components/ui/UiLoading.vue';
 import UiPageHeader from '@/components/ui/UiPageHeader.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import UiTabs from '@/components/ui/UiTabs.vue';
@@ -20,7 +21,6 @@ import {
 } from 'echarts/components';
 import { init, use, type ComposeOption, type EChartsType } from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
-import { Loading } from 'tdesign-mobile-vue';
 import { ChartLineIcon, RefreshIcon } from 'tdesign-icons-vue-next';
 import { computed, nextTick, onActivated, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
@@ -386,7 +386,7 @@ onBeforeUnmount(() => {
       label="趋势时间范围"
       @update:model-value="selectRange($event as BodyTrendDays)"
     />
-    <Loading
+    <UiLoading
       class="page-loading"
       :class="{ 'page-loading--active': loading }"
       :loading="loading"
@@ -490,7 +490,7 @@ onBeforeUnmount(() => {
           记录饮食与训练后，在这里查看同期的饮食与训练
         </p>
       </section>
-    </Loading>
+    </UiLoading>
   </main>
 </template>
 

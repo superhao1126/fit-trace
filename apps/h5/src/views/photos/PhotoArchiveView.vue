@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UiLoading from '@/components/ui/UiLoading.vue';
 import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
 import UiTabs from '@/components/ui/UiTabs.vue';
 import UiButton from '@/components/ui/UiButton.vue';
@@ -7,7 +8,7 @@ import UiTextarea from '@/components/ui/UiTextarea.vue';
 import UiEmptyState from '@/components/ui/UiEmptyState.vue';
 import type { PhotoType, ProgressPhoto } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { Loading, ToastPlugin } from 'tdesign-mobile-vue';
+import { ToastPlugin } from 'tdesign-mobile-vue';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { createProgressPhoto, getProgressPhotos } from '@/api/progress-photos';
@@ -157,7 +158,7 @@ const filters = [{ value: 'ALL', label: '全部' }, ...photoTypes];
       accept="image/jpeg,image/png,image/webp"
       @change="selectPhoto"
     />
-    <Loading
+    <UiLoading
       class="page-loading"
       :class="{ 'page-loading--active': loading }"
       :loading="loading"
@@ -206,7 +207,7 @@ const filters = [{ value: 'ALL', label: '全部' }, ...photoTypes];
         @click="load(true)"
         >加载更多照片</UiButton
       >
-    </Loading>
+    </UiLoading>
     <dialog
       ref="dialog"
       class="photo-dialog ui-page ui-form"

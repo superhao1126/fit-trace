@@ -142,38 +142,6 @@ button {
   box-shadow: none;
 }
 
-.page-loading.t-loading {
-  display: block;
-  width: 100%;
-  min-width: 0;
-  /* TDesign 的 Loading 会把品牌色继承成文字色，这里拉回正文色 */
-  color: var(--color-text-primary);
-
-  > .t-loading__text {
-    min-width: 0;
-    margin-left: 0;
-  }
-
-  &.page-loading--active {
-    position: fixed;
-    z-index: 30;
-    top: 50%;
-    left: 50%;
-    display: grid;
-    width: max-content;
-    max-width: calc(100% - 32px);
-    grid-template-columns: 20px minmax(0, 1fr);
-    align-items: center;
-    column-gap: 8px;
-    transform: translate(-50%, -50%);
-
-    /* 加载期间只显示提示，完成后页面内容恢复正常文档流。 */
-    > :not(.t-loading__gradient):not(.t-loading__text) {
-      display: none;
-    }
-  }
-}
-
 /* 所有圆环统一使用边框，绕开 Safari 的 foreignObject 缩放。 */
 .t-loading__gradient {
   display: block;

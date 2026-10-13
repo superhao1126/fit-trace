@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UiLoading from '@/components/ui/UiLoading.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import type {
   BodyRecord,
@@ -10,7 +11,6 @@ import type {
   WorkoutType,
 } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { Loading } from 'tdesign-mobile-vue';
 import UiPageHeader from '@/components/ui/UiPageHeader.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import UiTabs from '@/components/ui/UiTabs.vue';
@@ -273,7 +273,7 @@ onActivated(() => {
       label="按记录类型筛选"
       @update:model-value="activeFilter = $event as ArchiveFilter"
     />
-    <Loading
+    <UiLoading
       class="page-loading"
       :class="{ 'page-loading--active': loading }"
       :loading="loading"
@@ -350,7 +350,7 @@ onActivated(() => {
       <p v-if="!loading && !loadError && total" class="archive-count">
         已显示 {{ items.length }} / {{ total }} 条{{ hasMore ? '，继续加载可查看更早的记录' : '' }}
       </p>
-    </Loading>
+    </UiLoading>
   </main>
 </template>
 <style scoped lang="scss">

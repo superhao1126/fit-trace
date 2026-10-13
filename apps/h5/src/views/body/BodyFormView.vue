@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UiLoading from '@/components/ui/UiLoading.vue';
 import { recordDateTime } from '@/utils/record-date';
 import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
 import UiButton from '@/components/ui/UiButton.vue';
@@ -9,7 +10,7 @@ import UiDateTimePicker from '@/components/ui/UiDateTimePicker.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { BodyRecord } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { Loading, ToastPlugin } from 'tdesign-mobile-vue';
+import { ToastPlugin } from 'tdesign-mobile-vue';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
@@ -143,7 +144,7 @@ onMounted(async () => {
       :title="isEdit ? '编辑身体数据' : '记体重'"
       subtitle="体重必填，其他数据可稍后补充"
     />
-    <Loading
+    <UiLoading
       class="page-loading"
       :class="{ 'page-loading--active': loading }"
       :loading="loading"
@@ -228,7 +229,7 @@ onMounted(async () => {
       </details>
       <UiButton class="form-submit" block :loading="submitting" @click="submit">{{
         isEdit ? '保存修改' : '保存记录'
-      }}</UiButton> </Loading
+      }}</UiButton> </UiLoading
     ><UiDateTimePicker
       v-model:visible="datePickerVisible"
       :value="formData.recordedAt"

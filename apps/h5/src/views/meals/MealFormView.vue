@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UiLoading from '@/components/ui/UiLoading.vue';
 import { applyFoodEstimate, correctFoodName } from '@/utils/food-correction';
 import { recordDateTime } from '@/utils/record-date';
 import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
@@ -12,7 +13,7 @@ import UiDateTimePicker from '@/components/ui/UiDateTimePicker.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { MealRecord, MealType } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { ActionSheet, Loading, ToastPlugin } from 'tdesign-mobile-vue';
+import { ActionSheet, ToastPlugin } from 'tdesign-mobile-vue';
 import { AddIcon, CheckIcon, DeleteIcon } from 'tdesign-icons-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -407,7 +408,7 @@ onMounted(async () => {
       subtitle="记下吃了什么，份量和热量选填"
     />
 
-    <Loading
+    <UiLoading
       class="page-loading"
       :class="{ 'page-loading--active': loading }"
       :loading="loading"
@@ -705,7 +706,7 @@ onMounted(async () => {
           {{ isEdit ? '保存修改' : '保存饮食记录' }}
         </UiButton>
       </section>
-    </Loading>
+    </UiLoading>
 
     <UiDateTimePicker
       v-model:visible="datePickerVisible"

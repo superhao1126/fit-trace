@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UiLoading from '@/components/ui/UiLoading.vue';
 import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
 import UiTabs from '@/components/ui/UiTabs.vue';
 import UiButton from '@/components/ui/UiButton.vue';
@@ -9,7 +10,7 @@ import UiIcon from '@/components/ui/UiIcon.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { FitnessGoalType } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { Loading, ToastPlugin } from 'tdesign-mobile-vue';
+import { ToastPlugin } from 'tdesign-mobile-vue';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { getLatestBodyRecord } from '@/api/body-records';
@@ -105,7 +106,7 @@ const goalTabs = goalOptions.map((item) => ({ value: item.value, label: item.tit
 <template>
   <main class="view-page ui-page ui-form goal-page">
     <UiDetailHeader title="我的目标" subtitle="找到适合自己的节奏" />
-    <Loading
+    <UiLoading
       class="page-loading"
       :class="{ 'page-loading--active': loading }"
       :loading="loading"
@@ -149,7 +150,7 @@ const goalTabs = goalOptions.map((item) => ({ value: item.value, label: item.tit
       </div>
       <UiButton class="form-submit" block :loading="submitting" @click="submit"
         >保存目标</UiButton
-      ></Loading
+      ></UiLoading
     >
     <UiDateSheet
       v-model:visible="dateVisible"

@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import UiLoading from '@/components/ui/UiLoading.vue';
 import UiInfoCard from '@/components/ui/UiInfoCard.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { PhotoType, ProgressPhoto } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { DialogPlugin, Loading, ToastPlugin } from 'tdesign-mobile-vue';
+import { DialogPlugin, ToastPlugin } from 'tdesign-mobile-vue';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { deleteProgressPhoto, getProgressPhoto } from '@/api/progress-photos';
@@ -72,7 +73,7 @@ onMounted(async () => {
       :subtitle="photo ? `${recordedAtText} · ${photoLabels[photo.type]}` : ''"
     />
 
-    <Loading
+    <UiLoading
       class="page-loading"
       :class="{ 'page-loading--active': loading }"
       :loading="loading"
@@ -92,7 +93,7 @@ onMounted(async () => {
           <UiButton kind="danger" @click="confirmDelete">删除这张照片</UiButton>
         </div>
       </template>
-    </Loading>
+    </UiLoading>
   </main>
 </template>
 

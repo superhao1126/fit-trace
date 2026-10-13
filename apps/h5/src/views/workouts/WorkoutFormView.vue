@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UiLoading from '@/components/ui/UiLoading.vue';
 import { recordDateTime } from '@/utils/record-date';
 import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
 import UiButton from '@/components/ui/UiButton.vue';
@@ -11,7 +12,7 @@ import UiRecordRow from '@/components/ui/UiRecordRow.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { WorkoutRecord, WorkoutType } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { Loading, ToastPlugin } from 'tdesign-mobile-vue';
+import { ToastPlugin } from 'tdesign-mobile-vue';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
@@ -155,7 +156,7 @@ onMounted(async () => {
 <template>
   <main class="view-page ui-page ui-form workout-form-page">
     <UiDetailHeader :title="isEdit ? '编辑训练记录' : '记训练'" subtitle="记录训练内容与时长" />
-    <Loading
+    <UiLoading
       class="page-loading"
       :class="{ 'page-loading--active': loading }"
       :loading="loading"
@@ -244,7 +245,7 @@ onMounted(async () => {
       </details>
       <UiButton class="form-submit" block :loading="submitting" @click="submit">{{
         isEdit ? '保存修改' : '保存训练记录'
-      }}</UiButton> </Loading
+      }}</UiButton> </UiLoading
     ><UiDateTimePicker
       v-model:visible="datePickerVisible"
       :value="formData.startedAt"

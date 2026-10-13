@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import UiLoading from '@/components/ui/UiLoading.vue';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import dayjs from 'dayjs';
-import { Loading } from 'tdesign-mobile-vue';
 import type { MealRecord, MealType } from '@fit-trace/shared';
 import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
 import UiButton from '@/components/ui/UiButton.vue';
@@ -100,7 +100,7 @@ watch(
     />
     <DiaryDateStrip v-model="date" />
     <UiDateSheet v-model:visible="calendarVisible" v-model="date" />
-    <Loading
+    <UiLoading
       class="page-loading"
       :class="{ 'page-loading--active': loading }"
       :loading="loading"
@@ -141,7 +141,7 @@ watch(
         </section>
         <UiButton block @click="add(undefined, 'photo')">AI 拍照识别</UiButton>
       </template>
-    </Loading>
+    </UiLoading>
   </main>
 </template>
 <style scoped lang="scss">

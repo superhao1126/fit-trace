@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UiLoading from '@/components/ui/UiLoading.vue';
 import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import UiRecordRow from '@/components/ui/UiRecordRow.vue';
@@ -6,7 +7,6 @@ import UiEmptyState from '@/components/ui/UiEmptyState.vue';
 import { showRequestError } from '@/utils/request-error';
 import type { BodyRecord } from '@fit-trace/shared';
 import dayjs from 'dayjs';
-import { Loading } from 'tdesign-mobile-vue';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { getBodyRecords } from '@/api/body-records';
@@ -78,7 +78,7 @@ async function retry(): Promise<void> {
       action-label="新记录"
       @action="router.push('/body/create')"
     />
-    <Loading
+    <UiLoading
       class="page-loading"
       :class="{ 'page-loading--active': loading }"
       :loading="loading"
@@ -132,7 +132,7 @@ async function retry(): Promise<void> {
         :loading="loadingMore"
         @click="loadMore"
         >加载更多</UiButton
-      ></Loading
+      ></UiLoading
     >
   </main>
 </template>

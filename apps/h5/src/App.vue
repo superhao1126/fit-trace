@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { Loading } from 'tdesign-mobile-vue';
+import UiLoading from '@/components/ui/UiLoading.vue';
 import router from './router';
 import { useAuthStore } from '@/stores/auth';
 
@@ -20,5 +20,5 @@ onMounted(async () => {
 
 <template>
   <RouterView v-if="ready" />
-  <Loading v-else class="page-loading page-loading--active" text="正在恢复登录" />
+  <UiLoading v-else class="page-loading page-loading--active" text="正在恢复登录" />
 </template>
