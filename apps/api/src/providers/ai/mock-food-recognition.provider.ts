@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import type { FoodRecognitionItem, FoodRecognitionResult } from '@fit-trace/shared';
 import type { FoodRecognitionProvider } from './food-recognition.types';
 
@@ -36,6 +36,10 @@ const MEAL_TEMPLATES: FoodRecognitionItem[][] = [
 
 @Injectable()
 export class MockFoodRecognitionProvider implements FoodRecognitionProvider {
+  async analyzeText(): Promise<FoodRecognitionResult> {
+    throw new ServiceUnavailableException('尚未配置真实 AI，请直接记录原文或手动添加');
+  }
+
   async recognize(imageUrl: string): Promise<FoodRecognitionResult> {
     return {
       provider: 'mock',

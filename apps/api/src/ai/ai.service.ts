@@ -17,6 +17,10 @@ export class AiService {
     private readonly storage: StorageProvider,
   ) {}
 
+  async analyzeText(description: string): Promise<FoodRecognitionResult> {
+    return this.foodRecognition.analyzeText(description);
+  }
+
   /**
    * 识别结果只是建议，必须由用户确认后再写入饮食记录。
    * 本地存储的图片无法被外部服务读取，因此先换成可访问的引用，

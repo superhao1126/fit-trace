@@ -1,3 +1,5 @@
+import { additionalExercises } from './training-exercises.js';
+
 export interface Exercise {
   id: string;
   name: string;
@@ -27,6 +29,7 @@ export interface TrainingTemplate {
   durationMinutes: number;
   exercises: TrainingExercise[];
   preset?: boolean;
+  location?: 'HOME' | 'GYM';
 }
 export interface TrainingPlanDay {
   weekday: number;
@@ -98,6 +101,7 @@ export const exerciseLibrary: Exercise[] = [
     tips: '避免塌腰或过度抬高臀部；按秒记录每组。',
     sourceUrl: 'https://www.acefitness.org/resources/everyone/exercise-library/32/front-plank/',
   },
+  ...additionalExercises,
 ];
 export function makeTrainingExercise(exercise: Exercise, sets = 3, reps = 10): TrainingExercise {
   return {
@@ -117,12 +121,14 @@ function preset(
   name: string,
   minutes: number,
   exerciseIds: string[],
+  location: 'HOME' | 'GYM' = 'HOME',
 ): TrainingTemplate {
   return {
     id,
     name,
     durationMinutes: minutes,
     preset: true,
+    location,
     exercises: exerciseIds.map((id) =>
       makeTrainingExercise(exerciseLibrary.find((e) => e.id === id)!),
     ),
@@ -133,6 +139,48 @@ export const trainingPresets: TrainingTemplate[] = [
   preset('preset-full', '全身基础', 30, ['squat', 'knee-pushup', 'row', 'bridge']),
   preset('preset-upper', '上肢基础', 25, ['knee-pushup', 'row', 'plank']),
   preset('preset-lower', '下肢基础', 25, ['squat', 'bridge', 'plank']),
+  preset('preset-home-bodyweight', '居家全身 · 徒手', 25, [
+    'squat',
+    'knee-pushup',
+    'bridge',
+    'plank',
+  ]),
+  preset('preset-home-dumbbell', '居家全身 · 哑铃', 35, [
+    'goblet-squat',
+    'row',
+    'front-raise',
+    'bridge',
+    'plank',
+  ]),
+  preset('preset-home-core', '居家核心', 20, ['bird-dog', 'crunch', 'plank']),
+  preset(
+    'preset-gym-full',
+    '健身房全身',
+    45,
+    ['leg-press', 'chest-press-machine', 'lat-pulldown', 'machine-row', 'plank'],
+    'GYM',
+  ),
+  preset(
+    'preset-gym-push',
+    '健身房上肢推',
+    40,
+    ['dumbbell-press', 'incline-press', 'front-raise', 'knee-pushup'],
+    'GYM',
+  ),
+  preset(
+    'preset-gym-pull',
+    '健身房上肢拉',
+    40,
+    ['lat-pulldown', 'machine-row', 'row', 'hammer-curl'],
+    'GYM',
+  ),
+  preset(
+    'preset-gym-lower',
+    '健身房下肢',
+    40,
+    ['leg-press', 'goblet-squat', 'leg-curl', 'calf-raise', 'bridge'],
+    'GYM',
+  ),
 ];
 
 export interface TrainingPlanState {

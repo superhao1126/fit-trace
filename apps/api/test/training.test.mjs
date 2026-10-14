@@ -8,6 +8,19 @@ import dto from '../dist/training/training.dto.js';
 import training from '../dist/training/training.service.js';
 import workoutDto from '../dist/workouts/dto/create-workout.dto.js';
 import updateWorkoutDto from '../dist/workouts/dto/update-workout.dto.js';
+import { exerciseLibrary, trainingPresets } from '@fit-trace/shared';
+test('expanded presets preserve IDs and every template passes server nested validation', async () => {
+  assert.equal(new Set(exerciseLibrary.map((e) => e.id)).size, exerciseLibrary.length);
+  assert.equal(new Set(trainingPresets.map((t) => t.id)).size, trainingPresets.length);
+  assert.ok(trainingPresets.some((t) => t.id === 'preset-full'));
+  for (const template of trainingPresets) {
+    assert.equal((await validate(plainToInstance(dto.TrainingTemplateDto, template))).length, 0);
+    assert.deepEqual(training.normalizeExercises(template.exercises, true), template.exercises);
+    assert.ok(
+      template.exercises.every((e) => e.sets.every((s) => !s.completed && s.weightKg === 0)),
+    );
+  }
+});
 const exercises = [
   {
     exerciseId: 'squat',

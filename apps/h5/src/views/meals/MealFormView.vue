@@ -23,7 +23,7 @@ import { uiToast as ToastPlugin } from '@/components/ui/toast';
 import { AddIcon, CheckIcon, DeleteIcon } from 'tdesign-icons-vue-next';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { recognizeFood } from '@/api/ai';
+import { analyzeMealText, recognizeFood } from '@/api/ai';
 import {
   createMeal,
   getMeal,
@@ -77,16 +77,23 @@ const cameraInput = ref<HTMLInputElement | null>(null);
 const photoSourceVisible = ref(false);
 const recentMeals = ref<MealRecord[]>([]);
 const templateSource = ref('');
-type EntryMode = 'library' | 'manual' | 'photo' | 'recent' | 'favorites';
-const entryMode = ref<EntryMode>(route.query.mode === 'photo' ? 'photo' : 'library');
+type EntryMode = 'text' | 'library' | 'manual' | 'photo' | 'recent' | 'favorites';
+const description = ref('');
+const entryMode = ref<EntryMode>(
+  route.query.mode === 'photo' ? 'photo' : mealId.value ? 'manual' : 'text',
+);
 const libraryVisible = ref(false);
 const entryModes = [
-  { value: 'library', label: '食品库' },
-  { value: 'manual', label: '手动' },
+  { value: 'text', label: '一句话' },
   { value: 'photo', label: '拍照' },
-  { value: 'recent', label: '最近' },
   { value: 'favorites', label: '常用餐' },
 ] as const;
+const moreModes = [
+  { value: 'library', label: '食品库' },
+  { value: 'recent', label: '最近吃过' },
+  { value: 'manual', label: '手动填写' },
+] as const;
+const allModes = [...entryModes, ...moreModes];
 const hour = dayjs().hour();
 let foodKey = 1;
 const formData = reactive({
@@ -127,8 +134,9 @@ function restoreDraft() {
   recognitionProvider.value =
     typeof draft.recognitionProvider === 'string' ? draft.recognitionProvider : '';
   suggestions.value = draft.suggestions.map((food) => ({ ...food }));
+  description.value = typeof draft.description === 'string' ? draft.description : '';
   foodKey = Math.max(0, ...draft.foods.map((f) => f.key), ...draft.suggestions.map((f) => f.key));
-  entryMode.value = entryModes.some((mode) => mode.value === draft.entryMode)
+  entryMode.value = allModes.some((mode) => mode.value === draft.entryMode)
     ? (draft.entryMode as EntryMode)
     : 'manual';
   pendingDraft.value = null;
@@ -164,7 +172,8 @@ function persistDraft() {
     formData.foods.some((f) => f.name || f.amount || f.calories !== '') ||
     formData.note ||
     imageUrl.value ||
-    suggestions.value.length;
+    suggestions.value.length ||
+    description.value;
   try {
     if (!meaningful) {
       localStorage.removeItem(draftKey);
@@ -179,6 +188,7 @@ function persistDraft() {
         recognitionProvider: recognitionProvider.value,
         suggestions: suggestions.value,
         entryMode: entryMode.value,
+        description: description.value,
         savedAt: new Date().toISOString(),
       }),
     );
@@ -190,7 +200,56 @@ function persistDraft() {
     draftStorageError.value = true;
   }
 }
-watch([formData, imageUrl, suggestions, entryMode], persistDraft, { deep: true, flush: 'sync' });
+watch([formData, imageUrl, suggestions, entryMode, description], persistDraft, {
+  deep: true,
+  flush: 'sync',
+});
+
+async function analyzeDescription() {
+  const text = description.value.trim();
+  if (!text || recognizing.value || suggestions.value.length) return;
+  recognizing.value = true;
+  try {
+    const result = await analyzeMealText(text);
+    if (authSession.generation !== sessionGeneration || description.value.trim() !== text) return;
+    recognitionProvider.value = result.provider;
+    suggestions.value = result.foods.map((food) => ({
+      key: ++foodKey,
+      name: food.name,
+      amount: food.estimatedAmount ?? '',
+      calories: food.estimatedCalories ?? '',
+      aiGenerated: true,
+      selected: true,
+    }));
+    if (!suggestions.value.length) ToastPlugin.warning('没有找到餐食信息，可直接记录原文');
+  } catch (error) {
+    showRequestError(error, '分析失败，可直接记录原文');
+  } finally {
+    recognizing.value = false;
+  }
+}
+function recordDescription() {
+  const text = description.value.trim();
+  if (!text) return;
+  if (text.length > 100) {
+    const note = [formData.note.trim(), text].filter(Boolean).join('\n');
+    if (note.length > 500) {
+      ToastPlugin.warning('备注空间不足以保留完整原文，请精简备注后重试');
+      return;
+    }
+    formData.note = note;
+  }
+  const food = {
+    key: ++foodKey,
+    name: text.slice(0, 100),
+    amount: '',
+    calories: '',
+    aiGenerated: false,
+  };
+  formData.foods = formData.foods.every((f) => !f.name.trim()) ? [food] : [...formData.foods, food];
+  description.value = '';
+  ToastPlugin.success('已添加原文，热量留空，可直接保存');
+}
 function openFavorite() {
   const input = buildInput();
   if (!input) return;
@@ -429,7 +488,8 @@ function applySuggestions(): void {
   }
   formData.foods = nextFoods;
   suggestions.value = [];
-  entryMode.value = 'manual';
+  if (entryMode.value === 'text') description.value = '';
+  else entryMode.value = 'manual';
   ToastPlugin.success(`已添加 ${picked.length} 种食物，可继续修改`);
 }
 
@@ -591,6 +651,39 @@ onMounted(async () => {
           :disabled="uploadingPhoto || recognizing || estimatingFoods.size > 0"
           @update:model-value="entryMode = $event as EntryMode"
         />
+        <div v-if="entryMode === 'text'" class="field-block meal-description">
+          <UiTextarea
+            v-model="description"
+            :maxlength="500"
+            aria-label="这一餐吃了什么"
+            placeholder="例如：中午一碗牛肉面，加一个鸡蛋"
+            :disabled="recognizing || suggestions.length > 0"
+          />
+          <div>
+            <UiButton
+              :loading="recognizing"
+              :disabled="!description.trim() || suggestions.length > 0"
+              @click="analyzeDescription"
+              >AI 分析这一餐</UiButton
+            ><UiButton
+              kind="text"
+              :disabled="!description.trim() || recognizing || suggestions.length > 0"
+              @click="recordDescription"
+              >直接记录原文</UiButton
+            >
+          </div>
+          <p class="suggestion-tip">AI 估算后先确认；直接记录热量留空，较长原文保存在备注。</p>
+        </div>
+        <details class="meal-more">
+          <summary>食品库、最近与手动填写</summary>
+          <UiTabs
+            :model-value="entryMode"
+            :options="moreModes"
+            label="其他添加方式"
+            :disabled="recognizing || uploadingPhoto"
+            @update:model-value="entryMode = $event as EntryMode"
+          />
+        </details>
         <div v-if="entryMode === 'library'" class="field-block">
           <UiButton kind="secondary" block @click="libraryVisible = true"
             >从食品库添加食物</UiButton
@@ -672,81 +765,82 @@ onMounted(async () => {
           <div v-if="recognizing && !suggestions.length" class="recognizing-hint">
             正在识别这张照片…
           </div>
-
-          <div v-if="suggestions.length" class="suggestion-panel">
-            <header>
-              <div>
-                <strong>识别结果</strong>
-                <span>{{
-                  recognitionProvider === 'mock'
-                    ? '当前为模拟识别，不会分析照片，请手动调整'
-                    : '识别错了？直接修改对应菜名，不用重新识别'
-                }}</span>
-              </div>
-              <UiButton
-                kind="secondary"
-                :disabled="estimatingFoods.size > 0"
-                @click="applySuggestions"
-                >确认并加入</UiButton
-              >
-            </header>
-            <div class="suggestion-list">
-              <div
-                v-for="(item, index) in suggestions"
-                :key="item.key"
-                class="suggestion-item"
-                :class="{ selected: item.selected }"
-              >
-                <button
-                  type="button"
-                  class="suggestion-item__check"
-                  :aria-pressed="item.selected"
-                  :aria-label="item.selected ? `取消选择${item.name}` : `选择${item.name}`"
-                  @click="toggleSuggestion(item.key)"
-                >
-                  <CheckIcon v-if="item.selected" />
-                </button>
-                <span class="suggestion-item__main">
-                  <UiInput
-                    :model-value="item.name"
-                    :aria-label="`识别食物 ${index + 1} 名称`"
-                    class="suggestion-item__name"
-                    :maxlength="100"
-                    placeholder="食物名称"
-                    @update:model-value="correctFoodName(item, String($event))"
-                  />
-                  <input
-                    v-model="item.amount"
-                    :aria-label="`识别食物 ${index + 1} 份量`"
-                    maxlength="50"
-                    placeholder="份量选填"
-                  />
-                  <button
-                    v-if="item.sourceImageUrl"
-                    type="button"
-                    class="food-estimate"
-                    :disabled="!item.name.trim() || estimatingFoods.has(item.key)"
-                    @click="estimateFood(item)"
-                  >
-                    {{ estimatingFoods.has(item.key) ? '估算中…' : 'AI 重新估算' }}
-                  </button>
-                </span>
-                <span class="suggestion-item__calories">
-                  <input
-                    v-model="item.calories"
-                    :aria-label="`识别食物 ${index + 1} 热量`"
-                    type="number"
-                    min="0"
-                    placeholder="选填"
-                  /><small>kcal</small>
-                </span>
-              </div>
+        </div>
+        <div v-if="suggestions.length" class="suggestion-panel">
+          <header>
+            <div>
+              <strong>识别结果</strong>
+              <span>{{
+                recognitionProvider === 'mock'
+                  ? '当前为模拟识别，不会分析照片，请手动调整'
+                  : '估算仅供参考，请核对名称、份量与热量'
+              }}</span>
             </div>
-            <p class="suggestion-tip">
-              修改 AI 菜名会清除旧估算，可点击「AI
-              重新估算」或手动填写。估算仅更新对应菜品，结果可继续调整。
-            </p>
+            <UiButton
+              kind="secondary"
+              :disabled="estimatingFoods.size > 0"
+              @click="applySuggestions"
+              >确认并加入</UiButton
+            >
+            <UiButton kind="text" :disabled="estimatingFoods.size > 0" @click="suggestions = []"
+              >放弃分析结果</UiButton
+            >
+          </header>
+          <div class="suggestion-list">
+            <div
+              v-for="(item, index) in suggestions"
+              :key="item.key"
+              class="suggestion-item"
+              :class="{ selected: item.selected }"
+            >
+              <button
+                type="button"
+                class="suggestion-item__check"
+                :aria-pressed="item.selected"
+                :aria-label="item.selected ? `取消选择${item.name}` : `选择${item.name}`"
+                @click="toggleSuggestion(item.key)"
+              >
+                <CheckIcon v-if="item.selected" />
+              </button>
+              <span class="suggestion-item__main">
+                <UiInput
+                  :model-value="item.name"
+                  :aria-label="`识别食物 ${index + 1} 名称`"
+                  class="suggestion-item__name"
+                  :maxlength="100"
+                  placeholder="食物名称"
+                  @update:model-value="correctFoodName(item, String($event))"
+                />
+                <input
+                  v-model="item.amount"
+                  :aria-label="`识别食物 ${index + 1} 份量`"
+                  maxlength="50"
+                  placeholder="份量选填"
+                />
+                <button
+                  v-if="item.sourceImageUrl"
+                  type="button"
+                  class="food-estimate"
+                  :disabled="!item.name.trim() || estimatingFoods.has(item.key)"
+                  @click="estimateFood(item)"
+                >
+                  {{ estimatingFoods.has(item.key) ? '估算中…' : 'AI 重新估算' }}
+                </button>
+              </span>
+              <span class="suggestion-item__calories">
+                <input
+                  v-model="item.calories"
+                  :aria-label="`识别食物 ${index + 1} 热量`"
+                  type="number"
+                  min="0"
+                  placeholder="选填"
+                /><small>kcal</small>
+              </span>
+            </div>
           </div>
+          <p class="suggestion-tip">
+            修改 AI 菜名会清除旧估算。可手动补充；照片识别的菜品也可单独重新估算。
+          </p>
         </div>
 
         <input
@@ -776,80 +870,82 @@ onMounted(async () => {
           @selected="selectPhotoSource"
         />
 
-        <div class="foods-heading">
-          <span class="field-label"
-            >食物明细 <small>{{ formData.foods.length }} 项</small></span
-          >
-          <span class="foods-heading__hint">份量、热量选填</span>
-        </div>
-
-        <div class="food-list">
-          <section v-for="(food, index) in formData.foods" :key="food.key" class="food-item">
-            <div class="food-item__main">
-              <input
-                :value="food.name"
-                class="food-item__name"
-                :aria-label="`食物 ${index + 1} 名称`"
-                maxlength="100"
-                placeholder="食物名称，如鸡胸肉"
-                @input="correctFoodName(food, ($event.target as HTMLInputElement).value)"
-              />
-              <span v-if="food.aiGenerated" class="food-item__ai">AI</span>
-              <button
-                type="button"
-                class="food-item__remove"
-                :aria-label="`删除食物 ${index + 1}`"
-                :disabled="formData.foods.length === 1"
-                @click="removeFood(food.key)"
-              >
-                移除
-              </button>
-            </div>
-            <button
-              v-if="food.sourceImageUrl"
-              type="button"
-              class="food-estimate"
-              :disabled="!food.name.trim() || estimatingFoods.has(food.key)"
-              @click="estimateFood(food)"
+        <template v-if="entryMode === 'manual' || formData.foods.some((food) => food.name.trim())">
+          <div class="foods-heading">
+            <span class="field-label"
+              >食物明细 <small>{{ formData.foods.length }} 项</small></span
             >
-              {{ estimatingFoods.has(food.key) ? '估算中…' : 'AI 重新估算' }}
-            </button>
-            <details class="food-item__extras" :open="true">
-              <summary>
-                份量与热量
-                <span>{{
-                  [food.amount, food.calories !== '' ? `${food.calories} kcal` : '']
-                    .filter(Boolean)
-                    .join(' · ') || '选填'
-                }}</span
-                ><UiIcon name="right" class="expand-icon" />
-              </summary>
-              <div class="food-item__details">
-                <label>
-                  <span>份量</span>
-                  <input
-                    v-model="food.amount"
-                    :aria-label="`食物 ${index + 1} 份量`"
-                    maxlength="50"
-                    placeholder="如 150g"
-                  />
-                </label>
-                <label>
-                  <span>热量</span>
-                  <input
-                    v-model="food.calories"
-                    :aria-label="`食物 ${index + 1} 热量`"
-                    type="number"
-                    inputmode="decimal"
-                    placeholder="选填"
-                  />
-                  <small>kcal</small>
-                </label>
+            <span class="foods-heading__hint">份量、热量选填</span>
+          </div>
+
+          <div class="food-list">
+            <section v-for="(food, index) in formData.foods" :key="food.key" class="food-item">
+              <div class="food-item__main">
+                <input
+                  :value="food.name"
+                  class="food-item__name"
+                  :aria-label="`食物 ${index + 1} 名称`"
+                  maxlength="100"
+                  placeholder="食物名称，如鸡胸肉"
+                  @input="correctFoodName(food, ($event.target as HTMLInputElement).value)"
+                />
+                <span v-if="food.aiGenerated" class="food-item__ai">AI</span>
+                <button
+                  type="button"
+                  class="food-item__remove"
+                  :aria-label="`删除食物 ${index + 1}`"
+                  :disabled="formData.foods.length === 1"
+                  @click="removeFood(food.key)"
+                >
+                  移除
+                </button>
               </div>
-            </details>
-          </section>
-          <button type="button" class="add-food" @click="addFood"><AddIcon /> 添加食物</button>
-        </div>
+              <button
+                v-if="food.sourceImageUrl"
+                type="button"
+                class="food-estimate"
+                :disabled="!food.name.trim() || estimatingFoods.has(food.key)"
+                @click="estimateFood(food)"
+              >
+                {{ estimatingFoods.has(food.key) ? '估算中…' : 'AI 重新估算' }}
+              </button>
+              <details class="food-item__extras" :open="isEdit">
+                <summary>
+                  份量与热量
+                  <span>{{
+                    [food.amount, food.calories !== '' ? `${food.calories} kcal` : '']
+                      .filter(Boolean)
+                      .join(' · ') || '选填'
+                  }}</span
+                  ><UiIcon name="right" class="expand-icon" />
+                </summary>
+                <div class="food-item__details">
+                  <label>
+                    <span>份量</span>
+                    <input
+                      v-model="food.amount"
+                      :aria-label="`食物 ${index + 1} 份量`"
+                      maxlength="50"
+                      placeholder="如 150g"
+                    />
+                  </label>
+                  <label>
+                    <span>热量</span>
+                    <input
+                      v-model="food.calories"
+                      :aria-label="`食物 ${index + 1} 热量`"
+                      type="number"
+                      inputmode="decimal"
+                      placeholder="选填"
+                    />
+                    <small>kcal</small>
+                  </label>
+                </div>
+              </details>
+            </section>
+            <button type="button" class="add-food" @click="addFood"><AddIcon /> 添加食物</button>
+          </div>
+        </template>
 
         <details class="note-details" :open="isEdit && !!formData.note">
           <summary>添加备注（选填）<UiIcon name="right" class="expand-icon" /></summary>
@@ -890,6 +986,21 @@ onMounted(async () => {
 </template>
 
 <style scoped lang="scss">
+.meal-description > div {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.meal-more {
+  margin: 12px 0;
+  color: var(--ui-text-secondary);
+  font-size: 13px;
+}
+.meal-more summary {
+  cursor: pointer;
+  margin-bottom: 8px;
+}
 .draft-banner {
   background: var(--ui-primary-light);
   border-radius: 14px;

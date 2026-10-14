@@ -16,6 +16,15 @@ import { createWorkout } from '@/api/workouts';
 import { authSession } from '@/api/session';
 import { readTrainingDraft, trainingDraftKey } from '@/utils/training-draft';
 import { completedTraining, trainingValidation } from '@/utils/training-validation';
+import { carryPreviousSets, type EditableTrainingSet } from '@/utils/previous-training';
+import {
+  elapsedMinutes,
+  newTrainingClock,
+  restSeconds,
+  setRest,
+  toggleRestPause,
+  toggleTrainingPause,
+} from '@/utils/training-clock';
 import { showRequestError } from '@/utils/request-error';
 import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
 import UiButton from '@/components/ui/UiButton.vue';
@@ -36,7 +45,16 @@ async function loadPrevious(id: string) {
   historyErrors.value = historyErrors.value.filter((item) => item !== id);
   try {
     const result = await getPreviousExercise(id);
-    if (authSession.generation === sessionGeneration) previous.value[id] = result;
+    if (authSession.generation === sessionGeneration) {
+      previous.value[id] = result;
+      if (result && result.unit === exercises.value.find((e) => e.exerciseId === id)?.unit) {
+        exercises.value = exercises.value.map((e) =>
+          e.exerciseId === id
+            ? { ...e, sets: carryPreviousSets(e.sets as EditableTrainingSet[], result.sets) }
+            : e,
+        );
+      }
+    }
   } catch {
     historyErrors.value = [...historyErrors.value, id];
   } finally {
@@ -61,14 +79,26 @@ const saving = ref(false);
 const saved = ref(false);
 const resumed = ref(false);
 const now = ref(Date.now());
-const restUntil = ref(0);
+const clock = ref(newTrainingClock());
+const autoRest = ref(true);
 let storageWarning = false;
 const ticker = window.setInterval(() => (now.value = Date.now()), 1000);
 onUnmounted(() => window.clearInterval(ticker));
-const rest = computed(() => Math.max(0, Math.ceil((restUntil.value - now.value) / 1000)));
-const elapsed = computed(() =>
-  Math.max(1, Math.round((now.value - new Date(startedAt.value).getTime()) / 60000)),
-);
+const rest = computed(() => restSeconds(clock.value, now.value));
+const elapsed = computed(() => elapsedMinutes(startedAt.value, clock.value, now.value));
+function pauseTraining() {
+  now.value = Date.now();
+  clock.value = toggleTrainingPause(clock.value, now.value);
+}
+function pauseRest() {
+  clock.value = toggleRestPause(clock.value, Date.now());
+}
+function adjustRest(seconds: number) {
+  const value = Math.max(0, Math.min(600, rest.value + seconds));
+  if (clock.value.restPausedSeconds !== null)
+    clock.value = { ...clock.value, restPausedSeconds: value || null, restUntil: 0 };
+  else clock.value = setRest(clock.value, value, Date.now());
+}
 const completed = computed(() =>
   exercises.value.reduce((n, e) => n + e.sets.filter((s) => s.completed).length, 0),
 );
@@ -90,6 +120,8 @@ async function load() {
           ? draft.duration
           : '';
       resumed.value = true;
+      clock.value = draft.clock ?? newTrainingClock();
+      autoRest.value = draft.autoRest !== false;
     } else if (templateId) {
       const template =
         trainingPresets.find((t) => t.id === templateId) ??
@@ -98,7 +130,15 @@ async function load() {
       name.value = template.name;
       exercises.value = structuredClone(template.exercises).map((e) => ({
         ...e,
-        sets: e.sets.map((s) => ({ ...s, completed: false })),
+        sets: e.sets.map((s) => ({
+          ...s,
+          weightKg:
+            template.preset &&
+            exerciseLibrary.find((item) => item.id === e.exerciseId)?.equipment !== '徒手'
+              ? -1
+              : s.weightKg,
+          completed: false,
+        })),
       }));
     }
     ready.value = true;
@@ -108,7 +148,7 @@ async function load() {
   }
 }
 watch(
-  [name, exercises, startedAt, duration],
+  [name, exercises, startedAt, duration, clock, autoRest, ready],
   () => {
     if (!ready.value || saved.value || !ownerId || authSession.generation !== sessionGeneration)
       return;
@@ -120,6 +160,8 @@ watch(
           exercises: exercises.value,
           startedAt: startedAt.value,
           duration: duration.value,
+          clock: clock.value,
+          autoRest: autoRest.value,
         }),
       );
     } catch {
@@ -133,16 +175,23 @@ watch(
 );
 function add(_selected: unknown, index: number) {
   picker.value = false;
-  if (exercises.value.length < 20)
-    exercises.value.push(makeTrainingExercise(exerciseLibrary[index]));
+  if (exercises.value.length >= 20) return;
+  const item = exerciseLibrary[index];
+  const exercise = makeTrainingExercise(item);
+  if (item.equipment !== '徒手') exercise.sets = exercise.sets.map((s) => ({ ...s, weightKg: -1 }));
+  const last = previous.value[item.id];
+  if (last?.unit === item.unit) exercise.sets = carryPreviousSets(exercise.sets, last.sets);
+  exercises.value.push(exercise);
 }
 function startRest(seconds: number) {
-  restUntil.value = Date.now() + seconds * 1000;
   now.value = Date.now();
+  clock.value = setRest(clock.value, seconds, now.value);
 }
 function finish() {
   if (saving.value) return;
-  const validation = trainingValidation(exercises.value);
+  const validation = completed.value
+    ? trainingValidation(completedTraining(exercises.value))
+    : null;
   if (validation) {
     ToastPlugin.warning(validation);
     return;
@@ -210,30 +259,57 @@ onMounted(load);
       <section class="session-summary">
         <strong>已完成 {{ completed }} / {{ total }} 组</strong
         ><span>已进行 {{ elapsed }} 分钟</span
-        ><UiButton v-if="rest" kind="text" @click="restUntil = 0"
-          >休息剩余 {{ rest }} 秒 · 结束休息</UiButton
-        >
+        ><UiButton kind="text" @click="pauseTraining">{{
+          clock.pausedAt === null ? '暂停训练' : '继续训练'
+        }}</UiButton>
       </section>
-      <label>训练名称<UiInput v-model="name" :maxlength="60" aria-label="训练名称" /></label
-      ><TrainingExerciseEditor
+      <p v-if="clock.pausedAt !== null" class="session-hint">
+        训练已暂停，暂停时间不计入实际时长。
+      </p>
+      <section v-if="rest" class="session-rest" aria-live="polite">
+        <strong
+          >休息{{ clock.restPausedSeconds !== null || clock.pausedAt !== null ? '已暂停' : '中' }} ·
+          {{ rest }} 秒</strong
+        >
+        <div>
+          <UiButton kind="text" @click="adjustRest(-15)">−15 秒</UiButton
+          ><UiButton kind="text" @click="adjustRest(15)">+15 秒</UiButton
+          ><UiButton kind="text" :disabled="clock.pausedAt !== null" @click="pauseRest">{{
+            clock.restPausedSeconds === null ? '暂停' : '继续'
+          }}</UiButton
+          ><UiButton kind="text" @click="startRest(0)">跳过</UiButton>
+        </div>
+      </section>
+      <TrainingExerciseEditor
         v-model="exercises"
         session
         :previous="previous"
         :history-errors="historyErrors"
+        :auto-rest="autoRest"
+        :paused="clock.pausedAt !== null"
         @retry-history="loadPrevious"
         @rest="startRest"
-      /><UiButton kind="secondary" block :disabled="exercises.length >= 20" @click="picker = true"
-        >＋ 添加动作</UiButton
-      ><label
-        >实际时长（分钟）<UiInput
-          v-model="duration"
-          type="number"
-          inputmode="numeric"
-          :min="1"
-          :max="1440"
-          :placeholder="`自动记录 ${elapsed} 分钟`"
-          aria-label="实际训练时长" /></label
-      ><UiButton block :loading="saving" @click="finish">完成并保存训练</UiButton></template
+      />
+      <details class="session-settings">
+        <summary>补充设置与动作管理</summary>
+        <label>训练名称<UiInput v-model="name" :maxlength="60" aria-label="训练名称" /></label>
+        <label class="auto-rest"
+          ><input v-model="autoRest" type="checkbox" />完成一组后自动休息</label
+        >
+        <UiButton kind="secondary" block :disabled="exercises.length >= 20" @click="picker = true"
+          >＋ 添加动作</UiButton
+        ><label
+          >实际时长（分钟）<UiInput
+            v-model="duration"
+            type="number"
+            inputmode="numeric"
+            :min="1"
+            :max="1440"
+            :placeholder="`自动记录 ${elapsed} 分钟`"
+            aria-label="实际训练时长"
+        /></label>
+      </details>
+      <UiButton block :loading="saving" @click="finish">完成并保存训练</UiButton></template
     ><ActionSheet
       v-model="picker"
       :items="exerciseLibrary.map((e) => `${e.name} · ${e.equipment}`)"
@@ -246,6 +322,32 @@ onMounted(load);
 .training-session {
   display: grid;
   gap: 16px;
+}
+.session-settings {
+  padding: 16px;
+  background: var(--color-surface);
+  border-radius: var(--ui-radius-card);
+}
+.session-settings summary {
+  font-size: 14px;
+  cursor: pointer;
+}
+.session-settings[open] {
+  display: grid;
+  gap: 14px;
+}
+.training-session .auto-rest {
+  display: flex;
+  align-items: center;
+}
+.session-rest {
+  padding: 12px 16px;
+  background: var(--ui-primary-light);
+  border-radius: 14px;
+}
+.session-rest div {
+  display: flex;
+  flex-wrap: wrap;
 }
 .training-session label {
   display: grid;

@@ -1,10 +1,13 @@
 import type { TrainingExercise } from '@fit-trace/shared';
+import { newTrainingClock, type TrainingClock } from './training-clock.ts';
 
 export interface TrainingDraft {
   name: string;
   startedAt: string;
   exercises: TrainingExercise[];
   duration: string | number;
+  clock?: TrainingClock;
+  autoRest?: boolean;
 }
 export function trainingDraftKey(userId: string, templateId = ''): string {
   return `fit-trace:training-draft:${userId}:${templateId || 'free'}`;
@@ -52,6 +55,22 @@ export function readTrainingDraft(
         typeof value.duration === 'number' || typeof value.duration === 'string'
           ? value.duration
           : '',
+      autoRest: value.autoRest !== false,
+      clock:
+        value.clock &&
+        (value.clock.pausedAt === null ||
+          (Number.isFinite(value.clock.pausedAt) &&
+            value.clock.pausedAt >= Date.parse(value.startedAt))) &&
+        Number.isFinite(value.clock.pausedMs) &&
+        value.clock.pausedMs >= 0 &&
+        Number.isFinite(value.clock.restUntil) &&
+        value.clock.restUntil >= 0 &&
+        (value.clock.restPausedSeconds === null ||
+          (Number.isFinite(value.clock.restPausedSeconds) &&
+            value.clock.restPausedSeconds >= 0 &&
+            value.clock.restPausedSeconds <= 600))
+          ? value.clock
+          : newTrainingClock(),
     };
   } catch {
     return null;

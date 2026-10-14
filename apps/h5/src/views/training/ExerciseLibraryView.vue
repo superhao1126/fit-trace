@@ -34,7 +34,9 @@ const exercises = computed(() =>
     <UiDetailHeader title="动作库" subtitle="按部位与器械选择，查看动作要点" />
     <UiInput v-model="search" aria-label="搜索动作" placeholder="搜索动作名称" />
     <div class="filter-scroll"><UiTabs v-model="bodyPart" :options="parts" label="目标部位" /></div>
-    <UiTabs v-model="equipment" :options="equipments" label="训练器械" />
+    <div class="filter-scroll">
+      <UiTabs v-model="equipment" :options="equipments" label="训练器械" />
+    </div>
     <div class="exercise-list">
       <UiRecordRow
         v-for="exercise in exercises"

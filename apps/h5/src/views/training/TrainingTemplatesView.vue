@@ -14,7 +14,10 @@ const filter = ref('all');
 const loading = ref(false);
 const error = ref(false);
 const visibleTemplates = computed(() =>
-  templates.value.filter((t) => filter.value === 'all' || !t.preset),
+  templates.value.filter(
+    (t) =>
+      filter.value === 'all' || (filter.value === 'mine' ? !t.preset : t.location === filter.value),
+  ),
 );
 async function load() {
   loading.value = true;
@@ -41,6 +44,8 @@ onMounted(load);
       v-model="filter"
       :options="[
         { value: 'all', label: '全部模板' },
+        { value: 'HOME', label: '居家' },
+        { value: 'GYM', label: '健身房' },
         { value: 'mine', label: '我的模板' },
       ]"
       label="训练模板分类"
@@ -54,7 +59,11 @@ onMounted(load);
         <h2>{{ template.name }}</h2>
         <small>{{ template.preset ? '预设' : '我的' }}</small>
       </header>
-      <p>{{ template.exercises.length }} 个动作 · 约 {{ template.durationMinutes }} 分钟</p>
+      <p>
+        {{ template.exercises.length }} 个动作 · 约 {{ template.durationMinutes }} 分钟{{
+          template.location === 'HOME' ? ' · 居家' : template.location === 'GYM' ? ' · 健身房' : ''
+        }}
+      </p>
       <ul>
         <li v-for="exercise in template.exercises" :key="exercise.exerciseId">
           {{ exercise.name }} · {{ exercise.sets.length }} 组
@@ -86,7 +95,7 @@ onMounted(load);
 </template>
 <style scoped lang="scss">
 .template-card {
-  padding: 20px;
+  padding: 16px;
   border-radius: var(--ui-radius-card);
   background: var(--color-surface);
   margin-bottom: 16px;
@@ -99,7 +108,7 @@ onMounted(load);
   }
   h2 {
     margin: 0;
-    font-size: 18px;
+    font-size: 16px;
   }
   small,
   p,

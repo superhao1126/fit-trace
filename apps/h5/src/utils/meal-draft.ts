@@ -18,6 +18,7 @@ export interface MealDraft {
   recognitionProvider?: string;
   entryMode: string;
   savedAt: string;
+  description?: string;
 }
 export function mealDraftKey(userId: string, mealId: string | null): string {
   return `fit-trace:meal-draft:${userId}:${mealId || 'new'}`;
