@@ -9,10 +9,12 @@ import {
   makeTrainingExercise,
   trainingPresets,
   type TrainingExercise,
+  type PreviousExercise,
 } from '@fit-trace/shared';
-import { getTrainingTemplates } from '@/api/training';
+import { getPreviousExercise, getTrainingTemplates } from '@/api/training';
 import { createWorkout } from '@/api/workouts';
 import { authSession } from '@/api/session';
+import { readTrainingDraft, trainingDraftKey } from '@/utils/training-draft';
 import { completedTraining, trainingValidation } from '@/utils/training-validation';
 import { showRequestError } from '@/utils/request-error';
 import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
@@ -22,9 +24,34 @@ import TrainingExerciseEditor from '@/components/TrainingExerciseEditor.vue';
 const route = useRoute();
 const router = useRouter();
 const templateId = typeof route.query.template === 'string' ? route.query.template : '';
-const draftKey = `fit-trace:training-draft:${authSession.snapshot?.user?.id ?? 'guest'}:${templateId || 'free'}`;
+const ownerId = authSession.snapshot?.user?.id ?? '';
+const draftKey = trainingDraftKey(ownerId, templateId);
+const sessionGeneration = authSession.generation;
+const previous = ref<Record<string, PreviousExercise | null>>({});
+const historyErrors = ref<string[]>([]);
+const historyPending = new Set<string>();
+async function loadPrevious(id: string) {
+  if (historyPending.has(id)) return;
+  historyPending.add(id);
+  historyErrors.value = historyErrors.value.filter((item) => item !== id);
+  try {
+    const result = await getPreviousExercise(id);
+    if (authSession.generation === sessionGeneration) previous.value[id] = result;
+  } catch {
+    historyErrors.value = [...historyErrors.value, id];
+  } finally {
+    historyPending.delete(id);
+  }
+}
 const name = ref('自由训练');
 const exercises = ref<TrainingExercise[]>([]);
+watch(
+  () => exercises.value.map((item) => item.exerciseId),
+  (ids) => {
+    for (const id of new Set(ids))
+      if (!(id in previous.value) && !historyErrors.value.includes(id)) void loadPrevious(id);
+  },
+);
 const startedAt = ref(new Date().toISOString());
 const duration = ref<string | number>('');
 const ready = ref(false);
@@ -46,55 +73,18 @@ const completed = computed(() =>
   exercises.value.reduce((n, e) => n + e.sets.filter((s) => s.completed).length, 0),
 );
 const total = computed(() => exercises.value.reduce((n, e) => n + e.sets.length, 0));
-function readDraft() {
-  try {
-    const draft = JSON.parse(localStorage.getItem(draftKey) ?? 'null');
-    if (
-      !draft ||
-      typeof draft.name !== 'string' ||
-      typeof draft.startedAt !== 'string' ||
-      !Number.isFinite(Date.parse(draft.startedAt)) ||
-      !Array.isArray(draft.exercises) ||
-      draft.exercises.length > 20
-    )
-      return null;
-    if (
-      !draft.exercises.every(
-        (e: TrainingExercise) =>
-          e &&
-          exerciseLibrary.some((item) => item.id === e.exerciseId && item.unit === e.unit) &&
-          Array.isArray(e.sets) &&
-          e.sets.length <= 20 &&
-          e.sets.every(
-            (s) =>
-              s &&
-              typeof s.completed === 'boolean' &&
-              typeof s.reps === 'number' &&
-              typeof s.weightKg === 'number',
-          ),
-      )
-    )
-      return null;
-    if (draft.exercises.length && trainingValidation(draft.exercises)) return null;
-    return draft as {
-      name: string;
-      startedAt: string;
-      exercises: TrainingExercise[];
-      duration: string | number;
-    };
-  } catch {
-    return null;
-  }
-}
 async function load() {
   ready.value = false;
   error.value = false;
   try {
-    const draft = readDraft();
+    const draft = readTrainingDraft(localStorage, draftKey);
     if (draft) {
       name.value = draft.name;
       startedAt.value = draft.startedAt;
-      exercises.value = draft.exercises;
+      exercises.value = draft.exercises.map((e) => ({
+        ...e,
+        sets: e.sets.map((set) => ({ ...set, edited: true })),
+      }));
       duration.value =
         typeof draft.duration === 'number' || typeof draft.duration === 'string'
           ? draft.duration
@@ -120,7 +110,8 @@ async function load() {
 watch(
   [name, exercises, startedAt, duration],
   () => {
-    if (!ready.value || saved.value) return;
+    if (!ready.value || saved.value || !ownerId || authSession.generation !== sessionGeneration)
+      return;
     try {
       localStorage.setItem(
         draftKey,
@@ -224,11 +215,14 @@ onMounted(load);
         >
       </section>
       <label>训练名称<UiInput v-model="name" :maxlength="60" aria-label="训练名称" /></label
-      ><TrainingExerciseEditor v-model="exercises" session @rest="startRest" /><UiButton
-        kind="secondary"
-        block
-        :disabled="exercises.length >= 20"
-        @click="picker = true"
+      ><TrainingExerciseEditor
+        v-model="exercises"
+        session
+        :previous="previous"
+        :history-errors="historyErrors"
+        @retry-history="loadPrevious"
+        @rest="startRest"
+      /><UiButton kind="secondary" block :disabled="exercises.length >= 20" @click="picker = true"
         >＋ 添加动作</UiButton
       ><label
         >实际时长（分钟）<UiInput

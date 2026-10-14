@@ -23,6 +23,15 @@ export class TrainingController {
   ) {
     return { data: await this.training.saveTemplate(userId, dto, id) };
   }
+  @Get('plan/state') async planState(@CurrentUser('sub') userId: string) {
+    return { data: await this.training.planState(userId) };
+  }
+  @Get('exercises/:id/previous') async previous(
+    @CurrentUser('sub') userId: string,
+    @Param('id') id: string,
+  ) {
+    return { data: await this.training.previous(userId, id) };
+  }
   @Get('plan') async plan(@CurrentUser('sub') userId: string) {
     return { data: await this.training.plan(userId) };
   }

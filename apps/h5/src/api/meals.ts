@@ -1,4 +1,10 @@
-import type { ApiListResponse, ApiResponse, MealRecord, MealType } from '@fit-trace/shared';
+import type {
+  ApiListResponse,
+  ApiResponse,
+  MealFavorite,
+  MealRecord,
+  MealType,
+} from '@fit-trace/shared';
 import { http } from './http';
 
 export interface FoodItemInput {
@@ -46,4 +52,18 @@ export async function updateMeal(id: string, input: MealInput): Promise<MealReco
 
 export async function deleteMeal(id: string): Promise<void> {
   await http.delete(`/meals/${id}`);
+}
+
+export async function getMealFavorites(): Promise<MealFavorite[]> {
+  return (await http.get<ApiResponse<MealFavorite[]>>('/meals/favorites')).data.data;
+}
+export async function createMealFavorite(
+  name: string,
+  foods: FoodItemInput[],
+): Promise<MealFavorite> {
+  return (await http.post<ApiResponse<MealFavorite>>('/meals/favorites', { name, foods })).data
+    .data;
+}
+export async function deleteMealFavorite(id: string): Promise<void> {
+  await http.delete(`/meals/favorites/${id}`);
 }

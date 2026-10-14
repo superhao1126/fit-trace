@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TrainingTodayCard from '@/components/TrainingTodayCard.vue';
 import UiPullRefresh from '@/components/ui/UiPullRefresh.vue';
 import { uiToast } from '@/components/ui/toast';
 import type { DashboardOverview, MealType, WorkoutType } from '@fit-trace/shared';
@@ -216,6 +217,11 @@ onActivated(() => {
           </button>
         </section>
 
+        <TrainingTodayCard
+          v-if="isToday"
+          class="dashboard-training"
+          :completed-count="todayWorkoutCount"
+        />
         <nav class="quick-actions" aria-label="快速记录">
           <button type="button" @click="addRecord('/body/create')">
             <span class="quick-actions__icon quick-actions__icon--body"
@@ -348,6 +354,9 @@ onActivated(() => {
 </template>
 
 <style scoped lang="scss">
+.dashboard-training {
+  margin-top: 16px;
+}
 .today-overview {
   padding: 20px 16px 0;
 }

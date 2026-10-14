@@ -1,10 +1,11 @@
 import { recordRange } from '../common/dto/record-range-query.dto';
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import type { MealRecord as MealRecordResponse } from '@fit-trace/shared';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import type { MealFavorite, MealRecord as MealRecordResponse } from '@fit-trace/shared';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMealDto, FoodItemInputDto } from './dto/create-meal.dto';
 import { ListMealsDto } from './dto/list-meals.dto';
+import { MealFavoriteDto } from './dto/meal-favorite.dto';
 import { UpdateMealDto } from './dto/update-meal.dto';
 
 type MealWithFoods = Prisma.MealRecordGetPayload<{ include: { foods: true } }>;
@@ -14,6 +15,41 @@ export class MealsService {
   private readonly logger = new Logger('Meals');
 
   constructor(private readonly prisma: PrismaService) {}
+
+  async favorites(userId: string): Promise<MealFavorite[]> {
+    const rows = await this.prisma.mealFavorite.findMany({
+      where: { userId },
+      orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      foods: row.foods as unknown as MealFavorite['foods'],
+      createdAt: row.createdAt.toISOString(),
+    }));
+  }
+  async favorite(userId: string, dto: MealFavoriteDto): Promise<MealFavorite> {
+    if (!dto.name.trim() || dto.foods.some((food) => !food.name.trim()))
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message: '请填写常用餐与食物名称',
+      });
+    const foods = dto.foods.map((food) => ({
+      name: food.name.trim(),
+      amount: food.amount?.trim() || null,
+      calories: food.calories ?? null,
+      aiGenerated: food.aiGenerated ?? false,
+    }));
+    const row = await this.prisma.mealFavorite.create({
+      data: { userId, name: dto.name.trim(), foods: foods as unknown as Prisma.InputJsonValue },
+    });
+    return { id: row.id, name: row.name, foods, createdAt: row.createdAt.toISOString() };
+  }
+  async removeFavorite(userId: string, id: string): Promise<void> {
+    const result = await this.prisma.mealFavorite.deleteMany({ where: { id, userId } });
+    if (!result.count)
+      throw new NotFoundException({ code: 'FAVORITE_NOT_FOUND', message: '常用餐不存在' });
+  }
 
   async create(userId: string, dto: CreateMealDto): Promise<MealRecordResponse> {
     const meal = await this.prisma.mealRecord.create({

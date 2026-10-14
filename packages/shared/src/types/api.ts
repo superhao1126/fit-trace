@@ -307,3 +307,16 @@ export interface ResetPasswordVerification {
   resetToken: string;
   expiresInSeconds: number;
 }
+
+export interface MealFavoriteFood {
+  name: string;
+  amount: string | null;
+  calories: number | null;
+  aiGenerated: boolean;
+}
+export interface MealFavorite {
+  id: string;
+  name: string;
+  foods: MealFavoriteFood[];
+  createdAt: string;
+}

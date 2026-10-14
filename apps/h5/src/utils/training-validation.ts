@@ -25,6 +25,11 @@ export function trainingValidation(exercises: TrainingExercise[]): string | null
 }
 export function completedTraining(exercises: TrainingExercise[]): TrainingExercise[] {
   return exercises
-    .map((e) => ({ ...e, sets: e.sets.filter((s) => s.completed).map((s) => ({ ...s })) }))
+    .map((e) => ({
+      ...e,
+      sets: e.sets
+        .filter((s) => s.completed)
+        .map((s) => ({ reps: s.reps, weightKg: s.weightKg, completed: s.completed })),
+    }))
     .filter((e) => e.sets.length);
 }

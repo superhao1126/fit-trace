@@ -16,6 +16,7 @@ const modules = [
   ['users', 'UsersController'],
   ['body-records', 'BodyRecordsController'],
   ['meals', 'MealsController'],
+  ['training', 'TrainingController'],
   ['workouts', 'WorkoutsController'],
   ['progress-photos', 'ProgressPhotosController'],
   ['uploads', 'UploadsController'],
@@ -136,7 +137,14 @@ for (const controller of controllers) {
         body.data,
         name === 'list'
           ? [record]
-          : ['remove', 'latest', 'resetPassword', 'logout', 'changePassword'].includes(name)
+          : [
+                'remove',
+                'removeFavorite',
+                'latest',
+                'resetPassword',
+                'logout',
+                'changePassword',
+              ].includes(name)
             ? null
             : prefix === 'health'
               ? { status: 'ok' }

@@ -3,11 +3,13 @@ import { onMounted, ref } from 'vue';
 import { ActionSheet } from 'tdesign-mobile-vue';
 import { uiToast as ToastPlugin } from '@/components/ui/toast';
 import type { TrainingPlanDay, TrainingTemplate } from '@fit-trace/shared';
-import { getTrainingPlan, getTrainingTemplates, saveTrainingPlan } from '@/api/training';
+import { getTrainingPlanState, getTrainingTemplates, saveTrainingPlan } from '@/api/training';
 import { showRequestError } from '@/utils/request-error';
 import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 const days = ref<TrainingPlanDay[]>([]);
+const configured = ref(false);
+const editedDays = ref(new Set<number>());
 const templates = ref<TrainingTemplate[]>([]);
 const loading = ref(false);
 const error = ref(false);
@@ -26,7 +28,10 @@ async function load() {
   loading.value = true;
   error.value = false;
   try {
-    [days.value, templates.value] = await Promise.all([getTrainingPlan(), getTrainingTemplates()]);
+    const [plan, list] = await Promise.all([getTrainingPlanState(), getTrainingTemplates()]);
+    days.value = plan.days;
+    configured.value = plan.configured;
+    templates.value = list;
   } catch (e) {
     error.value = true;
     showRequestError(e, '计划加载失败');
@@ -36,11 +41,18 @@ async function load() {
 }
 function label(day: number) {
   const id = days.value.find((d) => d.weekday === day)?.templateId;
-  return id ? (templates.value.find((t) => t.id === id)?.name ?? '模板不存在，请重新选择') : '休息';
+  return id
+    ? (templates.value.find((t) => t.id === id)?.name ?? '模板不存在，请重新选择')
+    : configured.value || editedDays.value.has(day)
+      ? '休息'
+      : '未安排';
 }
 function choose(_selected: unknown, index: number) {
   const day = days.value.find((d) => d.weekday === selectedDay.value);
-  if (day) day.templateId = index === 0 ? null : templates.value[index - 1].id;
+  if (day) {
+    day.templateId = index === 0 ? null : templates.value[index - 1].id;
+    editedDays.value.add(day.weekday);
+  }
   selectedDay.value = null;
 }
 async function save() {
@@ -48,6 +60,7 @@ async function save() {
   saving.value = true;
   try {
     await saveTrainingPlan(days.value);
+    configured.value = true;
     ToastPlugin.success('每周计划已保存');
   } catch (e) {
     showRequestError(e, '计划保存失败，请重试');

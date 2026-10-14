@@ -56,6 +56,18 @@ try {
     durationMinutes: 10,
   });
   await request(`/workouts/${workout.id}`);
+  assert.equal((await request('/training/plan/state')).configured, false);
+  const favorite = await request('/meals/favorites', 'POST', {
+    name: '部署验收常用餐',
+    foods: [{ name: '零热量', calories: 0 }, { name: '未知热量' }],
+  });
+  assert.equal(favorite.foods[0].calories, 0);
+  assert.equal(favorite.foods[1].calories, null);
+  assert.equal((await request('/meals/favorites')).length, 1);
+  await request(`/meals/${meal.id}`, 'PATCH', { foods: [{ name: '修改后的原餐', calories: 200 }] });
+  assert.deepEqual((await request('/meals/favorites'))[0].foods, favorite.foods);
+  await request(`/meals/favorites/${favorite.id}`, 'DELETE');
+  assert.equal((await request('/meals/favorites')).length, 0);
   const presets = await request('/training/templates');
   assert.equal(presets.filter((value) => value.preset).length, 3);
   const template = await request('/training/templates', 'POST', {
@@ -75,6 +87,7 @@ try {
   }));
   await request('/training/plan', 'PUT', { days });
   assert.deepEqual(await request('/training/plan'), days);
+  assert.equal((await request('/training/plan/state')).configured, true);
   const exercise = structuredClone(template.exercises[0]);
   exercise.sets = [{ reps: 12, weightKg: 0, completed: true }];
   const strength = await request('/workouts', 'POST', {
@@ -84,6 +97,10 @@ try {
     exercises: [exercise],
   });
   assert.deepEqual((await request(`/workouts/${strength.id}`)).exercises, [exercise]);
+  assert.deepEqual(
+    (await request(`/training/exercises/${exercise.exerciseId}/previous`)).sets,
+    exercise.sets,
+  );
   assert.equal((await request('/dashboard?tzOffset=480')).latestBodyRecord.id, body.id);
 
   const image = Buffer.from(
@@ -108,7 +125,9 @@ try {
     (await fetch(`${base}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })).status,
     401,
   );
-  console.log('PASS: 数据库、登录、四类记录、训练模板与计划、逐组训练、首页、图片、续期及退出。');
+  console.log(
+    'PASS: 数据库、登录、四类记录、常用餐快照、训练计划状态、上次成绩、首页、图片、续期及退出。',
+  );
 } finally {
   if (uploaded) {
     const directory = process.env.STORAGE_LOCAL_DIR;

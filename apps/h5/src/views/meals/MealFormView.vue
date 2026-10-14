@@ -1,4 +1,9 @@
 <script setup lang="ts">
+import MealFavorites from '@/components/meals/MealFavorites.vue';
+import MealFavoriteSave from '@/components/meals/MealFavoriteSave.vue';
+import { mealDraftKey, readMealDraft, type MealDraft } from '@/utils/meal-draft';
+import { authSession } from '@/api/session';
+import { confirmDialog } from '@/components/ui/confirm';
 import UiLoading from '@/components/ui/UiLoading.vue';
 import { applyFoodEstimate, correctFoodName } from '@/utils/food-correction';
 import { recordDateTime } from '@/utils/record-date';
@@ -11,15 +16,22 @@ import UiIcon from '@/components/ui/UiIcon.vue';
 import UiRecordRow from '@/components/ui/UiRecordRow.vue';
 import UiDateTimePicker from '@/components/ui/UiDateTimePicker.vue';
 import { showRequestError } from '@/utils/request-error';
-import type { MealRecord, MealType } from '@fit-trace/shared';
+import type { MealFavorite, MealRecord, MealType } from '@fit-trace/shared';
 import dayjs from 'dayjs';
 import { ActionSheet } from 'tdesign-mobile-vue';
 import { uiToast as ToastPlugin } from '@/components/ui/toast';
 import { AddIcon, CheckIcon, DeleteIcon } from 'tdesign-icons-vue-next';
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { recognizeFood } from '@/api/ai';
-import { createMeal, getMeal, getMeals, updateMeal, type MealInput } from '@/api/meals';
+import {
+  createMeal,
+  getMeal,
+  getMeals,
+  updateMeal,
+  type FoodItemInput,
+  type MealInput,
+} from '@/api/meals';
 import { uploadImage } from '@/api/uploads';
 import FoodLibraryPicker from '@/components/meals/FoodLibraryPicker.vue';
 
@@ -65,14 +77,15 @@ const cameraInput = ref<HTMLInputElement | null>(null);
 const photoSourceVisible = ref(false);
 const recentMeals = ref<MealRecord[]>([]);
 const templateSource = ref('');
-type EntryMode = 'library' | 'manual' | 'photo' | 'recent';
+type EntryMode = 'library' | 'manual' | 'photo' | 'recent' | 'favorites';
 const entryMode = ref<EntryMode>(route.query.mode === 'photo' ? 'photo' : 'library');
 const libraryVisible = ref(false);
 const entryModes = [
   { value: 'library', label: '食品库' },
-  { value: 'manual', label: '手动填写' },
-  { value: 'photo', label: '拍照识别' },
-  { value: 'recent', label: '最近吃过' },
+  { value: 'manual', label: '手动' },
+  { value: 'photo', label: '拍照' },
+  { value: 'recent', label: '最近' },
+  { value: 'favorites', label: '常用餐' },
 ] as const;
 const hour = dayjs().hour();
 let foodKey = 1;
@@ -90,6 +103,125 @@ const formData = reactive({
     { key: foodKey, name: '', amount: '', calories: '', aiGenerated: false },
   ] as EditableFood[],
 });
+
+const ownerId = authSession.snapshot?.user?.id ?? '';
+const sessionGeneration = authSession.generation;
+const draftKey = mealDraftKey(ownerId, mealId.value);
+const pendingDraft = ref<MealDraft | null>(readMealDraft(localStorage, draftKey));
+const draftReady = ref(!loading.value);
+const draftSaved = ref(false);
+const draftStorageError = ref(false);
+const favoriteVisible = ref(false);
+const favoriteFoods = ref<FoodItemInput[]>([]);
+const favoritesPanel = ref<InstanceType<typeof MealFavorites> | null>(null);
+function restoreDraft() {
+  const draft = pendingDraft.value;
+  if (!draft) return;
+  Object.assign(formData, {
+    type: draft.type,
+    recordedAt: draft.recordedAt,
+    note: draft.note,
+    foods: draft.foods.map((food) => ({ ...food })),
+  });
+  imageUrl.value = draft.imageUrl;
+  recognitionProvider.value =
+    typeof draft.recognitionProvider === 'string' ? draft.recognitionProvider : '';
+  suggestions.value = draft.suggestions.map((food) => ({ ...food }));
+  foodKey = Math.max(0, ...draft.foods.map((f) => f.key), ...draft.suggestions.map((f) => f.key));
+  entryMode.value = entryModes.some((mode) => mode.value === draft.entryMode)
+    ? (draft.entryMode as EntryMode)
+    : 'manual';
+  pendingDraft.value = null;
+  draftSaved.value = true;
+  persistDraft();
+}
+function discardDraft() {
+  const dialog = confirmDialog({
+    title: '丢弃这份饮食草稿？',
+    content: '草稿中尚未保存的修改会被清除，已有饮食记录会保留。',
+    confirmBtn: '丢弃草稿',
+    onConfirm: () => {
+      try {
+        localStorage.removeItem(draftKey);
+        pendingDraft.value = null;
+        draftSaved.value = false;
+        dialog.destroy();
+      } catch {
+        ToastPlugin.warning('草稿清除失败，请重试');
+      }
+    },
+  });
+}
+function persistDraft() {
+  if (
+    !draftReady.value ||
+    pendingDraft.value ||
+    !ownerId ||
+    authSession.generation !== sessionGeneration
+  )
+    return;
+  const meaningful =
+    formData.foods.some((f) => f.name || f.amount || f.calories !== '') ||
+    formData.note ||
+    imageUrl.value ||
+    suggestions.value.length;
+  try {
+    if (!meaningful) {
+      localStorage.removeItem(draftKey);
+      draftSaved.value = false;
+      return;
+    }
+    localStorage.setItem(
+      draftKey,
+      JSON.stringify({
+        ...formData,
+        imageUrl: imageUrl.value,
+        recognitionProvider: recognitionProvider.value,
+        suggestions: suggestions.value,
+        entryMode: entryMode.value,
+        savedAt: new Date().toISOString(),
+      }),
+    );
+    draftSaved.value = true;
+    draftStorageError.value = false;
+  } catch {
+    draftSaved.value = false;
+    if (!draftStorageError.value) ToastPlugin.warning('本机草稿保存失败，请保持页面打开');
+    draftStorageError.value = true;
+  }
+}
+watch([formData, imageUrl, suggestions, entryMode], persistDraft, { deep: true, flush: 'sync' });
+function openFavorite() {
+  const input = buildInput();
+  if (!input) return;
+  favoriteFoods.value = input.foods;
+  favoriteVisible.value = true;
+}
+function applyFavorite(meal: MealFavorite) {
+  const apply = () => {
+    formData.foods = meal.foods.map((f) => ({
+      key: ++foodKey,
+      name: f.name,
+      amount: f.amount ?? '',
+      calories: f.calories ?? '',
+      aiGenerated: f.aiGenerated,
+    }));
+    templateSource.value = meal.name;
+    entryMode.value = 'manual';
+    ToastPlugin.success('已带入常用餐，餐次和日期保持不变');
+  };
+  if (formData.foods.some((f) => f.name.trim())) {
+    const dialog = confirmDialog({
+      title: '带入这份常用餐？',
+      content: '会替换表单里的食物，餐次、日期和备注保持不变。',
+      confirmBtn: '替换食物',
+      onConfirm: () => {
+        apply();
+        dialog.destroy();
+      },
+    });
+  } else apply();
+}
 
 if (mealTypes.some((meal) => meal.value === route.query.type))
   formData.type = route.query.type as MealType;
@@ -330,6 +462,15 @@ function buildInput(): MealInput | null {
   };
 }
 
+function clearSavedDraft() {
+  draftReady.value = false;
+  try {
+    localStorage.removeItem(draftKey);
+  } catch {
+    ToastPlugin.warning('记录已保存，本机草稿清理失败');
+  }
+}
+
 async function submit(): Promise<void> {
   if (submitting.value) return;
   const input = buildInput();
@@ -338,10 +479,12 @@ async function submit(): Promise<void> {
   try {
     if (mealId.value) {
       await updateMeal(mealId.value, input);
+      clearSavedDraft();
       ToastPlugin.success('饮食记录已更新');
       await router.replace(`/meals/${mealId.value}`);
     } else {
       const created = await createMeal(input);
+      clearSavedDraft();
       ToastPlugin.success('饮食记录已保存');
       await router.replace(
         route.query.returnTo === '/dashboard'
@@ -398,6 +541,7 @@ onMounted(async () => {
     if (mealId.value || copyFromId.value) await router.replace('/meals');
   } finally {
     loading.value = false;
+    draftReady.value = true;
   }
 });
 </script>
@@ -415,7 +559,18 @@ onMounted(async () => {
       :loading="loading"
       text="正在读取饮食记录"
     >
-      <section class="meal-form-card">
+      <section v-if="pendingDraft" class="draft-banner" role="status">
+        <strong>有一份未保存的饮食草稿</strong>
+        <p>
+          {{ dayjs(pendingDraft.savedAt).format('M月D日 HH:mm') }} ·
+          {{ pendingDraft.foods.filter((f) => f.name.trim()).length }} 种食物
+        </p>
+        <div>
+          <UiButton kind="primary" @click="restoreDraft">恢复草稿</UiButton
+          ><UiButton kind="text" @click="discardDraft">丢弃</UiButton>
+        </div>
+      </section>
+      <section v-show="!pendingDraft" class="meal-form-card">
         <UiTabs
           :model-value="formData.type"
           :options="mealTypes"
@@ -450,6 +605,11 @@ onMounted(async () => {
         <p v-if="templateSource" class="template-hint">
           已带入 {{ templateSource }}，确认下方内容后保存
         </p>
+        <MealFavorites
+          v-if="entryMode === 'favorites'"
+          ref="favoritesPanel"
+          @select="applyFavorite"
+        />
         <div v-if="entryMode === 'recent'" class="quick-start field-block">
           <span class="field-label">选择一餐，带入食物</span>
           <p v-if="!recentMeals.length" class="template-hint">
@@ -604,6 +764,11 @@ onMounted(async () => {
           capture="environment"
           @change="onPhotoChange"
         />
+        <MealFavoriteSave
+          v-model:visible="favoriteVisible"
+          :foods="favoriteFoods"
+          @saved="favoritesPanel?.load()"
+        />
         <ActionSheet
           v-model="photoSourceVisible"
           :items="['拍照', '从相册选择']"
@@ -699,6 +864,13 @@ onMounted(async () => {
           </div>
         </details>
         <UiButton
+          kind="text"
+          :disabled="uploadingPhoto || recognizing || estimatingFoods.size > 0"
+          @click="openFavorite"
+          >收藏这餐</UiButton
+        >
+        <p v-if="draftSaved" class="template-hint" role="status">已自动保存到本机草稿</p>
+        <UiButton
           block
           :loading="submitting"
           :disabled="uploadingPhoto || recognizing || estimatingFoods.size > 0"
@@ -718,6 +890,24 @@ onMounted(async () => {
 </template>
 
 <style scoped lang="scss">
+.draft-banner {
+  background: var(--ui-primary-light);
+  border-radius: 14px;
+  padding: 16px;
+  strong {
+    font-size: 15px;
+  }
+  p {
+    font-size: 12px;
+    color: var(--ui-text-secondary);
+  }
+  > div {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+}
+
 .food-estimate {
   display: block;
   padding: 8px 0;

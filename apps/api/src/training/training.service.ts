@@ -5,6 +5,8 @@ import {
   type TrainingExercise,
   type TrainingPlanDay,
   type TrainingTemplate,
+  type TrainingPlanState,
+  type PreviousExercise,
 } from '@fit-trace/shared';
 import { Prisma, type TrainingTemplate as DbTemplate } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -63,6 +65,66 @@ export class TrainingService {
     }
     return this.response(await this.prisma.trainingTemplate.create({ data: { ...data, userId } }));
   }
+  async planState(userId: string): Promise<TrainingPlanState> {
+    const value = await this.prisma.trainingPlan.findUnique({ where: { userId } });
+    return {
+      configured: Boolean(value),
+      days: value
+        ? (value.days as unknown as TrainingPlanDay[])
+        : Array.from({ length: 7 }, (_, weekday) => ({ weekday, templateId: null })),
+    };
+  }
+  async previous(userId: string, exerciseId: string): Promise<PreviousExercise | null> {
+    const exercise = exerciseLibrary.find((item) => item.id === exerciseId);
+    if (!exercise)
+      throw new BadRequestException({ code: 'VALIDATION_ERROR', message: '训练动作不存在' });
+    // 翻页查找，避免近期手动记录或旧格式数据挡住最近一次有效成绩。
+    for (let skip = 0; ; skip += 20) {
+      const records = await this.prisma.workoutRecord.findMany({
+        where: {
+          userId,
+          startedAt: { lte: new Date() },
+          exercises: { array_contains: [{ exerciseId }] },
+        },
+        orderBy: [{ startedAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+        select: { startedAt: true, exercises: true },
+        take: 20,
+        skip,
+      });
+      for (const record of records) {
+        if (!Array.isArray(record.exercises)) continue;
+        const sets = (record.exercises as unknown as TrainingExercise[])
+          .filter(
+            (item) =>
+              item &&
+              item.exerciseId === exerciseId &&
+              item.unit === exercise.unit &&
+              Array.isArray(item.sets),
+          )
+          .flatMap((item) => item.sets)
+          .filter(
+            (set) =>
+              set &&
+              set.completed === true &&
+              Number.isInteger(set.reps) &&
+              set.reps >= 1 &&
+              set.reps <= 3600 &&
+              Number.isFinite(set.weightKg) &&
+              set.weightKg >= 0 &&
+              set.weightKg <= 1000,
+          );
+        if (sets.length)
+          return {
+            exerciseId,
+            unit: exercise.unit,
+            startedAt: record.startedAt.toISOString(),
+            sets: sets.map((set) => ({ reps: set.reps, weightKg: set.weightKg, completed: true })),
+          };
+      }
+      if (records.length < 20) return null;
+    }
+  }
+
   async plan(userId: string): Promise<TrainingPlanDay[]> {
     const value = await this.prisma.trainingPlan.findUnique({ where: { userId } });
     return value

@@ -134,3 +134,14 @@ export const trainingPresets: TrainingTemplate[] = [
   preset('preset-upper', '上肢基础', 25, ['knee-pushup', 'row', 'plank']),
   preset('preset-lower', '下肢基础', 25, ['squat', 'bridge', 'plank']),
 ];
+
+export interface TrainingPlanState {
+  configured: boolean;
+  days: TrainingPlanDay[];
+}
+export interface PreviousExercise {
+  exerciseId: string;
+  unit: 'reps' | 'seconds';
+  startedAt: string;
+  sets: TrainingSet[];
+}

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import MealFavoriteSave from '@/components/meals/MealFavoriteSave.vue';
 import { confirmDialog } from '@/components/ui/confirm';
 import UiLoading from '@/components/ui/UiLoading.vue';
 import { showRequestError } from '@/utils/request-error';
@@ -26,6 +27,16 @@ const router = useRouter();
 const mealId = computed(() => (typeof route.params.id === 'string' ? route.params.id : ''));
 const loading = ref(true);
 const meal = ref<MealRecord | null>(null);
+const favoriteVisible = ref(false);
+const favoriteFoods = computed(
+  () =>
+    meal.value?.foods.map((f) => ({
+      name: f.name,
+      amount: f.amount ?? undefined,
+      calories: f.calories ?? undefined,
+      aiGenerated: f.aiGenerated,
+    })) ?? [],
+);
 const recordedAtText = computed(() =>
   meal.value ? dayjs(meal.value.recordedAt).format('YYYY年M月D日 HH:mm') : '',
 );
@@ -113,6 +124,8 @@ onMounted(async () => {
           </div>
         </section>
         <UiInfoCard :items="[{ label: '备注', value: meal.note || '无' }]" />
+        <UiButton kind="secondary" block @click="favoriteVisible = true">收藏这餐</UiButton>
+        <MealFavoriteSave v-model:visible="favoriteVisible" :foods="favoriteFoods" />
         <div class="ui-detail-actions">
           <UiButton kind="danger" @click="confirmDelete">删除这条记录</UiButton>
         </div></template
