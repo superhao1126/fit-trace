@@ -69,7 +69,15 @@ try {
   await request(`/meals/favorites/${favorite.id}`, 'DELETE');
   assert.equal((await request('/meals/favorites')).length, 0);
   const presets = await request('/training/templates');
-  assert.equal(presets.filter((value) => value.preset).length, 3);
+  assert.equal(presets.filter((value) => value.preset).length, 10);
+  assert.ok(presets.some((value) => value.id === 'preset-full'));
+  assert.ok(presets.some((value) => value.id === 'preset-gym-full'));
+  const textValidation = await fetch(`${base}/ai/food-text`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ description: '   ' }),
+  });
+  assert.equal(textValidation.status, 400);
   const template = await request('/training/templates', 'POST', {
     name: '部署验收模板',
     durationMinutes: 20,
@@ -88,8 +96,10 @@ try {
   await request('/training/plan', 'PUT', { days });
   assert.deepEqual(await request('/training/plan'), days);
   assert.equal((await request('/training/plan/state')).configured, true);
-  const exercise = structuredClone(template.exercises[0]);
-  exercise.sets = [{ reps: 12, weightKg: 0, completed: true }];
+  const exercise = structuredClone(
+    presets.find((value) => value.id === 'preset-gym-full').exercises[0],
+  );
+  exercise.sets = [{ reps: 12, weightKg: 20, completed: true }];
   const strength = await request('/workouts', 'POST', {
     type: 'STRENGTH',
     name: '部署验收逐组训练',
@@ -126,7 +136,7 @@ try {
     401,
   );
   console.log(
-    'PASS: 数据库、登录、四类记录、常用餐快照、训练计划状态、上次成绩、首页、图片、续期及退出。',
+    'PASS: 数据库、登录、四类记录、常用餐快照、10 个预设、文字接口校验、新动作保存与上次成绩、训练计划、首页、图片、续期及退出。',
   );
 } finally {
   if (uploaded) {
