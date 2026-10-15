@@ -14,7 +14,6 @@ backup=${1:?需要指定本次发布前创建的备份目录}
 backup=$(realpath "$backup")
 test "$(dirname "$backup")" = "$backup_root"
 test -s "$backup/fit_trace.dump"
-test -s "$backup/fittrace.apk"
 test -s "$backup/api.env"
 
 # 删除前确认保留版本没有依赖待删除目录，也没有失效链接。

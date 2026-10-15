@@ -5,7 +5,6 @@ import router from './router';
 import { pinia } from './stores';
 import './styles/global.scss';
 import { applyTheme, watchSystemTheme } from './utils/theme';
-import { setupNativeShell } from './utils/native';
 import { authSession } from './api/session';
 import { useAuthStore } from './stores/auth';
 import { setupGlitchTip } from './utils/glitchtip';
@@ -23,7 +22,6 @@ setupGlitchTip(app, router, {
 localStorage.removeItem('fittrace-accent');
 applyTheme();
 watchSystemTheme();
-setupNativeShell();
 authSession.subscribe((session) => {
   useAuthStore(pinia).$patch({ token: session?.accessToken ?? null, user: session?.user ?? null });
 });

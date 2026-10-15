@@ -7,16 +7,9 @@
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
     "typecheck": "vue-tsc -b --noEmit",
-    "preview": "vite preview",
-    "android:sync": "cap sync android",
-    "android:open": "cap open android",
-    "android:apk": "pnpm android:sync && cd android && ./gradlew assembleDebug",
-    "android:release": "FITTRACE_ANDROID_PRODUCTION=true pnpm android:sync && cd android && ./gradlew assembleRelease"
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@capacitor/android": "^8.5.2",
-    "@capacitor/app": "^8.1.2",
-    "@capacitor/core": "^8.5.2",
     "@fit-trace/shared": "workspace:*",
     "@sentry/vue": "^10.76.1",
     "axios": "^1.11.0",
@@ -29,7 +22,6 @@
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
-    "@capacitor/cli": "^8.5.2",
     "@sentry/vite-plugin": "^5.4.1",
     "@types/node": "^24.3.1",
     "@vitejs/plugin-vue": "^6.0.1",

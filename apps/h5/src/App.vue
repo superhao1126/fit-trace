@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue';
+import { ref } from 'vue';
 import router from './router';
 import { useAuthStore } from '@/stores/auth';
-import { finishBrandLaunch } from '@/utils/brand-splash';
 import UiToastHost from '@/components/ui/UiToastHost.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 
@@ -17,8 +16,6 @@ async function start(): Promise<void> {
   } catch {
     startupError.value = true;
   }
-  await nextTick();
-  finishBrandLaunch();
   if (ready.value && auth.token) {
     void auth.fetchCurrentUser().catch(() => undefined);
   }

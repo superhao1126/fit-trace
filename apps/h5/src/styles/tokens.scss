@@ -3,11 +3,10 @@
  * 由 utils/theme.ts 依据系统偏好或用户选择写入。
  */
 :root {
-  /* Capacitor 8 为旧版 Android WebView 注入安全区变量，浏览器使用 env 回退。 */
-  --app-safe-area-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
-  --app-safe-area-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
-  --app-safe-area-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
-  --app-safe-area-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+  --app-safe-area-top: env(safe-area-inset-top, 0px);
+  --app-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --app-safe-area-left: env(safe-area-inset-left, 0px);
+  --app-safe-area-right: env(safe-area-inset-right, 0px);
   /* 2026 Figma 页面规范；按页面迁移，避免覆盖尚未改造的页面。 */
   --ui-background: #f1f3f5;
   --ui-text-primary: #202824;

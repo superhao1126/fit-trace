@@ -9,30 +9,22 @@
 - 运行目录：`/opt/fittrace/current` 指向 `/opt/fittrace/releases/<发布标识>`。
 - 生产配置：`/etc/fittrace/api.env`，权限 `root:fittrace 640`；发布包不包含密钥。
 - 图片：`/var/lib/fittrace/uploads`，与代码发布目录分开，更新代码不会删除图片。
-- APK：`/var/lib/fittrace/downloads/fittrace.apk`。
 - API 服务：`fittrace-api.service`，使用独立 `fittrace` 用户与 Node 24，开机启动。
 - TLS：复用 `/etc/ssl/soybean/` 中现有的 `*.idoit.icu` 证书。
 
 `nginx-fittrace.conf` 仅为本项目增加精确域名站点，现有其他 Nginx 站点继续保留。
 API 的 systemd 内存上限为 512 MB，V8 老生代上限为 256 MB，避免影响同机其他服务。
 
-## 构建 H5 和正式 APK
+## 构建 H5
 
-本次发布保留运行时 GlitchTip 错误上报，跳过源码映射生成与上传：
+在本机使用生产 API 地址构建。以下命令保留运行时 GlitchTip 错误上报，跳过源码映射生成与上传：
 
 ```bash
-GLITCHTIP_UPLOAD_SOURCEMAPS=false \
-JAVA_HOME=$(/usr/libexec/java_home -v 21) \
-pnpm build:release
+VITE_API_BASE_URL=https://fittrace.idoit.icu/api/v1 \
+GLITCHTIP_UPLOAD_SOURCEMAPS=false pnpm build:h5
 ```
 
-正式 APK 为 `apps/h5/android/app/build/outputs/apk/release/app-release.apk`。
-APK 使用 HTTPS 接口，正式包不允许明文 HTTP；局域网 HTTP 许可仅留在 Debug 资源中。
-
-签名文件位于仓库根目录 `.android-signing/fittrace-release.jks`；
-签名配置位于 `apps/h5/android/keystore.properties`，两者均被 Git 忽略。
-更新必须沿用原签名，并递增 `android/app/build.gradle` 的 `versionCode`。
-旧 Debug APK 的签名与正式包不同，首次换用正式包需要卸载 Debug 包再安装；服务器记录不受影响。
+产物为 `apps/h5/dist`。H5 的构建与发布不再需要 JDK、Android SDK 或 APK。
 
 ## API 发布包
 
@@ -60,8 +52,8 @@ API 的 `.env` 链接至 `/etc/fittrace/api.env`；其他目录不复制环境�
 3. 如有新的迁移，在备份后通过现有 SSH 5432 隧道运行本机 `prisma:deploy`；不运行 `migrate dev` 或数据库重置。
 4. 切换 `current` 链接，重启 `fittrace-api`，确认本机 `/api/v1/health` 成功。
 5. 安装独立站点配置，`nginx -t` 成功后再 reload。
-6. 运行 `deploy/smoke.mjs`，检查公网 H5、API、图片和 APK 下载。
-7. 验收通过后运行 `deploy/prune-server-releases.sh <本次发布前备份目录>`：只保留当前版本、前一个版本及本次发布前的完整备份，清理更早发布和备份；备份必须包含数据库、APK 与 API 配置。`activate-server.sh` 已在成功验收后执行这一清理。
+6. 运行 `deploy/smoke.mjs`，验收 API；另外检查公网 H5、History 路由和图片访问。
+7. 验收通过后运行 `deploy/prune-server-releases.sh <本次发布前备份目录>`：只保留当前版本、前一个版本及本次发布前的完整备份，清理更早发布和备份；备份必须包含数据库与 API 配置。`activate-server.sh` 已在成功验收后执行这一清理。
 
 只进行接口验收，不会发送真实验证码邮件或调用付费 AI：
 

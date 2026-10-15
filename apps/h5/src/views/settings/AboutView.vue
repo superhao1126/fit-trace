@@ -1,21 +1,7 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { App } from '@capacitor/app';
-import { Capacitor } from '@capacitor/core';
 import UiIcon from '@/components/ui/UiIcon.vue';
-import { version as webVersion } from '../../../package.json';
+import { version } from '../../../package.json';
 import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
-
-const version = ref(webVersion);
-onMounted(() => {
-  if (Capacitor.isNativePlatform()) {
-    void App.getInfo()
-      .then((info) => {
-        version.value = info.version;
-      })
-      .catch(() => undefined);
-  }
-});
 </script>
 
 <template>

@@ -23,14 +23,12 @@
 
 - 网页标题使用「循形 · FitTrace」，favicon 与收藏图标位于 `apps/h5/public`。
 - 登录页使用同一 App 标记与中英文名称；「我的」页保留中英文署名。
-- Capacitor 和安卓桌面显示名称使用「循形」。包名 `com.fittrace.app` 保持原值。
-- 安卓新增 `ic_fittrace_launcher`，包含五种密度和 Android 8+ adaptive icon；自适应前景导出时额外预留 3% 的四周安全边距，使用同一图形适配系统圆形、圆角等遮罩。
-- 已安装应用需重新执行 `pnpm android:apk` 并安装新 APK，才会更新名称与桌面图标。
+- 通用图标与 Logo 母版保留，供后续独立 Android 客户端复用。
 
 图标主体位于中央安全区域。使用时保持宽高比，不拉伸、不为应用图标预先添加外部圆角，不将深色展示版误当作透明 Logo。
 
 ## 生成记录
 
-使用 Codex 内置 `image_gen` 生成图形与 Logo，随后仅裁去透明留白、缩放并封装 PNG/ICO 及安卓密度资源。提示词见 `PROMPTS.md`。生成母版保留，导出过程未覆盖现有 Capacitor 默认图标。
+使用 Codex 内置 `image_gen` 生成图形与 Logo，随后仅裁去透明留白、缩放并封装 PNG/ICO。提示词见 `PROMPTS.md`。生成母版保留。
 
 公开检索发现已有同名英文健康产品 [FitTrace](https://www.fittrace.com/)。本方案保留用户给定英文名；正式品牌注册前需要另行核查名称与图形，当前检索不代表商标可用性确认。

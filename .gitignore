@@ -11,7 +11,6 @@ coverage/
 .sentryclirc
 .glitchtip-cli.rc
 .android-signing/
-apps/h5/android/keystore.properties
 *.jks
 *.keystore
 # 本地图片存储目录（STORAGE_LOCAL_DIR 指向的位置）不入库。

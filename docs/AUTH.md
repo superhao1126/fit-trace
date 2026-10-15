@@ -104,7 +104,7 @@ node --test apps/api/test/auth.test.mjs apps/api/test/auth-session.test.mjs apps
 
 头像地址仅接受 HTTP(S) URL，传 `null` 可移除头像。用户 ID 由登录令牌确定，接口不接受客户端指定账号。资料接口只允许修改昵称、性别和头像，不修改邮箱、目标或密码。
 
-新增迁移 `20261009080000_user_gender`，已有账号性别默认为 `UNSPECIFIED`。部署到其他环境时，先执行上文的 `prisma:deploy` 和 `prisma:generate`，再构建并重启 API；App 页面需重新构建 APK 后更新。
+新增迁移 `20261009080000_user_gender`，已有账号性别默认为 `UNSPECIFIED`。部署到其他环境时，先执行上文的 `prisma:deploy` 和 `prisma:generate`，再构建并重启 API；H5 页面需重新构建并发布。
 
 修改密码限制每个账号 15 分钟内 10 次。当前密码错误返回 HTTP 400、`CURRENT_PASSWORD_INCORRECT`，保留本机登录；新密码与当前密码相同返回 `PASSWORD_UNCHANGED`。后端使用旧密码摘要作为更新条件，防止并发请求覆盖已变更的密码，并递增 `tokenVersion`，使旧访问令牌及设备续期凭证失效。
 

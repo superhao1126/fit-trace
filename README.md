@@ -25,9 +25,8 @@ pnpm dev
 
 - H5：[fittrace.idoit.icu](https://fittrace.idoit.icu)
 - API：[健康检查](https://fittrace.idoit.icu/api/v1/health)
-- Android：[下载正式签名 APK](https://fittrace.idoit.icu/downloads/fittrace.apk)
 
-部署目录、构建、签名和回滚步骤见 [生产部署说明](deploy/README.md)。服务器服务、内存占用及 MySQL 合并建议见 [服务器审计](deploy/SERVER-SERVICES-20261009.md)。
+部署目录、构建和回滚步骤见 [生产部署说明](deploy/README.md)。服务器服务、内存占用及 MySQL 合并建议见 [服务器审计](deploy/SERVER-SERVICES-20261009.md)。
 
 ## 常用命令
 
@@ -49,17 +48,11 @@ uploads/2026/10/09/<用户ID>/<文件UUID>.jpg
 
 日期取上传时间，与记录中填写的日期无关。旧图片保留原路径和访问地址，仍可查看、识别和删除，无需迁移文件或修改数据库。验证存储流程可在 API 构建后执行 `node --test apps/api/test/storage.test.mjs`。
 
-## Android APK
+## 客户端职责
 
-H5 已接入 Capacitor。配置 Android SDK 与 JDK 21 后，在仓库根目录执行：
-
-```bash
-pnpm build:apps    # 构建一次 H5、自动上传 source map，再生成测试 APK
-pnpm android:apk   # 复用已构建的 H5 资源生成测试 APK
-pnpm android:open  # 在 Android Studio 打开工程
-```
-
-安装包位于 `apps/h5/android/app/build/outputs/apk/debug/app-debug.apk`。局域网接口、环境配置和正式签名步骤见 [Android 打包说明](docs/ANDROID.md)。
+`apps/h5` 仅提供浏览器端页面，执行 `pnpm build:h5` 生成 `apps/h5/dist`。
+Android 客户端计划使用 Kotlin + Jetpack Compose，在后续阶段单独创建 `apps/android`，与 H5 共用 API 和数据库。
+旧 H5 打包 APK 的工程、命令和运行时接入已移除，当前仓库不生成 APK。
 
 ## 代码规范与编辑器
 
@@ -88,7 +81,7 @@ GET  /api/v1/auth/me
 
 `/auth/me` 需要 `Authorization: Bearer <token>`。开发前请在 `.env` 中设置可用的 PostgreSQL `DATABASE_URL` 和足够长的 `JWT_SECRET`。
 
-邮件验证码发送可接入阿里云验证码 2.0，安全验证通过后再发送邮件，验证形态由控制台场景配置决定。开通、H5/APK 场景和 API 密钥配置见 [邮箱安全验证](docs/EMAIL-CAPTCHA.md)。
+邮件验证码发送可接入阿里云验证码 2.0，安全验证通过后再发送邮件，验证形态由控制台场景配置决定。开通、H5 场景和 API 密钥配置见 [邮箱安全验证](docs/EMAIL-CAPTCHA.md)。
 
 ## 目录
 

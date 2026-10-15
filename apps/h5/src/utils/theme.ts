@@ -20,14 +20,7 @@ export function applyTheme(mode: ThemeMode = getThemeMode()): void {
   resolvedTheme.value = resolved;
   document
     .querySelector('meta[name="theme-color"]')
-    ?.setAttribute(
-      'content',
-      document.documentElement.classList.contains('brand-launching')
-        ? '#26735b'
-        : resolved === 'dark'
-          ? '#14181a'
-          : '#f7f8f6',
-    );
+    ?.setAttribute('content', resolved === 'dark' ? '#14181a' : '#f7f8f6');
 }
 
 export function setThemeMode(mode: ThemeMode): void {

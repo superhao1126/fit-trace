@@ -17,9 +17,6 @@ install -d -m 700 "$backup_dir"
 runuser -u postgres -- pg_dump -Fc fit_trace > "$backup_dir/fit_trace.dump"
 cp -a /usr/local/nginx/conf/nginx.conf "$backup_dir/nginx.conf"
 install -m 600 /etc/fittrace/api.env "$backup_dir/api.env"
-if test -f /var/lib/fittrace/downloads/fittrace.apk; then
-  cp -a /var/lib/fittrace/downloads/fittrace.apk "$backup_dir/fittrace.apk"
-fi
 if test -f /usr/local/nginx/conf/fittrace.conf; then
   cp -a /usr/local/nginx/conf/fittrace.conf "$backup_dir/fittrace.conf"
 fi
@@ -72,9 +69,6 @@ if ! /usr/local/nginx/sbin/nginx -t; then
 fi
 /usr/local/nginx/sbin/nginx -s reload
 install -m 644 "$release_dir/deploy/logrotate-fittrace" /etc/logrotate.d/fittrace-nginx
-if test -f /tmp/app-release.apk; then
-  install -m 644 -o fittrace -g fittrace /tmp/app-release.apk /var/lib/fittrace/downloads/fittrace.apk
-fi
 runuser -u fittrace -- /opt/fittrace/runtime/bin/node "$release_dir/deploy/smoke.mjs"
 systemctl show fittrace-api -p ActiveState -p MemoryCurrent -p MemoryPeak -p MemoryMax -p NRestarts
 bash "$release_dir/deploy/prune-server-releases.sh" "$backup_dir"

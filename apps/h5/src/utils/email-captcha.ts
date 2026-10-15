@@ -1,8 +1,4 @@
-import type {
-  EmailCaptchaConfig,
-  EmailCaptchaPlatform,
-  EmailCaptchaProof,
-} from '@fit-trace/shared';
+import type { EmailCaptchaConfig, EmailCaptchaProof } from '@fit-trace/shared';
 
 interface CaptchaInstance {
   hide?: () => void | Promise<void>;
@@ -68,15 +64,13 @@ function loadScript(config: Extract<EmailCaptchaConfig, { enabled: true }>): Pro
 
 /** 一次调用对应一次验证；凭据直接交给发邮件接口，不在客户端缓存。 */
 export class EmailCaptchaClient {
-  private readonly platform: EmailCaptchaPlatform;
   private readonly getConfig: () => Promise<EmailCaptchaConfig>;
   private preparing: Promise<EmailCaptchaConfig> | null = null;
   private disposed = false;
   private cancel: PreparedCaptcha['cancel'] | null = null;
   private prepared: PreparedCaptcha | null = null;
 
-  constructor(platform: EmailCaptchaPlatform, getConfig: () => Promise<EmailCaptchaConfig>) {
-    this.platform = platform;
+  constructor(getConfig: () => Promise<EmailCaptchaConfig>) {
     this.getConfig = getConfig;
   }
 
@@ -94,7 +88,7 @@ export class EmailCaptchaClient {
     }
     return this.preparing.then((config) => {
       if (config.enabled && !this.disposed && !this.prepared) {
-        const sceneId = this.platform === 'app' ? config.appSceneId : config.sceneId;
+        const sceneId = config.sceneId;
         if (!sceneId) throw new Error('安全验证暂不可用，请稍后重试');
         this.prepared = this.initialize(sceneId);
       }
@@ -133,7 +127,7 @@ export class EmailCaptchaClient {
     let cancel!: () => void;
     const initializedAt = Date.now();
     const result = new Promise<EmailCaptchaProof | null>((resolve, reject) => {
-      // 这里只需唯一 DOM ID；兼容没有 randomUUID 的 HTTP 页面和 WebView。
+      // 这里只需唯一 DOM ID；兼容没有 randomUUID 的 HTTP 页面。
       const id = `email-captcha-${Date.now().toString(36)}-${++nextCaptchaId}`;
       const host = document.createElement('div');
       const trigger = document.createElement('button');
@@ -218,7 +212,7 @@ export class EmailCaptchaClient {
               finish(new Error('安全验证未完成，请重新验证'));
               return;
             }
-            finish({ captchaVerifyParam, captchaPlatform: this.platform });
+            finish({ captchaVerifyParam, captchaPlatform: 'web' });
           },
           getInstance: (value) => {
             if (settled) {

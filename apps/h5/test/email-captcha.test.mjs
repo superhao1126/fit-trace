@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { EmailCaptchaClient } from '../src/utils/email-captcha.ts';
 const config = { enabled: true, region: 'cn', prefix: 'prefix', sceneId: 'web', appSceneId: 'app' };
-function fixture(t, platform = 'web') {
+function fixture(t) {
   let options;
   const nodes = [];
   const oldWindow = globalThis.window,
@@ -27,7 +27,7 @@ function fixture(t, platform = 'web') {
     }),
     body: { append: (...items) => nodes.push(...items) },
   };
-  const client = new EmailCaptchaClient(platform, async () => config);
+  const client = new EmailCaptchaClient(async () => config);
   t.after(() => {
     client.dispose();
     globalThis.window = oldWindow;
@@ -178,7 +178,7 @@ test('old prepared challenges are refreshed and background initialization failur
 });
 test('disabled config does not load SDK and failed configuration can retry', async () => {
   let attempts = 0;
-  const client = new EmailCaptchaClient('web', async () => {
+  const client = new EmailCaptchaClient(async () => {
     if (++attempts === 1) throw new Error('offline');
     return { enabled: false };
   });
@@ -205,17 +205,17 @@ test('verification works without randomUUID or crypto; repeated attempts get dis
   f.client.dispose();
   assert.ok(f.nodes.every((node) => node.removed));
 });
-test('opaque proof is unchanged, app selects own scene, cleanup exceptions do not lose success', async (t) => {
-  const f = fixture(t, 'app');
+test('opaque proof is unchanged, browser selects web scene even when app scene is configured, cleanup exceptions do not lose success', async (t) => {
+  const f = fixture(t);
   const { result } = await initialized(f);
-  assert.equal(f.options().SceneId, 'app');
+  assert.equal(f.options().SceneId, 'web');
   f.options().getInstance({
     hide: () => {
       throw new Error('cleanup');
     },
   });
   f.options().success(' opaque-token ');
-  assert.deepEqual(await result, { captchaVerifyParam: ' opaque-token ', captchaPlatform: 'app' });
+  assert.deepEqual(await result, { captchaVerifyParam: ' opaque-token ', captchaPlatform: 'web' });
   f.client.dispose();
   assert.ok(f.nodes.every((node) => node.removed));
 });

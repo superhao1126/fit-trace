@@ -26,19 +26,6 @@ body {
   margin: 0;
 }
 
-/* Edge-to-edge WebView 中，顶部 padding 会随文档滚走；系统栏区域始终遮住滚动内容。 */
-html.native-app::before {
-  position: fixed;
-  z-index: 20000;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: var(--app-safe-area-top);
-  background: var(--ui-background);
-  pointer-events: none;
-  content: '';
-}
-
 button,
 input,
 textarea,
@@ -415,38 +402,4 @@ textarea:focus,
 select:focus {
   outline: none !important;
   box-shadow: none !important;
-}
-
-/* 原生容器中的内容使用 App 交互，表单仍保留光标和编辑能力。 */
-html.native-app {
-  overscroll-behavior: none;
-  &,
-  * {
-    scrollbar-width: none;
-    -webkit-tap-highlight-color: transparent;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
-  }
-  *::-webkit-scrollbar {
-    display: none;
-    width: 0;
-    height: 0;
-  }
-  input,
-  textarea,
-  [contenteditable='true'] {
-    -webkit-user-select: text;
-    user-select: text;
-  }
-  img,
-  a {
-    -webkit-user-drag: none;
-  }
-  :focus-visible {
-    outline: none !important;
-  }
-  body {
-    overscroll-behavior: none;
-  }
 }
