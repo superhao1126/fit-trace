@@ -27,6 +27,11 @@ export function setupNativeShell(): void {
   }).catch((error: unknown) => console.warn('应用会话恢复初始化失败', error));
 
   void App.addListener('backButton', ({ canGoBack }) => {
+    const tour = document.querySelector<HTMLDialogElement>('dialog[data-feature-tour][open]');
+    if (tour) {
+      tour.dispatchEvent(new Event('cancel', { cancelable: true }));
+      return;
+    }
     if (canGoBack) {
       router.back();
     } else {

@@ -256,7 +256,7 @@ onMounted(load);
       ><p v-if="resumed" class="session-hint">
         已恢复 {{ new Date(startedAt).toLocaleString() }} 的训练草稿。
       </p>
-      <section class="session-summary">
+      <section class="session-summary" data-tour="training-summary">
         <strong>已完成 {{ completed }} / {{ total }} 组</strong
         ><span>已进行 {{ elapsed }} 分钟</span
         ><UiButton kind="text" @click="pauseTraining">{{
@@ -309,7 +309,9 @@ onMounted(load);
             aria-label="实际训练时长"
         /></label>
       </details>
-      <UiButton block :loading="saving" @click="finish">完成并保存训练</UiButton></template
+      <UiButton block :loading="saving" data-tour="save-training" @click="finish"
+        >完成并保存训练</UiButton
+      ></template
     ><ActionSheet
       v-model="picker"
       :items="exerciseLibrary.map((e) => `${e.name} · ${e.equipment}`)"

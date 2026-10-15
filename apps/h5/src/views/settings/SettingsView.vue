@@ -6,6 +6,7 @@ import UiIcon from '@/components/ui/UiIcon.vue';
 import DisplayModePicker from '@/components/DisplayModePicker.vue';
 import UiDetailHeader from '@/components/ui/UiDetailHeader.vue';
 import { useAuthStore } from '@/stores/auth';
+import { resetTours } from '@/utils/feature-tour';
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -41,6 +42,11 @@ async function logout(): Promise<void> {
   auth.logout();
   await router.replace('/login');
 }
+async function replayTours(): Promise<void> {
+  if (!auth.user) return;
+  resetTours(localStorage, auth.user.id);
+  await router.push('/dashboard');
+}
 </script>
 
 <template>
@@ -56,6 +62,15 @@ async function logout(): Promise<void> {
           >
           <UiIcon name="right" class="settings-row__chevron" />
         </RouterLink>
+        <button type="button" class="settings-row" @click="replayTours">
+          <UiIcon name="home" />
+          <span class="settings-row__body"
+            >重新查看功能引导<span class="settings-row__description"
+              >返回首页，逐步了解各页面的操作</span
+            ></span
+          >
+          <UiIcon name="right" class="settings-row__chevron" />
+        </button>
       </div>
     </section>
     <DisplayModePicker />

@@ -178,7 +178,7 @@ onActivated(() => {
         >
       </UiPageHeader>
       <UiDateSheet v-model:visible="calendarVisible" v-model="selectedDate" />
-      <DiaryDateStrip v-model="selectedDate" />
+      <DiaryDateStrip v-model="selectedDate" data-tour="diary-date" />
       <Skeleton v-if="loading" :loading="true" animation="gradient" :row-col="[1, 1, 1]" />
       <section v-if="errorMessage" class="load-error" role="alert">
         <span>{{ errorMessage }}</span
@@ -220,9 +220,10 @@ onActivated(() => {
         <TrainingTodayCard
           v-if="isToday"
           class="dashboard-training"
+          data-tour="today-training"
           :completed-count="todayWorkoutCount"
         />
-        <nav class="quick-actions" aria-label="快速记录">
+        <nav class="quick-actions" aria-label="快速记录" data-tour="quick-records">
           <button type="button" @click="addRecord('/body/create')">
             <span class="quick-actions__icon quick-actions__icon--body"
               ><img src="/images/tools/scale.webp" alt="" width="44" height="44" /></span

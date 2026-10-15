@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { Button } from 'tdesign-mobile-vue';
 import UiIcon, { type UiIconName } from '@/components/ui/UiIcon.vue';
+import UiFeatureTour from '@/components/ui/UiFeatureTour.vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
@@ -61,7 +62,7 @@ async function navigate(path: string): Promise<void> {
         </Transition>
       </RouterView>
     </div>
-    <nav v-if="showChrome" class="bottom-nav" aria-label="主导航">
+    <nav v-if="showChrome" class="bottom-nav" aria-label="主导航" data-tour="navigation">
       <Button
         v-for="item in navigation"
         :key="item.path"
@@ -76,6 +77,7 @@ async function navigate(path: string): Promise<void> {
         <span>{{ item.label }}</span>
       </Button>
     </nav>
+    <UiFeatureTour />
   </div>
 </template>
 

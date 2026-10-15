@@ -182,7 +182,12 @@ function removeExercise(index: number) {
           <span>组</span><span>{{ exercise.unit === 'seconds' ? '秒数' : '次数' }}</span
           ><span>重量 kg</span><span>{{ session ? '完成' : '操作' }}</span>
         </div>
-        <div v-for="(set, setIndex) in exercise.sets" :key="setIndex" class="set-row">
+        <div
+          v-for="(set, setIndex) in exercise.sets"
+          :key="setIndex"
+          class="set-row"
+          :data-tour="session ? 'training-set' : undefined"
+        >
           <span>{{ setIndex + 1 }}</span
           ><UiNumberInput
             :model-value="set.reps || ''"
@@ -205,6 +210,7 @@ function removeExercise(index: number) {
             @update:model-value="setValue(index, setIndex, 'weightKg', $event)"
           /><UiButton
             v-if="session"
+            data-tour="complete-set"
             :kind="set.completed ? 'primary' : 'secondary'"
             :aria-pressed="set.completed"
             :disabled="paused"

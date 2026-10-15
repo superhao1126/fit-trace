@@ -651,7 +651,11 @@ onMounted(async () => {
           :disabled="uploadingPhoto || recognizing || estimatingFoods.size > 0"
           @update:model-value="entryMode = $event as EntryMode"
         />
-        <div v-if="entryMode === 'text'" class="field-block meal-description">
+        <div
+          v-if="entryMode === 'text'"
+          class="field-block meal-description"
+          data-tour="meal-description"
+        >
           <UiTextarea
             v-model="description"
             :maxlength="500"
@@ -674,7 +678,7 @@ onMounted(async () => {
           </div>
           <p class="suggestion-tip">AI 估算后先确认；直接记录热量留空，较长原文保存在备注。</p>
         </div>
-        <details class="meal-more">
+        <details class="meal-more" data-tour="meal-more">
           <summary>食品库、最近与手动填写</summary>
           <UiTabs
             :model-value="entryMode"
@@ -969,6 +973,7 @@ onMounted(async () => {
         <UiButton
           block
           :loading="submitting"
+          data-tour="save-meal"
           :disabled="uploadingPhoto || recognizing || estimatingFoods.size > 0"
           @click="submit"
         >

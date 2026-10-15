@@ -54,7 +54,12 @@ onMounted(load);
     <div v-if="error" class="template-error">
       我的模板加载失败，预设模板仍可查看。<UiButton kind="text" @click="load">重试</UiButton>
     </div>
-    <article v-for="template in visibleTemplates" :key="template.id" class="template-card">
+    <article
+      v-for="template in visibleTemplates"
+      :key="template.id"
+      class="template-card"
+      data-tour="training-template"
+    >
       <header>
         <h2>{{ template.name }}</h2>
         <small>{{ template.preset ? '预设' : '我的' }}</small>
@@ -82,6 +87,7 @@ onMounted(load);
           "
           >{{ template.preset ? '查看 / 另存模板' : '编辑模板' }}</UiButton
         ><UiButton
+          data-tour="start-training"
           @click="router.push({ path: '/training/session', query: { template: template.id } })"
           >开始训练</UiButton
         >
