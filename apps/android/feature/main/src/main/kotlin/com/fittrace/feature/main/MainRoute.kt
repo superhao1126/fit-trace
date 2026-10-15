@@ -24,18 +24,28 @@ private const val About = "about"
 
 /** 工程启动入口；业务页面完成设计后，以独立 feature 模块接入。 */
 @Composable
-fun MainRoute(versionName: String) {
+fun MainRoute(versionName: String, userEmail: String, onLogout: () -> Unit, busy: Boolean = false) {
     val navController = rememberNavController()
     NavHost(navController = navController, startDestination = Welcome) {
         composable(Welcome) {
-            WelcomeScreen(onAbout = { navController.navigate(About) { launchSingleTop = true } })
+            WelcomeScreen(
+                userEmail,
+                onLogout,
+                busy,
+                onAbout = { navController.navigate(About) { launchSingleTop = true } },
+            )
         }
         composable(About) { AboutScreen(versionName, onBack = { navController.popBackStack() }) }
     }
 }
 
 @Composable
-private fun WelcomeScreen(onAbout: () -> Unit) {
+private fun WelcomeScreen(
+    userEmail: String,
+    onLogout: () -> Unit,
+    busy: Boolean,
+    onAbout: () -> Unit,
+) {
     Scaffold { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp),
@@ -44,6 +54,8 @@ private fun WelcomeScreen(onAbout: () -> Unit) {
         ) {
             Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium)
             Text(stringResource(R.string.brand_slogan), style = MaterialTheme.typography.bodyLarge)
+            Text(userEmail, style = MaterialTheme.typography.bodyMedium)
+            TextButton(onClick = onLogout, enabled = !busy) { Text(if (busy) "退出中…" else "退出登录") }
             TextButton(onClick = onAbout) { Text(stringResource(R.string.about_title)) }
         }
     }
@@ -70,5 +82,5 @@ private fun AboutScreen(versionName: String, onBack: () -> Unit) {
 @Preview(showBackground = true, locale = "zh")
 @Composable
 private fun WelcomePreview() {
-    FitTraceTheme { WelcomeScreen(onAbout = {}) }
+    FitTraceTheme { WelcomeScreen("user@example.com", {}, false, onAbout = {}) }
 }

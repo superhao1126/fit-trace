@@ -11,9 +11,16 @@ sealed interface AppError {
 
     data class Http(val statusCode: Int) : AppError
 
-    data class Business(val code: String, val message: String) : AppError
+    data class Business(
+        val code: String,
+        val message: String,
+        val statusCode: Int? = null,
+        val retryAfterSeconds: Int? = null,
+    ) : AppError
 
     data object InvalidResponse : AppError
+
+    data object Storage : AppError
 }
 
 data class HealthStatus(val available: Boolean)

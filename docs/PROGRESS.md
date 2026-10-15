@@ -286,3 +286,12 @@
 - 发布目录 `/opt/fittrace/releases/20261011-94fff88`，API 沿用前一版，无数据库迁移。旧发布 `/opt/fittrace/releases/20261011-7b2aff0`、数据库/Nginx/APK 备份 `/var/backups/fittrace/20261011-94fff88` 保留用于回滚；旧静态资源保留以兼容已打开页面。
 - 线上临时账号验收通过数据库、登录、四类记录、首页聚合、图片上传、续期及退出撤销，临时数据清理完成；公网 H5 入口、主脚本/样式、饮食页面产物、APK 与本地一致。健康接口返回 `OK`，未授权首页接口 401，`.env` 403，`.map` 404。
 - APK 下载 `https://fittrace.idoit.icu/downloads/fittrace.apk`，SHA-256 `0833ce3ad37cba1a67d546d081cac680a8d8dc709c8bed1ef7b7d42dd26c6ced`。本轮未发送真实验证码邮件、调用真实 AI 或进行真机安装/交互验收。
+
+## 原生 Android 登录与会话（2026-10-15）
+
+- 基于已确认的登录设计，以 Compose 实现邮箱验证码登录、密码登录、找回密码、协议与隐私原生弹窗及深浅色布局；默认不勾选协议，支持验证码冷却与密码风控图形验证。
+- 新增 feature:auth 和 core:session，复用现有 API 契约；发送邮箱码显式使用 App 验证场景。使用 Android Keystore 加密保存会话，支持恢复、串行续期、失效清理、断网重试与退出；旋转屏幕保留认证流程，登录成功清理敏感输入。
+- 50 项本地测试、格式和模块边界检查、Lint、devDebug/prodDebug/prodRelease 构建通过；Robolectric 渲染检查浅深色与窄屏。原生版本 0.1.1 / versionCode 2，Release 尚无生产签名。
+- 真机联调正式 API 使用 prodDebug；独立阿里云验证 WebView 的 App 场景要求交互式验证，仍需检查线上控制台及真实设备。详见 [登录实现与验收](ANDROID-AUTH.md)。
+- 未操作真机、发送真实邮件、修改 H5/API 或部署；真实验证码、Android Keystore、手机键盘与账号完整链路待用户验收。登录后仍为欢迎/关于入口，业务首页尚未迁移。
+- 开发接口已改为 `http://10.0.3.54:3000/api/v1/`，仅在 dev 网络白名单允许该 HTTP 地址；用户反馈接口已调通。此反馈确认接口连通，未逐项记录以上完整验收清单。

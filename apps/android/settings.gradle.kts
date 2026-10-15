@@ -25,4 +25,6 @@ include(
     ":core:data",
     ":core:designsystem",
     ":feature:main",
+    ":feature:auth",
+    ":core:session",
 )

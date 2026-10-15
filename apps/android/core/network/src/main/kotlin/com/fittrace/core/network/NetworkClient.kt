@@ -30,6 +30,7 @@ class NetworkClient(baseUrl: String, client: OkHttpClient = defaultHttpClient())
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
     val healthApi: HealthApi = retrofit.create(HealthApi::class.java)
+    val authApi: AuthApi = retrofit.create(AuthApi::class.java)
 }
 
 // 不记录请求体、Authorization 或用户健康数据；认证续期在登录模块接入时实现。

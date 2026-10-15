@@ -7,8 +7,8 @@ android {
     namespace = "com.fittrace.android"
     defaultConfig {
         applicationId = "com.fittrace.android"
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.1.1"
     }
     buildFeatures.buildConfig = true
     flavorDimensions += "environment"
@@ -17,7 +17,7 @@ android {
             dimension = "environment"
             applicationIdSuffix = ".dev"
             versionNameSuffix = "-dev"
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:3000/api/v1/\"")
+            buildConfigField("String", "API_BASE_URL", "\"http://10.0.3.54:3000/api/v1/\"")
         }
         create("prod") {
             dimension = "environment"
@@ -49,7 +49,15 @@ dependencies {
     implementation(project(":core:network"))
     implementation(project(":core:designsystem"))
     implementation(project(":feature:main"))
+    implementation(project(":feature:auth"))
+    implementation(project(":core:model"))
+    implementation(project(":core:session"))
+    implementation(libs.lifecycle.viewmodel.compose)
+    implementation(libs.lifecycle.runtime.compose)
+    implementation(libs.kotlinx.coroutines.core)
     implementation(platform(libs.compose.bom))
     implementation(libs.activity.compose)
     implementation(libs.compose.material3)
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

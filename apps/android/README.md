@@ -4,10 +4,8 @@
 
 ## 当前范围
 
-本次建立多模块工程、构建规范、主题、导航、网络响应模型、领域仓库契约、数据映射、单元测试与 CI。
-启动入口仅含欢迎页和关于页，用于验证原生工程链路，不代表业务首页已经实现。
-登录、令牌存储/续期、业务 ViewModel、数据库、训练、饮食和相册尚未接入。没有自动请求线上健康数据。
-业务页面后续先完成设计，再按 feature 接入；当前主题复用现有品牌色。
+已建立多模块工程、构建规范、主题、导航、分层网络与 CI，并接入原生邮箱验证码登录、密码登录、找回密码、协议阅读、加密会话保存、续期与退出。登录页沿用已确认的设计稿，详见 [登录实现与验收](../../docs/ANDROID-AUTH.md)。
+登录后的欢迎/关于页仍是工程入口，训练、饮食、相册及业务首页尚未迁移。没有自动请求线上健康数据。
 
 ## 环境与运行
 
@@ -25,27 +23,29 @@ sdk.dir=/path/to/Android/sdk
 ```bash
 cd apps/android
 ./gradlew verify
+./gradlew :app:assembleProdDebug
 ./gradlew :app:assembleProdRelease :app:lintProdRelease
 ```
 
-`verify` 包含 Spotless/ktfmt 格式检查、模块边界检查、网络/数据 JVM 单元测试、Android 单元测试、Lint 和开发 APK 构建。
+`verify` 包含 Spotless/ktfmt 格式检查、模块边界检查、网络/数据 JVM 单元测试、ViewModel 与本地 Compose UI 回归、Android 单元测试、Lint 和开发 APK 构建。
 CI 另外构建并检查生产 Release，确保 R8 混淆链路可用。
 
 | 变体 | 包名 | API | 用途 |
 | --- | --- | --- | --- |
-| devDebug | `com.fittrace.android.dev.debug` | `http://10.0.2.2:3000/api/v1/` | 模拟器访问宿主机开发 API |
+| devDebug | `com.fittrace.android.dev.debug` | `http://10.0.3.54:3000/api/v1/` | 局域网访问电脑开发 API |
 | prodDebug | `com.fittrace.android.debug` | `https://fittrace.idoit.icu/api/v1/` | 显式选择后联调正式 API |
 | prodRelease | `com.fittrace.android` | 同上 | 生产构建，未配置签名 |
 
-`devRelease` 禁用。Dev 仅对白名单中的模拟器/回环地址允许 HTTP；Prod 禁止明文 HTTP。
-真机联调使用可达的 HTTPS 开发服务，按环境修改 URL，不扩大生产网络策略。
+`devRelease` 禁用。Dev 仅对白名单中的开发 IP、模拟器/回环地址允许 HTTP；Prod 禁止明文 HTTP。
+真机联调当前正式接口时，在 Android Studio 的 Build Variants 中选择 `prodDebug`。两个 Debug 变体包名不同，会安装为独立应用。`devDebug` 通过局域网访问电脑 `10.0.3.54:3000`，不需要 adb reverse。手机与电脑需网络互通，后端须监听 `0.0.0.0:3000` 或该局域网地址，并允许防火墙入站访问。电脑 IP 变化时需同步修改 dev 基础地址及开发环境网络白名单。
 
 产物：
 
 - `app/build/outputs/apk/dev/debug/app-dev-debug.apk`
+- `app/build/outputs/apk/prod/debug/app-prod-debug.apk`
 - `app/build/outputs/apk/prod/release/app-prod-release-unsigned.apk`
 
-版本从 `0.1.0 / versionCode 1` 开始；不复用旧 APK 包名、签名或本地数据。
+当前原生版本为 `0.1.1 / versionCode 2`；不复用旧 Capacitor APK 包名、签名或本地数据。
 生产签名尚未接入，证书和密码只能通过本地/CI 密钥配置提供，不能入库或写进 Gradle 脚本。
 本轮不操作设备，构建成功不能替代真机启动、返回键、安全区和深浅色验收。
 
