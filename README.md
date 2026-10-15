@@ -51,8 +51,7 @@ uploads/2026/10/09/<用户ID>/<文件UUID>.jpg
 ## 客户端职责
 
 `apps/h5` 仅提供浏览器端页面，执行 `pnpm build:h5` 生成 `apps/h5/dist`。
-Android 客户端计划使用 Kotlin + Jetpack Compose，在后续阶段单独创建 `apps/android`，与 H5 共用 API 和数据库。
-旧 H5 打包 APK 的工程、命令和运行时接入已移除，当前仓库不生成 APK。
+Android 客户端位于 `apps/android`，使用独立的 Kotlin + Jetpack Compose 多模块工程，与 H5 共用 API 和数据库。构建与模块规范见 [Android 工程说明](apps/android/README.md)。
 
 ## 代码规范与编辑器
 
@@ -85,6 +84,7 @@ GET  /api/v1/auth/me
 
 ## 目录
 
+- `apps/android`: Kotlin + Jetpack Compose 原生客户端
 - `apps/h5`: Vue 3 H5
 - `apps/api`: NestJS REST API
 - `apps/miniprogram`: 未来微信小程序占位

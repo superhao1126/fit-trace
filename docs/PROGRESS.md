@@ -1,5 +1,17 @@
 # 实现进度
 
+## 原生 Android 工程底座（2026-10-15）
+
+- IDE 构建修复：发现 VS Code Java/Gradle 后台使用另一 Gradle 版本循环导入，伴随预编译插件元数据和输出丢失；在工作区禁用其自动发现、导入及编译，重建受影响输出。保留原构建约定。Android Studio 同款 JDK 21 下完整重建和普通增量构建通过，元数据正常保留。
+
+- 新增 `apps/android` 独立 Kotlin + Jetpack Compose 工程，采用 app、feature、core 多模块；领域模型/仓库契约、数据实现、网络和设计系统分离。共享后端，不加载 H5 页面。
+- 使用 Kotlin DSL、版本目录、构建约定插件、Gradle 锁文件与 Wrapper SHA-256；dev/prod 配置隔离，生产包开启 R8/资源压缩且禁止明文 HTTP，签名尚未接入。
+- 增加 Spotless/ktfmt、模块边界检查、各模块 Lint、10 项 JVM 回归，以及 GitHub Actions 和依赖更新配置。
+- 开发 APK 和生产未签名 APK 构建成功；10 项网络/仓库测试、所有模块 Lint、格式和模块依赖检查通过。根项目 `pnpm check` 通过，保留原有 UiInput 属性顺序警告。
+- 复现验证：不联网且不更新锁文件的完整构建通过；临时注入 `feature:main -> core:data` 非法依赖后，模块边界任务按预期拒绝，未改动项目实际依赖。IDE 的 bin 输出也已从 Git 与格式检查中排除。
+- APK 核对：开发包 `com.fittrace.android.dev.debug`，生产包 `com.fittrace.android`，versionCode 1、版本 0.1.0（开发版带 dev 后缀）、minSdk 26、targetSdk 36；包内无 H5/Capacitor 资源。
+- 当前只有最小欢迎/关于页，业务登录、记录和持久化尚未接入。用户已确认 Android Studio 构建正常，并自行完成真机安装；本轮未部署。工程说明和后续规范见 `apps/android/README.md` 与 `ARCHITECTURE.md`。
+
 ## 移除 Capacitor（2026-10-15）
 
 - 移除 H5 内嵌 Android 工程、Capacitor 依赖/配置、原生壳运行时、开屏以及 APK 构建命令。

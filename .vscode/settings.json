@@ -15,6 +15,18 @@
 
   "prettier.requireConfig": true,
 
+  // Android 工程由 Android Studio 管理，避免 Java 扩展使用其他 Gradle 版本自动导入。
+  "gradle.autoDetect": "off",
+  "java.import.gradle.enabled": false,
+  "java.autobuild.enabled": false,
+  "java.import.exclusions": [
+    "**/node_modules/**",
+    "**/.metadata/**",
+    "**/archetype-resources/**",
+    "**/META-INF/maven/**",
+    "**/apps/android/**"
+  ],
+
   "typescript.tsdk": "node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
   "typescript.preferences.preferTypeOnlyAutoImports": true,

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!-- 固定并验证整套工具链；版本升级由 Dependabot PR 审核，避免网络上的新版本改变同一提交的构建结果。 -->
+    <issue id="AndroidGradlePluginVersion,GradleDependency,NewerVersionAvailable" severity="ignore" />
+</lint>

@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">循形</string>
+    <string name="brand_slogan">记录日常，看见改变</string>
+    <string name="about_title">关于循形</string>
+    <string name="back">返回</string>
+    <string name="version">版本 %1$s</string>
+</resources>

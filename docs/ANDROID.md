@@ -1,13 +1,14 @@
-# Android 客户端规划
+# Android 客户端
 
-2026-10-15 起，仓库已移除 Capacitor 和 H5 打包 APK 的工程、依赖、命令及原生运行时适配。
+`apps/android` 已创建独立 Kotlin + Jetpack Compose 多模块工程，使用 Android Studio 打开该目录。
+构建步骤、环境与产物见 [工程 README](../apps/android/README.md)，分层及依赖约束见 [架构规范](../apps/android/ARCHITECTURE.md)。
 
-- `apps/h5`：Vue 浏览器端，使用 Vite 构建和部署。
-- `apps/api`：供各客户端共用的 NestJS API。
-- `apps/android`：后续独立创建 Kotlin + Jetpack Compose 工程，本次尚未创建。
+- `apps/h5` 负责浏览器端，Vite/pnpm 构建。
+- `apps/android` 负责原生客户端，Gradle 构建，不加载 H5 资源。
+- `apps/api` 提供共享接口；数据库保持共用。
 
-通用品牌素材保留在 `assets/brand`，H5 使用的图标保留在 `apps/h5/public`。
-旧签名证书仍保存在被 Git 忽略的 `.android-signing`；旧签名配置单独保存为其中的 `legacy-keystore.properties`，仅供归档，其相对路径属于旧工程，不能直接用于新工程。
+当前完成工程底座与最小启动/关于页，登录、业务页面及本地数据持久化尚未实现。
+新包名为 `com.fittrace.android`，版本从 `0.1.0 / 1` 开始，不依赖旧 APK 升级或本地数据迁移。
 
-旧发布和安装记录仅用于追溯，记录中的 APK 路径及构建命令不再适用于当前代码。
-后续原生客户端按新项目开发，不依赖旧 APK 的升级或本地数据迁移。
+通用品牌素材仍在 `assets/brand`。旧签名证书和配置保留在 Git 忽略的 `.android-signing` 中，仅供历史归档，未接入新工程。
+旧 Capacitor 发布和安装记录仅供追溯，其中的构建命令与路径不再适用。

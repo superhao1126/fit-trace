@@ -7,3 +7,6 @@ docs/PRD.md
 *.prisma
 uploads
 .uploads
+
+# 原生 Android 使用 Kotlin/Android 工程格式规范。
+apps/android
