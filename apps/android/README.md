@@ -67,3 +67,7 @@ CI 另外构建并检查生产 Release，确保 R8 混淆链路可用。
 仓库根目录的 VS Code 工作区已关闭 Gradle 自动发现、Java Gradle 自动导入和 Java 自动编译，并通过 `java.import.exclusions` 排除 `apps/android`；Android 工程由 Android Studio 导入。不要让 Java 扩展将 `build-logic` 当成独立 Gradle 工程导入并使用另一套 Gradle/JDK；两套构建共用输出目录，可能发生生成文件与增量状态冲突。
 
 如果打开旧工作区后出现 `compilePluginsBlocks` 的 `plugin-spec-builders is not a directory`，先让 VS Code 重新加载工作区配置，再在 Android Studio 执行 **File → Sync Project with Gradle Files**。Gradle JDK 选择 21，Gradle 版本使用项目 Wrapper。
+
+## 开发日志
+
+Debug 包已启用本地接口诊断日志，Android Studio 的 Logcat 以 `tag:FitTrace.Http` 筛选。记录完整 URL、查询参数、请求正文、服务端响应正文、HTTP 状态码、耗时及网络异常类型。按调试要求，正文中的密码、验证码和 Token 均明文显示；JSON 缩进并分段输出，请求头/响应头不输出。Release 关闭。查看步骤和验证边界见 [开发日志说明](../../docs/ANDROID-LOGGING.md)。

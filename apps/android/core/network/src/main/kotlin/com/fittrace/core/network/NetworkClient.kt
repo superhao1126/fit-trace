@@ -8,7 +8,11 @@ import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
-class NetworkClient(baseUrl: String, client: OkHttpClient = defaultHttpClient()) {
+class NetworkClient(
+    baseUrl: String,
+    client: OkHttpClient = defaultHttpClient(),
+    logSink: NetworkLogSink? = null,
+) {
     init {
         val url = baseUrl.toHttpUrl()
         require(url.encodedPath.endsWith("/")) { "API base URL must end with /" }
@@ -26,14 +30,21 @@ class NetworkClient(baseUrl: String, client: OkHttpClient = defaultHttpClient())
     private val retrofit =
         Retrofit.Builder()
             .baseUrl(baseUrl)
-            .client(client)
+            .client(
+                if (logSink == null) client
+                else
+                    client
+                        .newBuilder()
+                        .apply { interceptors().add(0, NetworkDiagnostics(logSink)) }
+                        .build()
+            )
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
     val healthApi: HealthApi = retrofit.create(HealthApi::class.java)
     val authApi: AuthApi = retrofit.create(AuthApi::class.java)
 }
 
-// 不记录请求体、Authorization 或用户健康数据；认证续期在登录模块接入时实现。
+// 默认不输出日志；Debug 由 app 显式注入日志接收器，认证续期由数据层处理。
 fun defaultHttpClient(): OkHttpClient =
     OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
