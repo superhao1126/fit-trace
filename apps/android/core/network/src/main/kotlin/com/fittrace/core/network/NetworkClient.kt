@@ -42,6 +42,7 @@ class NetworkClient(
             .build()
     val healthApi: HealthApi = retrofit.create(HealthApi::class.java)
     val authApi: AuthApi = retrofit.create(AuthApi::class.java)
+    val dashboardApi: DashboardApi = retrofit.create(DashboardApi::class.java)
 }
 
 // 默认不输出日志；Debug 由 app 显式注入日志接收器，认证续期由数据层处理。

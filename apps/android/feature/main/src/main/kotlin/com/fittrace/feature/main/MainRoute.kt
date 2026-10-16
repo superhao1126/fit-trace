@@ -1,86 +1,98 @@
 package com.fittrace.feature.main
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import com.fittrace.core.designsystem.FitTraceTheme
-
-private const val Welcome = "welcome"
-private const val About = "about"
-
-/** 工程启动入口；业务页面完成设计后，以独立 feature 模块接入。 */
-@Composable
-fun MainRoute(versionName: String, userEmail: String, onLogout: () -> Unit, busy: Boolean = false) {
-    val navController = rememberNavController()
-    NavHost(navController = navController, startDestination = Welcome) {
-        composable(Welcome) {
-            WelcomeScreen(
-                userEmail,
-                onLogout,
-                busy,
-                onAbout = { navController.navigate(About) { launchSingleTop = true } },
-            )
-        }
-        composable(About) { AboutScreen(versionName, onBack = { navController.popBackStack() }) }
-    }
-}
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.fittrace.core.domain.DashboardRepository
 
 @Composable
-private fun WelcomeScreen(
+fun MainRoute(
+    versionName: String,
     userEmail: String,
     onLogout: () -> Unit,
-    busy: Boolean,
-    onAbout: () -> Unit,
+    busy: Boolean = false,
+    dashboardRepository: DashboardRepository,
+    userId: String,
 ) {
-    Scaffold { padding ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium)
-            Text(stringResource(R.string.brand_slogan), style = MaterialTheme.typography.bodyLarge)
-            Text(userEmail, style = MaterialTheme.typography.bodyMedium)
-            TextButton(onClick = onLogout, enabled = !busy) { Text(if (busy) "退出中…" else "退出登录") }
-            TextButton(onClick = onAbout) { Text(stringResource(R.string.about_title)) }
+    key(userId) {
+        val factory =
+            remember(dashboardRepository) {
+                viewModelFactory { initializer { DashboardViewModel(dashboardRepository) } }
+            }
+        val model: DashboardViewModel = viewModel(key = "dashboard-$userId", factory = factory)
+        val state by model.state.collectAsStateWithLifecycle()
+        var tab by rememberSaveable { mutableIntStateOf(0) }
+        var notice by remember { mutableStateOf<String?>(null) }
+        var about by rememberSaveable { mutableStateOf(false) }
+        BackHandler(enabled = tab != 0 || about) {
+            about = false
+            tab = 0
         }
-    }
-}
-
-@Composable
-private fun AboutScreen(versionName: String, onBack: () -> Unit) {
-    Scaffold { padding ->
-        Column(
-            Modifier.fillMaxSize().padding(padding).padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
-            Text(
-                stringResource(R.string.about_title),
-                style = MaterialTheme.typography.headlineSmall,
+        LifecycleEventEffect(Lifecycle.Event.ON_START) { model.refresh() }
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
+            bottomBar = {
+                HomeNavigation(tab) {
+                    if (it == 1 || it == 2) notice = if (it == 1) "趋势" else "档案"
+                    else {
+                        tab = it
+                        about = false
+                    }
+                }
+            },
+        ) { padding ->
+            if (tab == 0)
+                DashboardScreen(
+                    state,
+                    model::selectDate,
+                    model::refresh,
+                    { notice = it },
+                    Modifier.padding(padding),
+                )
+            else
+                Column(
+                    Modifier.fillMaxSize().padding(padding).padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Text(
+                        if (about) stringResource(R.string.about_title) else "我的",
+                        style = MaterialTheme.typography.headlineLarge,
+                    )
+                    Text(userEmail)
+                    if (about) {
+                        Text(stringResource(R.string.version, versionName))
+                        Text(stringResource(R.string.brand_slogan))
+                        TextButton(onClick = { about = false }) {
+                            Text(stringResource(R.string.back))
+                        }
+                    } else {
+                        TextButton(onClick = { about = true }) {
+                            Text(stringResource(R.string.about_title))
+                        }
+                        TextButton(onClick = onLogout, enabled = !busy) {
+                            Text(if (busy) "退出中…" else "退出登录")
+                        }
+                    }
+                }
+        }
+        notice?.let { title ->
+            AlertDialog(
+                onDismissRequest = { notice = null },
+                title = { Text(title) },
+                text = { Text("此功能暂未开放。你可以先在首页按日期查看已有记录。") },
+                confirmButton = { TextButton(onClick = { notice = null }) { Text("知道了") } },
             )
-            Text(stringResource(R.string.version, versionName))
-            Text(stringResource(R.string.brand_slogan))
         }
     }
-}
-
-@Preview(showBackground = true, locale = "zh")
-@Composable
-private fun WelcomePreview() {
-    FitTraceTheme { WelcomeScreen("user@example.com", {}, false, onAbout = {}) }
 }

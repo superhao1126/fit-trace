@@ -17,7 +17,7 @@
 - `core:domain` / `core:model`：认证仓库、会话存储契约和领域状态。
 - `core:network`：序列化 DTO、Retrofit API；`core:data`：错误映射、持久化协调与刷新互斥。
 - `core:session`：Android Keystore AES-GCM 加密，AtomicFile 写入 noBackupFilesDir；不保存明文令牌或表单凭据。
-- `app`：依赖装配、启动/回到前台时恢复与校验会话、认证与登录后入口切换；登录后的业务首页尚未迁移。
+- `app`：依赖装配、启动/回到前台时恢复与校验会话、认证与登录后入口切换；登录后接入原生业务首页，详见 [首页说明](ANDROID-HOME.md)。
 
 | 接口 | 用途 |
 | --- | --- |

@@ -7,7 +7,7 @@
 | 模块 | 职责 | 允许依赖 |
 | --- | --- | --- |
 | `app` | Application、Activity、变体配置、应用级依赖装配 | feature 和核心模块 |
-| `feature:main` | 登录后入口、关于页和退出动作 | domain、model、designsystem |
+| `feature:main` | 登录后首页、日期/概览状态、关于页和退出动作 | domain、model、designsystem |
 | `feature:auth` | 原生认证页面、UiState、ViewModel、验证码交互 | domain、model、designsystem |
 | `core:session` | Android Keystore 加密会话、原子文件存取 | domain、model；Android 库 |
 | `core:designsystem` | Material 3 主题、品牌 token、未来通用 UI 组件 | Compose，禁止业务与网络依赖 |

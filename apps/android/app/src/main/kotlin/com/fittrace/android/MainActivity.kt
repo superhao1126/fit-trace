@@ -26,7 +26,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val auth = (application as FitTraceApplication).container.authRepository
+        val container = (application as FitTraceApplication).container
+        val auth = container.authRepository
         setContent {
             val factory = remember { viewModelFactory { initializer { AppViewModel(auth) } } }
             val model: AppViewModel = viewModel(factory = factory)
@@ -56,7 +57,14 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     is SessionStatus.SignedIn ->
-                        MainRoute(BuildConfig.VERSION_NAME, session.user.email, model::logout, busy)
+                        MainRoute(
+                            BuildConfig.VERSION_NAME,
+                            session.user.email,
+                            model::logout,
+                            busy,
+                            container.dashboardRepository,
+                            session.user.id,
+                        )
                 }
             }
         }

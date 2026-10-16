@@ -15,6 +15,7 @@ tasks.register("verify") {
         ":core:network:test",
         ":core:data:test",
         ":feature:auth:testDebugUnitTest",
+        ":feature:main:testDebugUnitTest",
         ":core:model:lint",
         ":core:domain:lint",
         ":core:network:lint",

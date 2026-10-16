@@ -163,6 +163,31 @@ class DefaultAuthRepository(
             }
         }
 
+    // 业务请求与会话刷新共用同一把锁，令牌只在 data/network 边界内使用。
+    internal suspend fun <T> authorized(block: suspend (String) -> AppResult<T>): AppResult<T> =
+        mutex.withLock {
+            var active = session ?: return@withLock AppResult.Failure(AppError.Http(401))
+            if (active.accessTokenExpiresAt <= now() + 30_000) {
+                when (val refreshed = refreshLocked(active)) {
+                    is AppResult.Failure -> return@withLock refreshed
+                    is AppResult.Success -> active = refreshed.data
+                }
+            }
+            var result = block("Bearer ${active.accessToken}")
+            if (result is AppResult.Failure && result.error.isUnauthorized()) {
+                when (val refreshed = refreshLocked(active)) {
+                    is AppResult.Failure -> return@withLock refreshed
+                    is AppResult.Success -> active = refreshed.data
+                }
+                result = block("Bearer ${active.accessToken}")
+                if (result is AppResult.Failure && result.error.isUnauthorized()) {
+                    val cleared = clearLocked()
+                    if (cleared is AppResult.Failure) return@withLock cleared
+                }
+            }
+            result
+        }
+
     override suspend fun logout(): AppResult<Unit> {
         val old =
             mutex.withLock {
