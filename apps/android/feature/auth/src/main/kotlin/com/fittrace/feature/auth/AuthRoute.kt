@@ -1,8 +1,13 @@
 package com.fittrace.feature.auth
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,12 +18,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.*
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -200,201 +209,217 @@ internal fun AuthScreen(
                 )
                 Spacer(Modifier.height(32.dp))
             }
-            if (state.mode != AuthMode.RESET_PASSWORD) {
-                AuthInput(
-                    "邮箱",
-                    state.email,
-                    onEmail,
-                    "输入你的邮箱",
-                    state.errors[AuthField.EMAIL],
-                    !state.busy,
-                    KeyboardType.Email,
-                )
-                Spacer(Modifier.height(20.dp))
-            }
-            if (state.mode in listOf(AuthMode.EMAIL, AuthMode.RESET_EMAIL)) {
-                AuthInput(
-                    "邮箱验证码",
-                    state.code,
-                    onCode,
-                    "6 位验证码",
-                    state.errors[AuthField.CODE],
-                    !state.busy,
-                    KeyboardType.Number,
-                    onDone = onSubmit,
-                    trailing = {
-                        TextButton(
-                            onClick = onRequestCode,
-                            enabled = !state.busy && state.countdown == 0,
-                        ) {
-                            Text(
-                                if (state.sendingCode) "验证中…"
-                                else if (state.countdown > 0) "${state.countdown}s 后重发"
-                                else "获取验证码",
-                                fontSize = 12.sp,
-                            )
-                        }
-                    },
-                )
-                Text(
-                    if (state.mode == AuthMode.EMAIL) "未注册的邮箱会在验证后自动创建账户" else "验证码 10 分钟内有效",
-                    Modifier.padding(top = 8.dp),
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else {
-                AuthInput(
-                    if (reset) "新密码" else "密码",
-                    state.password,
-                    onPassword,
-                    if (reset) "设置 8–72 位密码" else "输入密码",
-                    state.errors[AuthField.PASSWORD],
-                    !state.busy,
-                    KeyboardType.Password,
-                    visual =
-                        if (state.passwordVisible) VisualTransformation.None
-                        else PasswordVisualTransformation(),
-                    onDone = onSubmit,
-                    trailing = {
-                        TextButton(onClick = onTogglePassword) {
-                            Text(if (state.passwordVisible) "隐藏" else "显示", fontSize = 12.sp)
-                        }
-                    },
-                )
-                if (state.mode == AuthMode.RESET_PASSWORD) {
-                    Spacer(Modifier.height(20.dp))
+            Column(Modifier.fillMaxWidth().animateContentSize(animationSpec = tween(220))) {
+                if (state.mode != AuthMode.RESET_PASSWORD) {
                     AuthInput(
-                        "确认新密码",
-                        state.confirmPassword,
-                        onConfirmPassword,
-                        "再次输入新密码",
-                        state.errors[AuthField.CONFIRM_PASSWORD],
+                        "邮箱",
+                        state.email,
+                        onEmail,
+                        "输入你的邮箱",
+                        state.errors[AuthField.EMAIL],
+                        !state.busy,
+                        KeyboardType.Email,
+                    )
+                    Spacer(Modifier.height(20.dp))
+                }
+                if (state.mode in listOf(AuthMode.EMAIL, AuthMode.RESET_EMAIL)) {
+                    AuthInput(
+                        "邮箱验证码",
+                        state.code,
+                        onCode,
+                        "6 位验证码",
+                        state.errors[AuthField.CODE],
+                        !state.busy,
+                        KeyboardType.Number,
+                        onDone = onSubmit,
+                        trailing = {
+                            TextButton(
+                                onClick = onRequestCode,
+                                enabled = !state.busy && state.countdown == 0,
+                            ) {
+                                Text(
+                                    if (state.sendingCode) "验证中…"
+                                    else if (state.countdown > 0) "${state.countdown}s 后重发"
+                                    else "获取验证码",
+                                    fontSize = 12.sp,
+                                )
+                            }
+                        },
+                    )
+                    Text(
+                        if (state.mode == AuthMode.EMAIL) "未注册的邮箱会在验证后自动创建账户" else "验证码 10 分钟内有效",
+                        Modifier.padding(top = 8.dp),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    AuthInput(
+                        if (reset) "新密码" else "密码",
+                        state.password,
+                        onPassword,
+                        if (reset) "设置 8–72 位密码" else "输入密码",
+                        state.errors[AuthField.PASSWORD],
                         !state.busy,
                         KeyboardType.Password,
                         visual =
                             if (state.passwordVisible) VisualTransformation.None
                             else PasswordVisualTransformation(),
                         onDone = onSubmit,
+                        trailing = {
+                            TextButton(onClick = onTogglePassword) {
+                                Text(if (state.passwordVisible) "隐藏" else "显示", fontSize = 12.sp)
+                            }
+                        },
                     )
-                    Text(
-                        "建议组合字母、数字与符号",
-                        Modifier.padding(top = 8.dp),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
-                    TextButton(
-                        onClick = { onMode(AuthMode.RESET_EMAIL) },
-                        enabled = !state.busy,
-                        modifier = Modifier.align(Alignment.End),
-                    ) {
-                        Text("设置或找回密码", fontSize = 13.sp)
-                    }
-                }
-            }
-            if (state.mode == AuthMode.PASSWORD && state.captchaRequired) {
-                Spacer(Modifier.height(12.dp))
-                AuthInput(
-                    "图形验证码",
-                    state.captchaInput,
-                    onCaptcha,
-                    "图片中的 4 位字符",
-                    state.errors[AuthField.CAPTCHA],
-                    !state.busy,
-                    KeyboardType.Ascii,
-                    onDone = onSubmit,
-                )
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    state.loginCaptcha?.let {
-                        PasswordCaptchaImage(it.image, Modifier.weight(1f).height(60.dp))
-                    }
-                    TextButton(
-                        onClick = onRefreshCaptcha,
-                        enabled = !state.busy && !state.captchaLoading,
-                    ) {
-                        Text(if (state.captchaLoading) "加载中…" else "换一张")
-                    }
-                }
-            }
-            if (!reset) {
-                Spacer(Modifier.height(20.dp))
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        checked = state.acceptedTerms,
-                        onCheckedChange = onTerms,
-                        enabled = !state.busy,
-                        modifier = Modifier.semantics { contentDescription = "我已阅读并同意用户协议和隐私政策" },
-                    )
-                    Column {
+                    if (state.mode == AuthMode.RESET_PASSWORD) {
+                        Spacer(Modifier.height(20.dp))
+                        AuthInput(
+                            "确认新密码",
+                            state.confirmPassword,
+                            onConfirmPassword,
+                            "再次输入新密码",
+                            state.errors[AuthField.CONFIRM_PASSWORD],
+                            !state.busy,
+                            KeyboardType.Password,
+                            visual =
+                                if (state.passwordVisible) VisualTransformation.None
+                                else PasswordVisualTransformation(),
+                            onDone = onSubmit,
+                        )
                         Text(
-                            "我已阅读并同意",
+                            "建议组合字母、数字与符号",
+                            Modifier.padding(top = 8.dp),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            TextButton(
-                                onClick = { onPolicy(PolicyKind.AGREEMENT) },
-                                contentPadding = PaddingValues(horizontal = 2.dp),
-                            ) {
-                                Text("用户协议", fontSize = 12.sp)
-                            }
-                            Text("与", fontSize = 12.sp)
-                            TextButton(
-                                onClick = { onPolicy(PolicyKind.PRIVACY) },
-                                contentPadding = PaddingValues(horizontal = 2.dp),
-                            ) {
-                                Text("隐私政策", fontSize = 12.sp)
-                            }
+                    } else {
+                        TextButton(
+                            onClick = { onMode(AuthMode.RESET_EMAIL) },
+                            enabled = !state.busy,
+                            modifier = Modifier.align(Alignment.End),
+                        ) {
+                            Text("设置或找回密码", fontSize = 13.sp)
                         }
                     }
                 }
-                state.errors[AuthField.AGREEMENT]?.let {
-                    Text(it, fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
+                if (state.mode == AuthMode.PASSWORD && state.captchaRequired) {
+                    Spacer(Modifier.height(12.dp))
+                    AuthInput(
+                        "图形验证码",
+                        state.captchaInput,
+                        onCaptcha,
+                        "图片中的 4 位字符",
+                        state.errors[AuthField.CAPTCHA],
+                        !state.busy,
+                        KeyboardType.Ascii,
+                        onDone = onSubmit,
+                    )
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        state.loginCaptcha?.let {
+                            PasswordCaptchaImage(it.image, Modifier.weight(1f).height(60.dp))
+                        }
+                        TextButton(
+                            onClick = onRefreshCaptcha,
+                            enabled = !state.busy && !state.captchaLoading,
+                        ) {
+                            Text(if (state.captchaLoading) "加载中…" else "换一张")
+                        }
+                    }
                 }
-            }
-            state.notice?.let {
-                Text(
-                    it,
-                    Modifier.padding(top = 12.dp).semantics { liveRegion = LiveRegionMode.Polite },
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Spacer(Modifier.height(24.dp))
-            Button(
-                onClick = onSubmit,
-                enabled = !state.busy,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
-            ) {
-                if (state.busy && !state.sendingCode) {
-                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                    Spacer(Modifier.width(8.dp))
-                }
-                Text(if (state.busy && !state.sendingCode) "处理中…" else label)
-            }
-            if (!reset)
-                TextButton(
-                    onClick = {
-                        onMode(
-                            if (state.mode == AuthMode.EMAIL) AuthMode.PASSWORD else AuthMode.EMAIL
+                if (!reset) {
+                    Spacer(Modifier.height(20.dp))
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = state.acceptedTerms,
+                            onCheckedChange = onTerms,
+                            enabled = !state.busy,
+                            modifier =
+                                Modifier.semantics { contentDescription = "我已阅读并同意用户协议和隐私政策" },
                         )
-                    },
-                    enabled = !state.busy,
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                ) {
+                        Text(
+                            buildAnnotatedString {
+                                append("我已阅读并同意")
+                                val linkStyle =
+                                    TextLinkStyles(
+                                        SpanStyle(color = MaterialTheme.colorScheme.primary)
+                                    )
+                                withLink(
+                                    LinkAnnotation.Clickable("agreement", linkStyle) {
+                                        onPolicy(PolicyKind.AGREEMENT)
+                                    }
+                                ) {
+                                    append("用户协议")
+                                }
+                                append("与")
+                                withLink(
+                                    LinkAnnotation.Clickable("privacy", linkStyle) {
+                                        onPolicy(PolicyKind.PRIVACY)
+                                    }
+                                ) {
+                                    append("隐私政策")
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            fontSize = 12.sp,
+                            lineHeight = 20.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    state.errors[AuthField.AGREEMENT]?.let {
+                        Text(it, fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                state.notice?.let {
                     Text(
-                        if (state.mode == AuthMode.EMAIL) "使用密码登录" else "使用邮箱验证码登录",
+                        it,
+                        Modifier.padding(top = 12.dp).semantics {
+                            liveRegion = LiveRegionMode.Polite
+                        },
                         fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-            if (state.mode == AuthMode.RESET_PASSWORD)
-                Text(
-                    "重置后需重新登录",
-                    Modifier.padding(top = 16.dp),
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Spacer(Modifier.height(24.dp))
+                Button(
+                    onClick = onSubmit,
+                    enabled = !state.busy,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
+                ) {
+                    if (state.busy && !state.sendingCode) {
+                        CircularProgressIndicator(
+                            Modifier.size(18.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text(if (state.busy && !state.sendingCode) "处理中…" else label)
+                }
+                if (!reset)
+                    TextButton(
+                        onClick = {
+                            onMode(
+                                if (state.mode == AuthMode.EMAIL) AuthMode.PASSWORD
+                                else AuthMode.EMAIL
+                            )
+                        },
+                        enabled = !state.busy,
+                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    ) {
+                        Text(
+                            if (state.mode == AuthMode.EMAIL) "使用密码登录" else "使用邮箱验证码登录",
+                            fontSize = 13.sp,
+                        )
+                    }
+                if (state.mode == AuthMode.RESET_PASSWORD)
+                    Text(
+                        "重置后需重新登录",
+                        Modifier.padding(top = 16.dp),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+            }
             Spacer(Modifier.height(64.dp))
             Text(
                 "记录行动，看见改变",
@@ -419,6 +444,16 @@ private fun AuthInput(
     onDone: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val borderColor by
+        animateColorAsState(
+            targetValue =
+                if (focused) MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)
+                else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+            animationSpec = tween(160),
+            label = "auth-input-focus",
+        )
     Column {
         Text(
             label,
@@ -430,6 +465,7 @@ private fun AuthInput(
             value,
             onValue,
             modifier = Modifier.fillMaxWidth().semantics { contentDescription = label },
+            interactionSource = interaction,
             enabled = enabled,
             singleLine = true,
             isError = error != null,
@@ -447,7 +483,8 @@ private fun AuthInput(
             keyboardActions = KeyboardActions(onDone = { onDone?.invoke() }),
             colors =
                 OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = Color.Transparent,
+                    focusedBorderColor = borderColor,
+                    unfocusedBorderColor = borderColor,
                     focusedContainerColor = MaterialTheme.colorScheme.surface,
                     unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                     disabledContainerColor = MaterialTheme.colorScheme.surface,

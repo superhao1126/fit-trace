@@ -4,8 +4,10 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.*
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.text.TextLayoutResult
 import com.fittrace.core.designsystem.FitTraceTheme
 import java.io.File
 import org.junit.Rule
@@ -42,6 +44,9 @@ class AuthScreenTest {
         compose.setContent { FitTraceTheme { AuthScreen(AuthUiState(mode = AuthMode.PASSWORD)) } }
         compose.onNodeWithText("设置或找回密码").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("登录", substring = false).performScrollTo().assertIsDisplayed()
+        val consentLayout = consentLayout()
+        org.junit.Assert.assertEquals(1, consentLayout.lineCount)
+        org.junit.Assert.assertFalse(consentLayout.hasVisualOverflow)
         capture("password-login-320")
     }
 
@@ -65,10 +70,10 @@ class AuthScreenTest {
         compose.setContent {
             FitTraceTheme { AuthScreen(AuthUiState(), onPolicy = { selected = it }) }
         }
-        compose.onNodeWithText("用户协议").performScrollTo().performClick()
+        clickPolicy("用户协议")
         org.junit.Assert.assertEquals(PolicyKind.AGREEMENT, selected)
         compose.onNodeWithContentDescription("我已阅读并同意用户协议和隐私政策").assertIsOff()
-        compose.onNodeWithText("隐私政策").performClick()
+        clickPolicy("隐私政策")
         org.junit.Assert.assertEquals(PolicyKind.PRIVACY, selected)
     }
 
@@ -81,6 +86,24 @@ class AuthScreenTest {
         }
         compose.onNodeWithText("请输入正确的邮箱地址").assertIsDisplayed()
         capture("email-login-dark-390")
+    }
+
+    private val consentText = "我已阅读并同意用户协议与隐私政策"
+
+    private fun consentLayout(): TextLayoutResult {
+        val results = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithText(consentText).performScrollTo().performSemanticsAction(
+            SemanticsActions.GetTextLayoutResult
+        ) {
+            it(results)
+        }
+        return results.single()
+    }
+
+    private fun clickPolicy(label: String) {
+        val layout = consentLayout()
+        val position = layout.getBoundingBox(consentText.indexOf(label)).center
+        compose.onNodeWithText(consentText).performTouchInput { click(position) }
     }
 
     private fun capture(name: String) {
