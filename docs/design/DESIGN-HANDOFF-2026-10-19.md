@@ -2,7 +2,7 @@
 
 ## 顺序与边界
 
-先完成可编辑 Figma 核心设计，再从 H5 首页逐页实现。H5 与原生 Android 独立。本批均为视觉/状态设计，未接入 API、未安装或部署；不要把设计截图当成运行验收证据。
+先完成可编辑 Figma 核心设计，再从 H5 首页逐页实现。用户已明确后续都按 CalJimi 设计：优先参考对应页面的结构和操作方式，截图未覆盖的业务状态才作循形适配。H5 与原生 Android 独立。本批均为视觉/状态设计，未接入 API、未安装或部署；不要把设计截图当成运行验收证据。
 
 Figma MCP Starter 额度已达到限制；近期以浏览器导入 SVG 原生图层和编辑器调整为主。文字和矢量可编辑，摄影图仅用于单个物品；近期导入批次尚未建立自动布局、变量/组件绑定和点击原型。这些事项仍未完成，不能把文字约定当成原型连线。
 
@@ -13,7 +13,8 @@ Figma MCP Starter 额度已达到限制；近期以浏览器导入 SVG 原生图
 | 首页原定布局 | [29 · 三页样稿](https://www.figma.com/design/Ct4AworB8fYBPjpSVwWbRW?node-id=151-2774) | Figma 原有图层 |
 | 首页关键状态 | [37 · 六屏](https://www.figma.com/design/Ct4AworB8fYBPjpSVwWbRW?node-id=209-4885) | fittrace-home-states-green-2026-10-19.svg |
 | 趋势与档案 | [36 · 十二屏](https://www.figma.com/design/Ct4AworB8fYBPjpSVwWbRW?node-id=206-6334) | fittrace-trends-archive-green-2026-10-19.svg |
-| 我的、资料、目标、设置 | [35 · 十八屏](https://www.figma.com/design/Ct4AworB8fYBPjpSVwWbRW?node-id=203-8647) | fittrace-profile-green-2026-10-19.svg |
+| 目标与表单边界 · CalJimi | [39 · 十二屏](https://www.figma.com/design/Ct4AworB8fYBPjpSVwWbRW?node-id=217-5088) | fittrace-goal-forms-caljimi-2026-10-19.svg |
+| 我的、资料、设置（目标以 39 为准） | [35 · 十八屏](https://www.figma.com/design/Ct4AworB8fYBPjpSVwWbRW?node-id=203-8647) | fittrace-profile-green-2026-10-19.svg |
 | 力量训练 · CalJimi 清单流程 | [38 · 九屏](https://www.figma.com/design/Ct4AworB8fYBPjpSVwWbRW?node-id=214-4365) | fittrace-strength-caljimi-2026-10-19.svg |
 | 运动选择与记录 | [34 · 实拍图六屏](https://www.figma.com/design/Ct4AworB8fYBPjpSVwWbRW?node-id=196-4795) | fittrace-training-caljimi-2026-10-19.svg |
 | 饮食主流程 | [30 · 原生自动布局](https://www.figma.com/design/Ct4AworB8fYBPjpSVwWbRW?node-id=163-4320) | 直接在 Figma 修改；本地 meal-flow PNG 供预览 |
@@ -35,8 +36,8 @@ Figma MCP Starter 额度已达到限制；近期以浏览器导入 SVG 原生图
 ## 下一轮先做什么
 
 1. 力量训练已按 CalJimi 分类选择、数字键盘、已选清单与统一完成流程重排为 9 屏（38 号当前稿 214:4365）；原模板卡片版已撤下。重量/次数/组数、完成组、草稿是循形适配。旧稿中的动作详情需整合为次级入口；批量组输入、清单导航、离开拦截尚未实现，实施前核对原有手动值保护与校验。
-2. **下一步优先**补表单边界：无当前体重、目标方向错误、放弃修改、保存失败后重试。
-3. 整体检查 320px 窄屏、键盘遮挡、深色，以及按钮/弹层位置；补可复用组件与必要点击原型。深色尚未完成，不能据一个显示模式选择弹层视为完成深色稿。
+2. 目标与表单边界已补为 12 屏（39 号稿）：CalJimi 式两步目标、标尺与直输，无当前体重、读取失败、方向/日期错误、放弃修改及保存重试。目标部分以 39 为准，替代 35 号旧目标输入页。保持类型的预填沿用现有代码，不能套用减脂校验。
+3. **下一步优先**逐页核对 CalJimi 对应结构，补身体记录/照片等尚未统一的入口，再整体检查 320px 窄屏、键盘遮挡、深色，以及按钮/弹层位置；补可复用组件与必要点击原型。深色尚未完成，不能据一个显示模式选择弹层视为完成深色稿。
 4. 确认核心流程可落地后，从 H5 首页开始实现，再做饮食、运动、趋势/档案、我的/设置；原生 Android 另行排期。
 
 食品库 360 项仍是候选目录；逐项营养、照片与许可核验未完成，不视为生产入库。
