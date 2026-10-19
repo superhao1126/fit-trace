@@ -1,0 +1,26 @@
+{
+  "reference": "https://uinotes.com/pin/406819785854720372",
+  "sampling": "Primary sampled from the rendered reference screenshot; supporting colors adapted for FitTrace.",
+  "colors": {
+    "primary": "#24C867",
+    "onPrimary": "#FFFFFF",
+    "selectedBackground": "#E6F8EE",
+    "background": "#F7F8FA",
+    "surface": "#FFFFFF",
+    "text": "#222222",
+    "secondaryText": "#777777",
+    "link": "#229D60",
+    "border": "#E6EAE8"
+  },
+  "solidPaintReplacements": {
+    "#6BD995": "#24C867",
+    "#25C969": "#24C867",
+    "#F0F6EE": "#F7F8FA",
+    "#DDF6DE": "#E6F8EE",
+    "#214B33": "#222222",
+    "#63786A": "#777777",
+    "#187D45": "#229D60",
+    "#D9E6D7": "#E6EAE8"
+  },
+  "scope": "Current boards 29, 30, 32, 34, 35, 36, 37, 38, 39; existing palette aliases retained. Dark theme pending."
+}

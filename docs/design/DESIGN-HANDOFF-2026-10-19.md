@@ -18,9 +18,13 @@ Figma MCP Starter 额度已达到限制；近期以浏览器导入 SVG 原生图
 | 力量训练 · CalJimi 清单流程 | [38 · 九屏](https://www.figma.com/design/Ct4AworB8fYBPjpSVwWbRW?node-id=214-4365) | fittrace-strength-caljimi-2026-10-19.svg |
 | 运动选择与记录 | [34 · 实拍图六屏](https://www.figma.com/design/Ct4AworB8fYBPjpSVwWbRW?node-id=196-4795) | fittrace-training-caljimi-2026-10-19.svg |
 | 饮食主流程 | [30 · 原生自动布局](https://www.figma.com/design/Ct4AworB8fYBPjpSVwWbRW?node-id=163-4320) | 直接在 Figma 修改；本地 meal-flow PNG 供预览 |
-| 登录 | [32 · 完整状态](https://www.figma.com/design/Ct4AworB8fYBPjpSVwWbRW?node-id=188-4148) | fittrace-login-green-2026-10-16.svg |
+| 登录 | [32 · 完整状态](https://www.figma.com/design/Ct4AworB8fYBPjpSVwWbRW?node-id=188-4148) | fittrace-login-caljimi-2026-10-19.svg |
 
 上述 SVG/PNG 均在本目录。不要使用已被替换的 198:7592 或 198:6654 作为我的页面最新稿。
+
+## 当前配色
+
+当前 9 组稿（29、30、32、34–39）已在 Figma 原位统一主绿 #24C867；背景 #F7F8FA、浅绿 #E6F8EE、主文字 #222222、次文字 #777777。主绿为 CalJimi 截图采样近似，配套色为循形适配。变量别名保留，本地 7 份 SVG 同步；历史单屏 PNG 未全部重拍，颜色以最新总览和 Figma 为准。详见 [颜色清单](tokens/caljimi-light-2026-10-19.json)。深色尚未更新。
 
 ## 已确认的交互方向
 
