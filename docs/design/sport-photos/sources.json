@@ -1,0 +1,62 @@
+[
+  {
+    "key": "running-fast",
+    "label": "跑步（快速）",
+    "author": "Ketut Subiyanto",
+    "source": "https://www.pexels.com/photo/woman-and-man-jogging-in-park-5038820/",
+    "license": "https://www.pexels.com/license/",
+    "asset": "running-fast.jpg",
+    "sha256": "24403766a94201bd218472b4d2d6c919127fb77de42fdcef414b9b3767fd5972",
+    "download_url": "https://images.pexels.com/photos/5038820/pexels-photo-5038820.jpeg?auto=compress&cs=tinysrgb&w=320&h=320&fit=crop"
+  },
+  {
+    "key": "running-slow",
+    "label": "跑步（慢速）",
+    "author": "Andres Ayrton",
+    "source": "https://www.pexels.com/photo/a-sportswoman-jogging-in-a-park-6551486/",
+    "license": "https://www.pexels.com/license/",
+    "asset": "running-slow.jpg",
+    "sha256": "6aab17309b459f2a9fce5e6f0fbbcb3db29e05110685d6b1f208a3e0e0e402fa",
+    "download_url": "https://images.pexels.com/photos/6551486/pexels-photo-6551486.jpeg?auto=compress&cs=tinysrgb&w=320&h=320&fit=crop"
+  },
+  {
+    "key": "walking",
+    "label": "走路",
+    "author": "Andres Ayrton",
+    "source": "https://www.pexels.com/photo/a-woman-walking-in-autumn-park-6551282/",
+    "license": "https://www.pexels.com/license/",
+    "asset": "walking.jpg",
+    "sha256": "94e38f313dd338bbc1cde7f4ee71ef96851034f6c0d1e70e2f57d4b30bbcccb7",
+    "download_url": "https://images.pexels.com/photos/6551282/pexels-photo-6551282.jpeg?auto=compress&cs=tinysrgb&w=320&h=320&fit=crop"
+  },
+  {
+    "key": "stairs",
+    "label": "爬楼梯",
+    "author": "cottonbro studio",
+    "source": "https://www.pexels.com/photo/a-man-running-on-concrete-stairs-5319872/",
+    "license": "https://www.pexels.com/license/",
+    "asset": "stairs.jpg",
+    "sha256": "da47797376ab5a9149db0f112ff3125121311744820e59cbaa90182d0e4f3965",
+    "download_url": "https://images.pexels.com/photos/5319872/pexels-photo-5319872.jpeg?auto=compress&cs=tinysrgb&w=320&h=320&fit=crop"
+  },
+  {
+    "key": "hiking",
+    "label": "登山",
+    "author": "Oksana Abramova",
+    "source": "https://www.pexels.com/photo/person-with-a-backpack-hiking-in-mountains-8776666/",
+    "license": "https://www.pexels.com/license/",
+    "asset": "hiking.jpg",
+    "sha256": "2c5d0b9a40f1893faa7294e174663b0b6b32208d0ffccf3807b24217a134ba6b",
+    "download_url": "https://images.pexels.com/photos/8776666/pexels-photo-8776666.jpeg?auto=compress&cs=tinysrgb&w=320&h=320&fit=crop"
+  },
+  {
+    "key": "cycling",
+    "label": "骑行",
+    "author": "Luan Gonçalves",
+    "source": "https://www.pexels.com/photo/men-riding-bicycles-on-mountain-7012031/",
+    "license": "https://www.pexels.com/license/",
+    "asset": "cycling.jpg",
+    "sha256": "821d2d50ad625d828fde5e4b2b8b94c6c240080bec53189daf0f6e8767e44c16",
+    "download_url": "https://images.pexels.com/photos/7012031/pexels-photo-7012031.jpeg?auto=compress&cs=tinysrgb&w=320&h=320&fit=crop"
+  }
+]
