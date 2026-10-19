@@ -14,6 +14,7 @@ Figma MCP Starter 额度已达到限制；近期以浏览器导入 SVG 原生图
 | 首页关键状态 | [37 · 六屏](https://www.figma.com/design/Ct4AworB8fYBPjpSVwWbRW?node-id=209-4885) | fittrace-home-states-green-2026-10-19.svg |
 | 趋势与档案 | [36 · 十二屏](https://www.figma.com/design/Ct4AworB8fYBPjpSVwWbRW?node-id=206-6334) | fittrace-trends-archive-green-2026-10-19.svg |
 | 我的、资料、目标、设置 | [35 · 十八屏](https://www.figma.com/design/Ct4AworB8fYBPjpSVwWbRW?node-id=203-8647) | fittrace-profile-green-2026-10-19.svg |
+| 力量训练细节 | [38 · 九屏](https://www.figma.com/design/Ct4AworB8fYBPjpSVwWbRW?node-id=211-4365) | fittrace-strength-details-green-2026-10-19.svg |
 | 运动选择与记录 | [34 · 实拍图六屏](https://www.figma.com/design/Ct4AworB8fYBPjpSVwWbRW?node-id=196-4795) | fittrace-training-caljimi-2026-10-19.svg |
 | 饮食主流程 | [30 · 原生自动布局](https://www.figma.com/design/Ct4AworB8fYBPjpSVwWbRW?node-id=163-4320) | 直接在 Figma 修改；本地 meal-flow PNG 供预览 |
 | 登录 | [32 · 完整状态](https://www.figma.com/design/Ct4AworB8fYBPjpSVwWbRW?node-id=188-4148) | fittrace-login-green-2026-10-16.svg |
@@ -32,8 +33,8 @@ Figma MCP Starter 额度已达到限制；近期以浏览器导入 SVG 原生图
 
 ## 下一轮先做什么
 
-1. 补训练模板选择、动作选择/详情、结束确认和离开草稿提示；沿用已有能力，不扩大成新训练系统。
-2. 补表单边界：无当前体重、目标方向错误、放弃修改、保存失败后重试。
+1. 训练模板、动作选择/详情、结束确认和离开草稿提示已补为 9 屏（38 号稿）。离开拦截和训练中的动作详情尚未实现；本机草稿写入失败提示、无完成组校验沿用现有能力，实施时核对。
+2. **下一步优先**补表单边界：无当前体重、目标方向错误、放弃修改、保存失败后重试。
 3. 整体检查 320px 窄屏、键盘遮挡、深色，以及按钮/弹层位置；补可复用组件与必要点击原型。深色尚未完成，不能据一个显示模式选择弹层视为完成深色稿。
 4. 确认核心流程可落地后，从 H5 首页开始实现，再做饮食、运动、趋势/档案、我的/设置；原生 Android 另行排期。
 
