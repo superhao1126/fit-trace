@@ -9,7 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 @Composable
-internal fun PolicyDialog(kind: PolicyKind, onDismiss: () -> Unit) {
+fun PolicyDialog(kind: PolicyKind, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (kind == PolicyKind.AGREEMENT) "用户协议" else "隐私政策") },

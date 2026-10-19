@@ -4,12 +4,14 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.core.content.edit
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -19,6 +21,8 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.fittrace.core.designsystem.FitTraceTheme
 import com.fittrace.core.model.SessionStatus
 import com.fittrace.feature.auth.AuthRoute
+import com.fittrace.feature.auth.PolicyDialog
+import com.fittrace.feature.auth.PolicyKind
 import com.fittrace.feature.auth.message
 import com.fittrace.feature.main.MainRoute
 
@@ -28,13 +32,26 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         val container = (application as FitTraceApplication).container
         val auth = container.authRepository
+        val preferences = getSharedPreferences("appearance", MODE_PRIVATE)
         setContent {
+            var themeMode by remember {
+                mutableStateOf(preferences.getString("theme", "SYSTEM") ?: "SYSTEM")
+            }
+            var policy by remember { mutableStateOf<PolicyKind?>(null) }
+
             val factory = remember { viewModelFactory { initializer { AppViewModel(auth) } } }
             val model: AppViewModel = viewModel(factory = factory)
             val status by model.sessionStatus.collectAsStateWithLifecycle()
             val busy by model.busy.collectAsStateWithLifecycle()
             LifecycleEventEffect(Lifecycle.Event.ON_START) { model.restore() }
-            FitTraceTheme {
+            FitTraceTheme(
+                darkTheme =
+                    when (themeMode) {
+                        "LIGHT" -> false
+                        "DARK" -> true
+                        else -> isSystemInDarkTheme()
+                    }
+            ) {
                 when (val session = status) {
                     SessionStatus.Loading ->
                         Surface(Modifier.fillMaxSize()) {
@@ -64,8 +81,20 @@ class MainActivity : ComponentActivity() {
                             busy,
                             container.dashboardRepository,
                             session.user.id,
+                            container.profileRepository,
+                            themeMode,
+                            { mode ->
+                                themeMode = mode
+                                preferences.edit { putString("theme", mode) }
+                            },
+                            { privacy ->
+                                policy = if (privacy) PolicyKind.PRIVACY else PolicyKind.AGREEMENT
+                            },
                         )
                 }
+                if (status is SessionStatus.SignedIn)
+                    policy?.let { PolicyDialog(it) { policy = null } }
+                else LaunchedEffect(Unit) { policy = null }
             }
         }
     }

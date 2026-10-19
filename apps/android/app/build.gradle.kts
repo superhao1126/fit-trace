@@ -44,6 +44,7 @@ androidComponents {
 }
 
 dependencies {
+    implementation(libs.coil.network.okhttp)
     implementation(project(":core:domain"))
     implementation(project(":core:data"))
     implementation(project(":core:network"))

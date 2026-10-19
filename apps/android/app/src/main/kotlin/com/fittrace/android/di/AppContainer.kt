@@ -5,9 +5,11 @@ import android.util.Log
 import com.fittrace.core.data.DefaultAuthRepository
 import com.fittrace.core.data.DefaultDashboardRepository
 import com.fittrace.core.data.DefaultHealthRepository
+import com.fittrace.core.data.DefaultProfileRepository
 import com.fittrace.core.domain.AuthRepository
 import com.fittrace.core.domain.DashboardRepository
 import com.fittrace.core.domain.HealthRepository
+import com.fittrace.core.domain.ProfileRepository
 import com.fittrace.core.network.NetworkClient
 import com.fittrace.core.network.NetworkLogSink
 import com.fittrace.core.network.NetworkLogStage
@@ -32,6 +34,8 @@ class AppContainer(context: Context, baseUrl: String, debugLogging: Boolean = fa
     val healthRepository: HealthRepository = DefaultHealthRepository(network.healthApi)
     private val sessionAuth = DefaultAuthRepository(network.authApi, KeystoreSessionStore(context))
     val authRepository: AuthRepository = sessionAuth
+    val profileRepository: ProfileRepository =
+        DefaultProfileRepository(network.profileApi, sessionAuth)
     val dashboardRepository: DashboardRepository =
         DefaultDashboardRepository(network.dashboardApi, sessionAuth)
 }

@@ -42,6 +42,7 @@ class NetworkClient(
             .build()
     val healthApi: HealthApi = retrofit.create(HealthApi::class.java)
     val authApi: AuthApi = retrofit.create(AuthApi::class.java)
+    val profileApi: ProfileApi = retrofit.create(ProfileApi::class.java)
     val dashboardApi: DashboardApi = retrofit.create(DashboardApi::class.java)
 }
 

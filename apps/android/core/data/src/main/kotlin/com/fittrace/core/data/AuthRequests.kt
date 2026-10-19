@@ -26,7 +26,7 @@ internal class AuthRequests {
             is AppResult.Success -> AppResult.Success(Unit)
         }
 
-    private suspend fun <T> nullableCall(
+    internal suspend fun <T> nullableCall(
         block: suspend () -> Response<ApiEnvelope<T>>
     ): AppResult<T?> =
         try {

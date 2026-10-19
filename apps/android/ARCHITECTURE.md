@@ -7,7 +7,7 @@
 | 模块 | 职责 | 允许依赖 |
 | --- | --- | --- |
 | `app` | Application、Activity、变体配置、应用级依赖装配 | feature 和核心模块 |
-| `feature:main` | 登录后首页、日期/概览状态、关于页和退出动作 | domain、model、designsystem |
+| `feature:main` | 登录后首页、我的、资料/目标编辑、设置、日期/概览状态、关于与退出 | domain、model、designsystem |
 | `feature:auth` | 原生认证页面、UiState、ViewModel、验证码交互 | domain、model、designsystem |
 | `core:session` | Android Keystore 加密会话、原子文件存取 | domain、model；Android 库 |
 | `core:designsystem` | Material 3 主题、品牌 token、未来通用 UI 组件 | Compose，禁止业务与网络依赖 |
@@ -50,7 +50,7 @@ feature 不依赖其他 feature 的实现；跨业务导航由 app 装配，路�
 当前采用构造函数注入，`app/di/AppContainer` 是唯一的应用级装配入口。仓库实现接收 API 接口，测试直接注入替身；禁止全局服务定位器和在 Composable 中构造客户端。
 认证采用 ViewModel + StateFlow 暴露不可变 UiState，通过用户动作方法更新；Compose 使用生命周期感知方式收集状态。AppViewModel 管理会话恢复与认证流程的 ViewModelStore，旋转屏幕保留表单，登录完成或宿主销毁时清理认证状态。密码、验证码和验证码凭据不写入 SavedState 或磁盘。
 `core:domain` 定义 AuthRepository 与 SessionStore；`core:data` 负责会话转换和续期互斥；`core:session` 用 Android Keystore AES-GCM 加密并原子写入 noBackupFilesDir。app 是 API、存储和仓库的装配入口。业务增长后可在 app 装配层引入 Hilt，领域契约保持不变。
-图片、数据库模块按实际业务接入，不预装尚无消费方的 Room、DataStore 或 Coil。
+头像已使用 Coil 3：feature:main 消费 Compose 图像组件，app 装配网络运行时；数据和会话请求仍经过仓库，不在 feature 直接依赖 Retrofit/OkHttp。数据库模块按实际业务接入，不预装尚无消费方的 Room。
 
 ## API 与异常
 

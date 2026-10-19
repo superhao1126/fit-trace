@@ -13,6 +13,8 @@ spotless = "7.2.1"
 lifecycle = "2.9.4"
 robolectric = "4.17"
 
+coil = "3.3.0"
+
 [libraries]
 android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
@@ -39,6 +41,9 @@ lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-com
 compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
 compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
 
 [plugins]
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }

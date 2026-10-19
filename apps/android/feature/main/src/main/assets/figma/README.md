@@ -16,3 +16,19 @@ Figma 文件 Ct4AworB8fYBPjpSVwWbRW，页面「10 · 核心页面完整状态」
 | profile | 21:5063 | 我的导航 |
 
 卡片、圆角、分隔线和日期选中背景使用原生 Compose 布局，避免将设计中的背景矢量当成整页图片。
+
+
+## 我的页面（2026-10-16）
+
+主画板 21:5479，二级页 23:7544 / 23:7572 / 23:7605 / 23:7651 / 23:7762。
+新增 PNG 仍由 Figma 文件内原图层 exportAsync 直接导出，未重画。
+
+| 资源 | 原图层或来源 | 用途 |
+| --- | --- | --- |
+| profile_avatar | 21:5488 | 默认头像 |
+| profile_archive | 21:5494 | 档案及协议入口 |
+| profile_right | 21:5498 | 导航行箭头 |
+| profile_back | 23:7548 | 二级页返回 |
+| profile_brand | apps/h5/public/brand/app-icon-512.png | 关于页，复用 Figma 同源品牌素材 |
+
+头像来自接口时使用 Coil AsyncImage；缺失、加载中或加载失败时保留设计默认头像。底部导航复用首页资源。
