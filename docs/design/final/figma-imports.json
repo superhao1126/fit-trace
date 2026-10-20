@@ -1,0 +1,57 @@
+[
+  {
+    "name": "40 / 身体记录 · 完整状态",
+    "id": "221:4365",
+    "file": "body-caljimi.svg"
+  },
+  {
+    "name": "41 / 身材照片 · 完整状态",
+    "id": "221:4910",
+    "file": "photos-caljimi.svg"
+  },
+  {
+    "name": "42 / 饮食详情与二级页 · 补齐",
+    "id": "222:64214",
+    "file": "other-light.svg"
+  },
+  {
+    "name": "43 / 全界面深色 · 113 状态",
+    "id": "222:64739",
+    "file": "dark-all.svg"
+  },
+  {
+    "name": "44 / 320px 全界面 · 113 状态",
+    "id": "222:71426",
+    "file": "narrow-all.svg"
+  },
+  {
+    "name": "45 / 320px 深色全界面 · 113 状态",
+    "id": "222:78117",
+    "file": "narrow-dark-all.svg"
+  },
+  {
+    "name": "46 / 账号安全与记录工具 · 补齐",
+    "id": "222:63808",
+    "file": "completion-light.svg"
+  },
+  {
+    "name": "P02 / 记录身体",
+    "id": "221:25291",
+    "file": "P02-body.svg"
+  },
+  {
+    "name": "P03 / 身体详情",
+    "id": "221:25353",
+    "file": "P03-body-detail.svg"
+  },
+  {
+    "name": "P04 / 身材照片",
+    "id": "221:25389",
+    "file": "P04-photos.svg"
+  },
+  {
+    "name": "P05 / 添加照片",
+    "id": "221:25443",
+    "file": "P05-upload.svg"
+  }
+]

@@ -1,0 +1,27 @@
+{
+  "states": 113,
+  "variants": 452,
+  "textNodesAcrossVariants": 11124,
+  "widths": [
+    320,
+    390
+  ],
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "smallTextAt320": [],
+  "estimatedRightOverflowsAt320": [],
+  "errors": [],
+  "nativeFigmaVerified": [
+    "body save -> detail -> back",
+    "photos -> upload -> save -> photos"
+  ],
+  "localBrowserVerified": [
+    "home -> body -> edited weight",
+    "meal -> portion -> selected list -> detail",
+    "strength -> input -> selected -> confirm -> workout detail",
+    "photo upload failure in dark at 320px"
+  ],
+  "limits": "Static geometry checks and manual browser design review; not app/device/API acceptance. Native Figma prototypes cover body and photos; other flows are in the local review prototype."
+}
