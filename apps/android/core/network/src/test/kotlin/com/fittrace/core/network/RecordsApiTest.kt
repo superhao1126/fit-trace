@@ -8,6 +8,31 @@ import org.junit.Test
 
 class RecordsApiTest {
     @Test
+    fun `insights forwards range timezone and preserves unknown calories`() = runTest {
+        MockWebServer().use { server ->
+            server.enqueue(
+                MockResponse()
+                    .setBody(
+                        """{"code":"OK","message":"","data":{"days":7,"calories":{"average":null,"highest":null,"recordedDays":0},"meals":{"count":1,"recordedDays":1,"byType":[]},"workouts":{"count":3,"totalMinutes":96,"byType":[]}}}"""
+                    )
+            )
+            val result =
+                NetworkClient(server.url("/").toString())
+                    .recordsApi
+                    .insights("Bearer token", 7, 480)
+                    .body()!!
+                    .data!!
+            assertNull(result.calories.average)
+            assertEquals(3, result.workouts.count)
+            val request = server.takeRequest()
+            assertEquals("/insights/overview", request.requestUrl!!.encodedPath)
+            assertEquals("7", request.requestUrl!!.queryParameter("days"))
+            assertEquals("480", request.requestUrl!!.queryParameter("tzOffset"))
+            assertEquals("Bearer token", request.getHeader("Authorization"))
+        }
+    }
+
+    @Test
     fun `list forwards range in original timezone and decodes page metadata`() = runTest {
         MockWebServer().use { server ->
             server.enqueue(

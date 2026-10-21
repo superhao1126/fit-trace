@@ -47,5 +47,7 @@ interface RecordsRepository {
 
     suspend fun delete(kind: RecordKind, id: String): AppResult<Unit>
 
+    suspend fun insights(days: Int, tzOffset: Int): AppResult<PeriodInsights>
+
     suspend fun trends(days: Int): AppResult<BodyTrends>
 }

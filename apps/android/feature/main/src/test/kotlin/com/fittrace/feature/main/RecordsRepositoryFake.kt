@@ -58,6 +58,9 @@ internal open class RecordsRepositoryFake : RecordsRepository {
     override suspend fun delete(kind: RecordKind, id: String): AppResult<Unit> =
         AppResult.Failure(AppError.Network)
 
+    override suspend fun insights(days: Int, tzOffset: Int): AppResult<PeriodInsights> =
+        AppResult.Success(PeriodInsights(days, null, 0, 0, 0, 0))
+
     override suspend fun trends(days: Int): AppResult<BodyTrends> =
         AppResult.Success(
             BodyTrends(

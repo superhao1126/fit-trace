@@ -8,6 +8,13 @@ import retrofit2.Response
 import retrofit2.http.*
 
 interface RecordsApi {
+    @GET("insights/overview")
+    suspend fun insights(
+        @Header("Authorization") token: String,
+        @Query("days") days: Int,
+        @Query("tzOffset") tzOffset: Int,
+    ): Response<ApiEnvelope<PeriodInsightsDto>>
+
     @GET("training/templates")
     suspend fun templates(
         @Header("Authorization") token: String
@@ -301,3 +308,17 @@ data class TrainingPlanDto(val configured: Boolean, val days: List<TrainingPlanD
 @Serializable data class TrainingPlanDayDto(val weekday: Int, val templateId: String?)
 
 @Serializable data class TrainingPlanInputDto(val days: List<TrainingPlanDayDto>)
+
+@Serializable
+data class PeriodInsightsDto(
+    val days: Int,
+    val calories: InsightCaloriesDto,
+    val meals: InsightMealsDto,
+    val workouts: InsightWorkoutsDto,
+)
+
+@Serializable data class InsightCaloriesDto(val average: Double?)
+
+@Serializable data class InsightMealsDto(val count: Int, val recordedDays: Int)
+
+@Serializable data class InsightWorkoutsDto(val count: Int, val totalMinutes: Int)

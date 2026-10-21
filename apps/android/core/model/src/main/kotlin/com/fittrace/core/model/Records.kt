@@ -111,3 +111,13 @@ data class TrainingTemplate(
 data class TrainingPlanDay(val weekday: Int, val templateId: String?)
 
 data class TrainingPlan(val configured: Boolean, val days: List<TrainingPlanDay>)
+
+/** 同期饮食与运动概览；未知热量保留 null。 */
+data class PeriodInsights(
+    val days: Int,
+    val averageCalories: Double?,
+    val mealCount: Int,
+    val mealDays: Int,
+    val workoutCount: Int,
+    val workoutMinutes: Int,
+)

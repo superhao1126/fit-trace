@@ -203,6 +203,22 @@ class DefaultRecordsRepository(
             requests.call { api.upload(token, imagePart(bytes, mimeType)) }.map { it.url }
         }
 
+    override suspend fun insights(days: Int, tzOffset: Int): AppResult<PeriodInsights> =
+        auth.authorized { token ->
+            requests
+                .call { api.insights(token, days, tzOffset) }
+                .map {
+                    PeriodInsights(
+                        it.days,
+                        it.calories.average,
+                        it.meals.count,
+                        it.meals.recordedDays,
+                        it.workouts.count,
+                        it.workouts.totalMinutes,
+                    )
+                }
+        }
+
     override suspend fun trends(days: Int): AppResult<BodyTrends> =
         auth.authorized { token ->
             requests

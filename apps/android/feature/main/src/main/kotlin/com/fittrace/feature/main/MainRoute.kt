@@ -281,7 +281,12 @@ fun MainRoute(
                                 onRecord = { openRecord(it.kind, it.id) },
                             )
                         else if (tab == 1)
-                            TrendsScreen(trendsState, trends::load) { create(RecordKind.BODY) }
+                            TrendsScreen(
+                                trendsState,
+                                trends::load,
+                                { create(RecordKind.BODY) },
+                                trends::loadInsights,
+                            )
                         else if (tab == 2)
                             RecordsScreen(
                                 recordsState,
