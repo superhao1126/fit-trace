@@ -32,3 +32,7 @@ Figma 文件 Ct4AworB8fYBPjpSVwWbRW，页面「10 · 核心页面完整状态」
 | profile_brand | apps/h5/public/brand/app-icon-512.png | 关于页，复用 Figma 同源品牌素材 |
 
 头像来自接口时使用 Coil AsyncImage；缺失、加载中或加载失败时保留设计默认头像。底部导航复用首页资源。
+
+## 我的模块当前稿（2026-10-20）
+
+主页对齐最终 profile-1/profile-3 的绿色头像区、目标横幅和分组菜单；设置对齐 profile-6，显示模式使用 profile-10 的底部选择面板。目标横幅与关于页复用设计小芽 VectorDrawable，旧 profile_brand 图标已移除。

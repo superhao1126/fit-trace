@@ -27,6 +27,28 @@ class ProfileScreenTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
     @Test
+    fun `nickname confirmation updates draft without saving account`() {
+        var nickname = ""
+        compose.setContent {
+            FitTraceTheme {
+                ProfileEditScreen(
+                    ProfileUiState(profile = profileFixture(), nickname = "循形用户", loading = false),
+                    {},
+                    { nickname = it },
+                    {},
+                    {},
+                    {},
+                )
+            }
+        }
+        compose.onNodeWithText("昵称").performClick()
+        compose.onNodeWithText("修改昵称").assertIsDisplayed()
+        compose.onNode(hasSetTextAction()).performTextReplacement("本地草稿")
+        compose.onNodeWithText("确认").performClick()
+        assertEquals("本地草稿", nickname)
+    }
+
+    @Test
     fun `profile shows real account goal and working entry actions`() {
         var action = ""
         compose.setContent {
@@ -44,20 +66,31 @@ class ProfileScreenTest {
                         { action = "goal" },
                         { action = "archive" },
                         Modifier.padding(padding),
+                        onRecords = { action = it.name },
                     )
                 }
             }
         }
         compose.onNodeWithText("hello@example.com").assertIsDisplayed()
-        compose.onNodeWithText("已完成 27%").assertIsDisplayed()
+        compose.onNodeWithText("已完成 27%", substring = true).assertIsDisplayed()
         capture("profile-goal-390")
         compose.onNodeWithText("循形用户").performClick()
         assertEquals("profile", action)
         compose.onNodeWithText("调整 ›").performClick()
         assertEquals("goal", action)
-        compose.onNodeWithText("设置").performClick()
+        listOf(
+                "身体记录" to RecordKind.BODY,
+                "饮食记录" to RecordKind.MEAL,
+                "运动记录" to RecordKind.WORKOUT,
+                "身材照片" to RecordKind.PHOTO,
+            )
+            .forEach { (title, kind) ->
+                compose.onNodeWithText(title).performScrollTo().performClick()
+                assertEquals(kind.name, action)
+            }
+        compose.onNodeWithText("显示与设置").performScrollTo().performClick()
         assertEquals("settings", action)
-        compose.onNodeWithText("记录档案").performClick()
+        compose.onNodeWithText("记录档案 ›").performScrollTo().performClick()
         assertEquals("archive", action)
     }
 
@@ -84,7 +117,7 @@ class ProfileScreenTest {
             }
         }
         compose.onNodeWithText("设置健身目标").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("重试").assertIsDisplayed()
+        compose.onNodeWithText("重试").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("已完成", substring = true).assertDoesNotExist()
         capture("profile-empty-dark-320")
     }
@@ -112,6 +145,7 @@ class ProfileScreenTest {
             }
         }
         capture("profile-goal-editor-390")
+        compose.onNodeWithText("下一步").performScrollTo().performClick()
         compose.onNodeWithText("选择目标日期").performScrollTo().performClick()
         compose.onNodeWithText("取消").performClick()
         assertNull(selected)
@@ -139,24 +173,30 @@ class ProfileScreenTest {
                     "SYSTEM",
                     {},
                     {},
+                    RecordsRepositoryFake(),
+                    TrainingRepositoryFake(),
+                    {},
                 )
             }
         }
         compose.onNodeWithText("我的").performClick()
         compose.waitUntil { compose.onAllNodesWithText("循形用户").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("循形用户").performClick()
-        compose.onNodeWithText("个人资料").assertIsDisplayed()
+        compose.onNodeWithText("编辑资料").assertIsDisplayed()
         capture("profile-info-390")
         compose.onNodeWithContentDescription("返回").performClick()
-        compose.onNodeWithText("设置").performClick()
+        compose.onNodeWithText("显示与设置").performScrollTo().performClick()
         compose.onNodeWithText("首页").assertDoesNotExist()
         capture("profile-settings-390")
-        compose.onNodeWithText("关于循形").performClick()
+        compose.onNodeWithText("版本与关于").performScrollTo().performClick()
         capture("profile-about-390")
         compose.onNodeWithContentDescription("返回").performClick()
-        compose.onNodeWithText("账号设置").performClick()
+        compose.onNodeWithText("编辑资料").performScrollTo().performClick()
         capture("profile-edit-390")
+        compose.onNodeWithText("昵称").performClick()
+        compose.onNodeWithText("修改昵称").assertIsDisplayed()
         compose.onNode(hasSetTextAction()).performTextReplacement("测试昵称")
+        compose.onNodeWithText("确认").performClick()
         compose.onNodeWithText("保存资料").performScrollTo().performClick()
         compose.waitUntil { profile.saves == 1 }
         compose.waitUntil { compose.onAllNodesWithText("显示模式").fetchSemanticsNodes().isNotEmpty() }
@@ -184,7 +224,8 @@ class ProfileScreenTest {
                 )
             }
         }
-        compose.onNodeWithText("深色").performScrollTo().performClick()
+        compose.onNodeWithText("显示模式").performScrollTo().performClick()
+        compose.onNodeWithText("深色").performClick()
         assertEquals("DARK", mode)
         compose.onNodeWithText("隐私政策").performScrollTo().performClick()
         assertEquals(true, policy)

@@ -32,6 +32,18 @@ class DefaultProfileRepositoryTest {
         override suspend fun updateProfile(authorization: String, input: ProfileUpdateDto) =
             Response.success(ApiEnvelope("OK", "", user.copy(nickname = input.nickname)))
 
+        override suspend fun updateProfileWithAvatar(
+            authorization: String,
+            input: ProfileWithAvatarUpdateDto,
+        ) =
+            Response.success(
+                ApiEnvelope(
+                    "OK",
+                    "",
+                    user.copy(nickname = input.nickname, avatarUrl = input.avatarUrl),
+                )
+            )
+
         override suspend fun updateGoal(authorization: String, input: GoalUpdateDto) =
             Response.success(ApiEnvelope("OK", "", user))
     }

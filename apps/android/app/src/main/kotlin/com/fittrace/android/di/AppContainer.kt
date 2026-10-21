@@ -31,8 +31,12 @@ class AppContainer(context: Context, baseUrl: String, debugLogging: Boolean = fa
                     }
                 else null,
         )
-    val healthRepository: HealthRepository = DefaultHealthRepository(network.healthApi)
     private val sessionAuth = DefaultAuthRepository(network.authApi, KeystoreSessionStore(context))
+    private val records =
+        com.fittrace.core.data.DefaultRecordsRepository(network.recordsApi, sessionAuth)
+    val recordsRepository: com.fittrace.core.domain.RecordsRepository = records
+    val trainingRepository: com.fittrace.core.domain.TrainingRepository = records
+    val healthRepository: HealthRepository = DefaultHealthRepository(network.healthApi)
     val authRepository: AuthRepository = sessionAuth
     val profileRepository: ProfileRepository =
         DefaultProfileRepository(network.profileApi, sessionAuth)

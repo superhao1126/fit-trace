@@ -35,7 +35,12 @@ data class FitnessGoal(
 
 data class ProfileBody(val weight: Double, val recordedAt: String)
 
-data class ProfileUpdate(val nickname: String, val gender: UserGender)
+data class ProfileUpdate(
+    val nickname: String,
+    val gender: UserGender,
+    val avatarUrl: String? = null,
+    val avatarChanged: Boolean = false,
+)
 
 data class GoalUpdate(
     val type: GoalType,

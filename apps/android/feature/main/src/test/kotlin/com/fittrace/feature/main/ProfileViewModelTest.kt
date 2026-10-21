@@ -33,7 +33,13 @@ internal open class ProfileRepositoryFake : ProfileRepository {
         delay(10)
         return saveFailure?.let { AppResult.Failure(it) }
             ?: AppResult.Success(
-                user.copy(nickname = input.nickname, gender = input.gender).also { user = it }
+                user
+                    .copy(
+                        nickname = input.nickname,
+                        gender = input.gender,
+                        avatarUrl = if (input.avatarChanged) input.avatarUrl else user.avatarUrl,
+                    )
+                    .also { user = it }
             )
     }
 
@@ -91,6 +97,68 @@ class ProfileViewModelTest {
         model.viewModelScope.cancel()
         Dispatchers.resetMain()
     }
+
+    @Test
+    fun `failed avatar upload blocks save and retry preserves draft until explicit save`() =
+        runTest(dispatcher) {
+            model.load()
+            advanceUntilIdle()
+            model.beginProfile()
+            model.nickname("新昵称")
+            var uploadFails = true
+            var calls = 0
+            val image = byteArrayOf(1, 2, 3)
+            val records =
+                object : RecordsRepositoryFake() {
+                    override suspend fun upload(
+                        bytes: ByteArray,
+                        mimeType: String,
+                    ): AppResult<String> {
+                        calls++
+                        assertArrayEquals(image, bytes)
+                        assertEquals("image/png", mimeType)
+                        delay(10)
+                        return if (uploadFails) AppResult.Failure(AppError.Network)
+                        else AppResult.Success("https://example.com/avatar.png")
+                    }
+                }
+            model.uploadAvatar(records, image, "image/png")
+            model.saveProfile { fail("must not save while uploading") }
+            advanceUntilIdle()
+            assertTrue(model.state.value.canRetryAvatar)
+            model.gender(UserGender.UNSPECIFIED)
+            model.saveProfile { fail("must not save old avatar after failure") }
+            assertEquals(0, fake.saves)
+            assertEquals("新昵称", model.state.value.nickname)
+            uploadFails = false
+            model.retryAvatar(records)
+            model.retryAvatar(records)
+            advanceUntilIdle()
+            assertEquals(2, calls)
+            assertNull(model.state.value.avatarError)
+            assertNull(fake.user.avatarUrl)
+            model.saveProfile {}
+            advanceUntilIdle()
+            assertEquals("https://example.com/avatar.png", fake.user.avatarUrl)
+            assertEquals("新昵称", fake.user.nickname)
+        }
+
+    @Test
+    fun `cancel failed avatar selection keeps original avatar and permits profile save`() =
+        runTest(dispatcher) {
+            model.load()
+            advanceUntilIdle()
+            model.beginProfile()
+            model.uploadAvatar(RecordsRepositoryFake(), byteArrayOf(1), "image/png")
+            advanceUntilIdle()
+            model.avatar(model.state.value.profile?.avatarUrl)
+            assertFalse(model.state.value.canRetryAvatar)
+            assertNull(model.state.value.avatarError)
+            model.saveProfile {}
+            advanceUntilIdle()
+            assertEquals(1, fake.saves)
+            assertFalse(fake.profileInput!!.avatarChanged)
+        }
 
     @Test
     fun `profile errors retain data and failed weight never becomes empty account`() =

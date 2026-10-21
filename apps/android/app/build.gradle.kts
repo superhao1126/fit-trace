@@ -7,8 +7,8 @@ android {
     namespace = "com.fittrace.android"
     defaultConfig {
         applicationId = "com.fittrace.android"
-        versionCode = 2
-        versionName = "0.1.1"
+        versionCode = 3
+        versionName = "0.2.0"
     }
     buildFeatures.buildConfig = true
     flavorDimensions += "environment"
@@ -21,7 +21,7 @@ android {
         }
         create("prod") {
             dimension = "environment"
-            buildConfigField("String", "API_BASE_URL", "\"https://fittrace.idoit.icu/api/v1/\"")
+            buildConfigField("String", "API_BASE_URL", "\"http://10.0.3.54:3000/api/v1/\"")
         }
     }
     buildTypes {

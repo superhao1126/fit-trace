@@ -5,7 +5,7 @@
 ## 当前范围
 
 已建立多模块工程、构建规范、主题、导航、分层网络与 CI，并接入原生邮箱验证码登录、密码登录、找回密码、协议阅读、加密会话保存、续期与退出。登录页沿用已确认的设计稿，详见 [登录实现与验收](../../docs/ANDROID-AUTH.md)。
-登录后进入原生首页，已接入所选日期概览、目标摘要、当天记录与近七天统计，支持周日期切换、日历选择、下拉刷新、失败重试及深浅色。详见 [首页实现与验收](../../docs/ANDROID-HOME.md)。「我的」已接入真实账号、目标进度、个人资料和目标编辑，设置支持协议、显示模式、关于与退出，详见 [我的页面](../../docs/ANDROID-PROFILE.md)。录入、趋势、完整档案、头像上传和密码修改仍待迁移。首页仅请求当前变体配置的 API，不向账号写入数据。
+登录后首页已按本地最终设计更新绿色主卡，接入身体、饮食、运动、照片录入与详情、趋势、分页档案、力量训练与模板/每周计划；资料支持头像、昵称和性别，目标为两步设置。全部使用现有真实接口，失败与无记录分开显示；高级能力和真机验收边界见 [本轮实现进度](IMPLEMENTATION-2026-10-20.md)。
 
 后续计划：[指纹登录方案](../../docs/ANDROID-BIOMETRIC-LOGIN-PLAN.md)。待业务页面与设置页完成后接入，支持邮箱首次登录后开启、普通退出后指纹重新登录；当前尚未实现。
 
@@ -35,11 +35,11 @@ CI 另外构建并检查生产 Release，确保 R8 混淆链路可用。
 | 变体 | 包名 | API | 用途 |
 | --- | --- | --- | --- |
 | devDebug | `com.fittrace.android.dev.debug` | `http://10.0.3.54:3000/api/v1/` | 局域网访问电脑开发 API |
-| prodDebug | `com.fittrace.android.debug` | `https://fittrace.idoit.icu/api/v1/` | 显式选择后联调正式 API |
+| prodDebug | `com.fittrace.android.debug` | `http://10.0.3.54:3000/api/v1/` | 当前指定接口，保留现有安装包身份 |
 | prodRelease | `com.fittrace.android` | 同上 | 生产构建，未配置签名 |
 
 `devRelease` 禁用。Dev 仅对白名单中的开发 IP、模拟器/回环地址允许 HTTP；Prod 禁止明文 HTTP。
-真机联调当前正式接口时，在 Android Studio 的 Build Variants 中选择 `prodDebug`。两个 Debug 变体包名不同，会安装为独立应用。`devDebug` 通过局域网访问电脑 `10.0.3.54:3000`，不需要 adb reverse。手机与电脑需网络互通，后端须监听 `0.0.0.0:3000` 或该局域网地址，并允许防火墙入站访问。电脑 IP 变化时需同步修改 dev 基础地址及开发环境网络白名单。
+真机联调当前指定接口时，在 Android Studio 的 Build Variants 中选择 `prodDebug`。两个 Debug 变体包名不同，会安装为独立应用。`devDebug` 通过局域网访问电脑 `10.0.3.54:3000`，不需要 adb reverse。手机与电脑需网络互通，后端须监听 `0.0.0.0:3000` 或该局域网地址，并允许防火墙入站访问。电脑 IP 变化时需同步修改 dev 基础地址及开发环境网络白名单。
 
 产物：
 
@@ -47,7 +47,7 @@ CI 另外构建并检查生产 Release，确保 R8 混淆链路可用。
 - `app/build/outputs/apk/prod/debug/app-prod-debug.apk`
 - `app/build/outputs/apk/prod/release/app-prod-release-unsigned.apk`
 
-当前原生版本为 `0.1.1 / versionCode 2`；不复用旧 Capacitor APK 包名、签名或本地数据。
+当前原生版本为 `0.2.0 / versionCode 3`；不复用旧 Capacitor APK 包名、签名或本地数据。
 生产签名尚未接入，证书和密码只能通过本地/CI 密钥配置提供，不能入库或写进 Gradle 脚本。
 本轮不操作设备，构建成功不能替代真机启动、返回键、安全区和深浅色验收。
 
@@ -73,3 +73,5 @@ CI 另外构建并检查生产 Release，确保 R8 混淆链路可用。
 ## 开发日志
 
 Debug 包已启用本地接口诊断日志，Android Studio 的 Logcat 以 `tag:FitTrace.Http` 筛选。记录完整 URL、查询参数、请求正文、服务端响应正文、HTTP 状态码、耗时及网络异常类型。按调试要求，正文中的密码、验证码和 Token 均明文显示；JSON 缩进并分段输出，请求头/响应头不输出。Release 关闭。查看步骤和验证边界见 [开发日志说明](../../docs/ANDROID-LOGGING.md)。
+
+2026-10-20：原域名已停用，按用户指定将 prod 接口改为 `http://10.0.3.54:3000/api/v1/`；prod 网络配置仅允许该 IP 的明文 HTTP。沿用 prodDebug 包名覆盖更新。

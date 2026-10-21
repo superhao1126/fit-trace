@@ -29,12 +29,12 @@ class AuthScreenTest {
             var state by remember { mutableStateOf(AuthUiState()) }
             FitTraceTheme { AuthScreen(state, onMode = { state = state.copy(mode = it) }) }
         }
-        compose.onNodeWithContentDescription("我已阅读并同意用户协议和隐私政策").assertIsOff()
-        compose.onNodeWithText("登录循形").assertIsDisplayed()
+        compose.onNodeWithContentDescription("我已阅读并同意用户协议和隐私政策").performScrollTo().assertIsOff()
+        compose.onNodeWithText("开始你的记录").assertIsDisplayed()
         compose.onNodeWithText("获取验证码").assertIsDisplayed()
         capture("email-login-390")
-        compose.onNodeWithText("使用密码登录").performScrollTo().performClick()
-        compose.onNodeWithText("密码登录").assertIsDisplayed()
+        compose.onNodeWithText("密码登录").performScrollTo().performClick()
+        compose.onNodeWithText("欢迎回来").assertIsDisplayed()
         compose.onNodeWithText("设置或找回密码").assertIsDisplayed()
     }
 
@@ -72,7 +72,7 @@ class AuthScreenTest {
         }
         clickPolicy("用户协议")
         org.junit.Assert.assertEquals(PolicyKind.AGREEMENT, selected)
-        compose.onNodeWithContentDescription("我已阅读并同意用户协议和隐私政策").assertIsOff()
+        compose.onNodeWithContentDescription("我已阅读并同意用户协议和隐私政策").performScrollTo().assertIsOff()
         clickPolicy("隐私政策")
         org.junit.Assert.assertEquals(PolicyKind.PRIVACY, selected)
     }
@@ -84,7 +84,7 @@ class AuthScreenTest {
                 AuthScreen(AuthUiState(errors = mapOf(AuthField.EMAIL to "请输入正确的邮箱地址")))
             }
         }
-        compose.onNodeWithText("请输入正确的邮箱地址").assertIsDisplayed()
+        compose.onNodeWithText("请输入正确的邮箱地址").performScrollTo().assertIsDisplayed()
         capture("email-login-dark-390")
     }
 

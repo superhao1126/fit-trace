@@ -31,7 +31,20 @@ class DefaultProfileRepository(
         auth.authorized { token ->
             requests
                 .call {
-                    api.updateProfile(token, ProfileUpdateDto(input.nickname, input.gender.name))
+                    if (input.avatarChanged)
+                        api.updateProfileWithAvatar(
+                            token,
+                            ProfileWithAvatarUpdateDto(
+                                input.nickname,
+                                input.gender.name,
+                                input.avatarUrl,
+                            ),
+                        )
+                    else
+                        api.updateProfile(
+                            token,
+                            ProfileUpdateDto(input.nickname, input.gender.name),
+                        )
                 }
                 .map { it.model() }
         }

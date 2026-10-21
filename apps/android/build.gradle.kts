@@ -71,12 +71,21 @@ tasks.register("checkModuleBoundaries") {
 
 spotless {
     kotlin {
-        target("**/src/**/*.kt")
+        // 明确源码目录，避免并行构建时遍历正在变化的 build/.transforms。
+        target(
+            *(subprojects.map { "${it.projectDir.relativeTo(rootDir)}/src/**/*.kt" } +
+                    "build-logic/src/**/*.kt")
+                .toTypedArray()
+        )
         targetExclude("**/build/**", "**/bin/**", "**/.gradle/**")
         ktfmt("0.58").kotlinlangStyle()
     }
     kotlinGradle {
-        target("**/*.gradle.kts")
+        target(
+            *(subprojects.map { it.buildFile.absolutePath } +
+                    listOf("*.gradle.kts", "build-logic/*.gradle.kts"))
+                .toTypedArray()
+        )
         targetExclude("**/build/**", "**/bin/**", "**/.gradle/**")
         ktfmt("0.58").kotlinlangStyle()
     }

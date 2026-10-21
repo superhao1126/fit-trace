@@ -19,6 +19,9 @@ data class ProfileUiState(
     val saving: Boolean = false,
     val formError: String? = null,
     val nickname: String = "",
+    val avatarUrl: String? = null,
+    val avatarError: String? = null,
+    val canRetryAvatar: Boolean = false,
     val gender: UserGender = UserGender.UNSPECIFIED,
     val goalType: GoalType = GoalType.LOSE_FAT,
     val targetWeight: String = "",
@@ -34,6 +37,7 @@ class ProfileViewModel(
     private val mutable = MutableStateFlow(ProfileUiState())
     val state = mutable.asStateFlow()
     private var loadingJob: Job? = null
+    private var pendingAvatar: Pair<ByteArray, String>? = null
 
     fun load() {
         if (mutable.value.saving) return
@@ -65,12 +69,69 @@ class ProfileViewModel(
 
     fun beginProfile() {
         val user = mutable.value.profile ?: return
+        pendingAvatar = null
         mutable.value =
             mutable.value.copy(
                 nickname = user.nickname.orEmpty(),
+                avatarUrl = user.avatarUrl,
+                avatarError = null,
+                canRetryAvatar = false,
                 gender = user.gender,
                 formError = null,
             )
+    }
+
+    fun avatar(value: String?) {
+        if (mutable.value.saving) return
+        pendingAvatar = null
+        mutable.value =
+            mutable.value.copy(
+                avatarUrl = value,
+                avatarError = null,
+                canRetryAvatar = false,
+                formError = null,
+            )
+    }
+
+    fun uploadAvatar(
+        records: com.fittrace.core.domain.RecordsRepository,
+        bytes: ByteArray,
+        mime: String,
+    ) {
+        if (mutable.value.saving) return
+        pendingAvatar = bytes to mime
+        mutable.value =
+            mutable.value.copy(
+                saving = true,
+                avatarError = null,
+                canRetryAvatar = false,
+                formError = null,
+            )
+        viewModelScope.launch {
+            when (val result = records.upload(bytes, mime)) {
+                is AppResult.Success -> {
+                    pendingAvatar = null
+                    mutable.value = mutable.value.copy(avatarUrl = result.data, saving = false)
+                }
+                is AppResult.Failure ->
+                    mutable.value =
+                        mutable.value.copy(
+                            saving = false,
+                            avatarError = result.error.profileMessage(),
+                            canRetryAvatar = true,
+                        )
+            }
+        }
+    }
+
+    fun retryAvatar(records: com.fittrace.core.domain.RecordsRepository) {
+        val pending = pendingAvatar ?: return
+        uploadAvatar(records, pending.first, pending.second)
+    }
+
+    fun uploadError(message: String) {
+        pendingAvatar = null
+        mutable.value = mutable.value.copy(avatarError = message, canRetryAvatar = false)
     }
 
     fun nickname(value: String) {
@@ -136,13 +197,20 @@ class ProfileViewModel(
 
     fun saveProfile(onSuccess: () -> Unit) {
         val s = mutable.value
-        if (s.saving || s.loading || s.profile == null) return
+        if (s.saving || s.loading || s.profile == null || s.avatarError != null) return
         val name = s.nickname.trim()
         if (name.isBlank() || name.length > 40) {
             mutable.value = s.copy(formError = "昵称长度必须为 1 到 40 个字符")
             return
         }
-        save({ repository.updateProfile(ProfileUpdate(name, s.gender)) }, onSuccess)
+        save(
+            {
+                repository.updateProfile(
+                    ProfileUpdate(name, s.gender, s.avatarUrl, s.avatarUrl != s.profile?.avatarUrl)
+                )
+            },
+            onSuccess,
+        )
     }
 
     fun saveGoal(onSuccess: () -> Unit) {

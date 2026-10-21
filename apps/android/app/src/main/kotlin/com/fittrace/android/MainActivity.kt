@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.lifecycle.Lifecycle
@@ -52,6 +53,14 @@ class MainActivity : ComponentActivity() {
                         else -> isSystemInDarkTheme()
                     }
             ) {
+                val lightSystemBars = MaterialTheme.colorScheme.background.luminance() > .5f
+                SideEffect {
+                    androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+                        .apply {
+                            isAppearanceLightStatusBars = lightSystemBars
+                            isAppearanceLightNavigationBars = lightSystemBars
+                        }
+                }
                 when (val session = status) {
                     SessionStatus.Loading ->
                         Surface(Modifier.fillMaxSize()) {
@@ -89,6 +98,16 @@ class MainActivity : ComponentActivity() {
                             },
                             { privacy ->
                                 policy = if (privacy) PolicyKind.PRIVACY else PolicyKind.AGREEMENT
+                            },
+                            container.recordsRepository,
+                            container.trainingRepository,
+                            { back ->
+                                AuthRoute(
+                                    auth,
+                                    model.authFlowOwner,
+                                    initialResetEmail = session.user.email,
+                                    onResetClosed = back,
+                                )
                             },
                         )
                 }

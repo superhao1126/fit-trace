@@ -18,7 +18,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.LinkAnnotation
@@ -37,6 +40,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.fittrace.core.designsystem.FitTraceTheme
+import com.fittrace.core.designsystem.R as DesignR
 import com.fittrace.core.domain.AuthRepository
 
 @Composable
@@ -44,19 +48,36 @@ fun AuthRoute(
     repository: AuthRepository,
     owner: ViewModelStoreOwner,
     initialNotice: String? = null,
+    initialResetEmail: String? = null,
+    onResetClosed: (() -> Unit)? = null,
 ) {
     // owner 由应用级 ViewModel 持有：旋转时保留状态，登录完成后清除敏感输入。
     val factory =
         remember(repository) { viewModelFactory { initializer { AuthViewModel(repository) } } }
     val model: AuthViewModel = viewModel(viewModelStoreOwner = owner, factory = factory)
     val state by model.state.collectAsStateWithLifecycle()
+    LaunchedEffect(initialResetEmail) {
+        if (initialResetEmail != null) {
+            model.setEmail(initialResetEmail)
+            model.switchMode(AuthMode.RESET_EMAIL)
+        }
+    }
+    LaunchedEffect(state.notice) {
+        if (initialResetEmail != null && state.notice == "密码已更新，请使用新密码登录") onResetClosed?.invoke()
+    }
+    val back: () -> Unit = {
+        if (initialResetEmail != null && state.mode == AuthMode.RESET_EMAIL) {
+            model.switchMode(AuthMode.PASSWORD)
+            onResetClosed?.invoke()
+        } else model.back()
+    }
     BackHandler(
         enabled =
             state.mode in listOf(AuthMode.RESET_EMAIL, AuthMode.RESET_PASSWORD) &&
                 state.challenge == null &&
                 state.policy == null
     ) {
-        model.back()
+        back()
     }
     AuthScreen(
         state.copy(notice = state.notice ?: initialNotice),
@@ -68,7 +89,7 @@ fun AuthRoute(
         model::acceptTerms,
         model::togglePassword,
         model::switchMode,
-        model::back,
+        back,
         model::requestCode,
         model::submit,
         model::openPolicy,
@@ -106,14 +127,14 @@ internal fun AuthScreen(
     val reset = state.mode in listOf(AuthMode.RESET_EMAIL, AuthMode.RESET_PASSWORD)
     val title =
         when (state.mode) {
-            AuthMode.EMAIL -> "登录循形"
-            AuthMode.PASSWORD -> "密码登录"
+            AuthMode.EMAIL -> "开始你的记录"
+            AuthMode.PASSWORD -> "欢迎回来"
             AuthMode.RESET_EMAIL -> "验证邮箱"
             AuthMode.RESET_PASSWORD -> "设置新密码"
         }
     val subtitle =
         when (state.mode) {
-            AuthMode.EMAIL -> "用邮箱验证码，开始记录自己的变化"
+            AuthMode.EMAIL -> "邮箱验证码登录 · 新邮箱验证后自动注册"
             AuthMode.PASSWORD -> "欢迎回来，继续你的记录"
             AuthMode.RESET_EMAIL -> "验证通过后，可以设置新的密码"
             AuthMode.RESET_PASSWORD -> "邮箱已验证，设置一个新的登录密码"
@@ -125,13 +146,18 @@ internal fun AuthScreen(
             AuthMode.RESET_EMAIL -> "验证并继续"
             AuthMode.RESET_PASSWORD -> "保存新密码"
         }
-    Scaffold(containerColor = MaterialTheme.colorScheme.background) { insets ->
+    val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    val dark = MaterialTheme.colorScheme.background.luminance() < .5f
+    val headerColor = if (dark) MaterialTheme.colorScheme.primaryContainer else Color(0xFFD3F8C4)
+    val baseColor = if (dark) MaterialTheme.colorScheme.background else Color(0xFFF0F6EE)
+    Scaffold(containerColor = baseColor) { insets ->
         Column(
             Modifier.fillMaxSize()
+                .background(Brush.verticalGradient(listOf(headerColor, baseColor), endY = 1000f))
                 .padding(insets)
                 .imePadding()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp)
+                .padding(horizontal = 12.dp)
         ) {
             if (reset) {
                 Row(
@@ -168,48 +194,85 @@ internal fun AuthScreen(
                 }
                 Spacer(Modifier.height(28.dp))
             } else {
-                Spacer(Modifier.height(40.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier.size(48.dp)
-                            .background(
-                                MaterialTheme.colorScheme.primary,
-                                RoundedCornerShape(14.dp),
-                            ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Image(
-                            painterResource(R.drawable.brand_mark),
-                            contentDescription = null,
-                            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onPrimary),
-                            modifier = Modifier.size(32.dp),
-                        )
-                    }
-                    Column(Modifier.padding(start = 12.dp)) {
-                        Text("循形", fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+                Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(top = 16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("循形", fontSize = 22.sp, fontWeight = FontWeight.Bold)
                         Text(
-                            "FitTrace",
-                            fontSize = 12.sp,
+                            "FITTRACE",
+                            Modifier.padding(start = 12.dp),
+                            fontSize = 10.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        "记录一点，慢慢变好",
+                        fontSize = 27.sp,
+                        lineHeight = 36.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        "饮食、运动和身体变化，都记在这里",
+                        Modifier.padding(top = 6.dp),
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-                Spacer(Modifier.height(48.dp))
-                Text(
-                    title,
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.semantics { heading() },
-                )
-                Text(
-                    subtitle,
-                    Modifier.padding(top = 10.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 13.sp,
-                )
-                Spacer(Modifier.height(32.dp))
+                if (!keyboardVisible)
+                    Box(Modifier.fillMaxWidth().height(170.dp)) {
+                        Image(
+                            painterResource(DesignR.drawable.login_illustration),
+                            null,
+                            Modifier.fillMaxSize(),
+                        )
+                        Surface(
+                            Modifier.padding(start = 28.dp, top = 20.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                        ) {
+                            Text(
+                                "好好吃饭",
+                                Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Surface(
+                            Modifier.align(Alignment.TopEnd).padding(end = 28.dp, top = 7.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                        ) {
+                            Text(
+                                "慢慢进步",
+                                Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                else Spacer(Modifier.height(16.dp))
             }
-            Column(Modifier.fillMaxWidth().animateContentSize(animationSpec = tween(220))) {
+            Column(
+                Modifier.fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(28.dp))
+                    .padding(horizontal = 12.dp, vertical = 20.dp)
+                    .animateContentSize(animationSpec = tween(220))
+            ) {
+                if (!reset) {
+                    Text(
+                        title,
+                        fontSize = 23.sp,
+                        lineHeight = 30.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.semantics { heading() },
+                    )
+                    Text(
+                        subtitle,
+                        Modifier.padding(top = 6.dp, bottom = 12.dp),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 if (state.mode != AuthMode.RESET_PASSWORD) {
                     AuthInput(
                         "邮箱",
@@ -220,7 +283,7 @@ internal fun AuthScreen(
                         !state.busy,
                         KeyboardType.Email,
                     )
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(12.dp))
                 }
                 if (state.mode in listOf(AuthMode.EMAIL, AuthMode.RESET_EMAIL)) {
                     AuthInput(
@@ -246,12 +309,16 @@ internal fun AuthScreen(
                             }
                         },
                     )
-                    Text(
-                        if (state.mode == AuthMode.EMAIL) "未注册的邮箱会在验证后自动创建账户" else "验证码 10 分钟内有效",
-                        Modifier.padding(top = 8.dp),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    if (state.mode == AuthMode.RESET_EMAIL || state.countdown > 0)
+                        Text(
+                            if (state.mode == AuthMode.RESET_EMAIL) "验证码 10 分钟内有效"
+                            else "验证码已发送至 ${state.email.trim()}",
+                            Modifier.padding(top = 8.dp),
+                            fontSize = 11.sp,
+                            lineHeight = 16.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    else Spacer(Modifier.height(10.dp))
                 } else {
                     AuthInput(
                         if (reset) "新密码" else "密码",
@@ -272,7 +339,7 @@ internal fun AuthScreen(
                         },
                     )
                     if (state.mode == AuthMode.RESET_PASSWORD) {
-                        Spacer(Modifier.height(20.dp))
+                        Spacer(Modifier.height(12.dp))
                         AuthInput(
                             "确认新密码",
                             state.confirmPassword,
@@ -292,14 +359,6 @@ internal fun AuthScreen(
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                    } else {
-                        TextButton(
-                            onClick = { onMode(AuthMode.RESET_EMAIL) },
-                            enabled = !state.busy,
-                            modifier = Modifier.align(Alignment.End),
-                        ) {
-                            Text("设置或找回密码", fontSize = 13.sp)
-                        }
                     }
                 }
                 if (state.mode == AuthMode.PASSWORD && state.captchaRequired) {
@@ -326,8 +385,86 @@ internal fun AuthScreen(
                         }
                     }
                 }
+                state.notice?.let {
+                    Text(
+                        it,
+                        Modifier.padding(top = 12.dp).semantics {
+                            liveRegion = LiveRegionMode.Polite
+                        },
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.height(24.dp))
+                Button(
+                    onClick = onSubmit,
+                    enabled =
+                        !state.busy &&
+                            when (state.mode) {
+                                AuthMode.EMAIL ->
+                                    state.email.isNotBlank() &&
+                                        state.code.length == 6 &&
+                                        state.acceptedTerms
+                                AuthMode.PASSWORD ->
+                                    state.email.isNotBlank() &&
+                                        state.password.isNotEmpty() &&
+                                        state.acceptedTerms
+                                AuthMode.RESET_EMAIL ->
+                                    state.email.isNotBlank() && state.code.length == 6
+                                AuthMode.RESET_PASSWORD ->
+                                    state.password.isNotEmpty() &&
+                                        state.confirmPassword.isNotEmpty()
+                            },
+                    shape = RoundedCornerShape(25.dp),
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            disabledContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
+                ) {
+                    if (state.busy && !state.sendingCode) {
+                        CircularProgressIndicator(
+                            Modifier.size(18.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text(if (state.busy && !state.sendingCode) "处理中…" else label)
+                }
+                if (!reset)
+                    Row(
+                        Modifier.fillMaxWidth().padding(top = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        TextButton(
+                            onClick = {
+                                onMode(
+                                    if (state.mode == AuthMode.EMAIL) AuthMode.PASSWORD
+                                    else AuthMode.EMAIL
+                                )
+                            },
+                            enabled = !state.busy,
+                            contentPadding = PaddingValues(0.dp),
+                        ) {
+                            Text(
+                                if (state.mode == AuthMode.EMAIL) "密码登录" else "邮箱验证码登录",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.secondary,
+                            )
+                        }
+                        Spacer(Modifier.weight(1f))
+                        if (state.mode == AuthMode.PASSWORD)
+                            TextButton(
+                                onClick = { onMode(AuthMode.RESET_EMAIL) },
+                                enabled = !state.busy,
+                            ) {
+                                Text("设置或找回密码", fontSize = 12.sp)
+                            }
+                    }
                 if (!reset) {
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(12.dp))
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(
                             checked = state.acceptedTerms,
@@ -369,49 +506,13 @@ internal fun AuthScreen(
                         Text(it, fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
                     }
                 }
-                state.notice?.let {
-                    Text(
-                        it,
-                        Modifier.padding(top = 12.dp).semantics {
-                            liveRegion = LiveRegionMode.Polite
-                        },
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Spacer(Modifier.height(24.dp))
-                Button(
-                    onClick = onSubmit,
-                    enabled = !state.busy,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
-                ) {
-                    if (state.busy && !state.sendingCode) {
-                        CircularProgressIndicator(
-                            Modifier.size(18.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp,
-                        )
-                        Spacer(Modifier.width(8.dp))
-                    }
-                    Text(if (state.busy && !state.sendingCode) "处理中…" else label)
-                }
-                if (!reset)
-                    TextButton(
-                        onClick = {
-                            onMode(
-                                if (state.mode == AuthMode.EMAIL) AuthMode.PASSWORD
-                                else AuthMode.EMAIL
-                            )
-                        },
-                        enabled = !state.busy,
-                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                    ) {
-                        Text(
-                            if (state.mode == AuthMode.EMAIL) "使用密码登录" else "使用邮箱验证码登录",
-                            fontSize = 13.sp,
-                        )
-                    }
+                Text(
+                    "每一点记录，都算数。",
+                    Modifier.align(Alignment.CenterHorizontally)
+                        .padding(top = 24.dp, bottom = 12.dp),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 if (state.mode == AuthMode.RESET_PASSWORD)
                     Text(
                         "重置后需重新登录",
@@ -420,13 +521,7 @@ internal fun AuthScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
             }
-            Spacer(Modifier.height(64.dp))
-            Text(
-                "记录行动，看见改变",
-                Modifier.align(Alignment.CenterHorizontally).padding(bottom = 24.dp),
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
@@ -459,6 +554,7 @@ private fun AuthInput(
             label,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 12.sp,
+            lineHeight = 16.sp,
             modifier = Modifier.padding(bottom = 8.dp),
         )
         OutlinedTextField(
@@ -471,7 +567,7 @@ private fun AuthInput(
             isError = error != null,
             placeholder = { Text(placeholder, fontSize = 14.sp) },
             textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
             visualTransformation = visual,
             trailingIcon = trailing,
             keyboardOptions =
@@ -485,9 +581,12 @@ private fun AuthInput(
                 OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = borderColor,
                     unfocusedBorderColor = borderColor,
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    disabledContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedContainerColor =
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = .35f),
+                    unfocusedContainerColor =
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = .35f),
+                    disabledContainerColor =
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = .35f),
                 ),
             supportingText =
                 if (error == null) null

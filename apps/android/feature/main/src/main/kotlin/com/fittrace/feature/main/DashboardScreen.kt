@@ -1,5 +1,6 @@
 package com.fittrace.feature.main
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -14,7 +15,10 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -24,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fittrace.core.designsystem.FitCard
 import com.fittrace.core.model.*
 import java.time.*
 import java.time.format.DateTimeFormatter
@@ -52,6 +57,7 @@ internal fun DashboardScreen(
     onAction: (String) -> Unit,
     modifier: Modifier = Modifier,
     today: LocalDate = LocalDate.now(),
+    onRecord: (DiaryRecord) -> Unit = {},
 ) {
     var calendar by rememberSaveable { mutableStateOf(false) }
     var week by
@@ -67,18 +73,29 @@ internal fun DashboardScreen(
                 360.dp
         )
             16.dp
-        else 24.dp
+        else 20.dp
     PullToRefreshBox(
         isRefreshing = state.loading && data != null,
         onRefresh = onRefresh,
-        modifier = modifier.fillMaxSize(),
+        modifier =
+            modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.primaryContainer,
+                            MaterialTheme.colorScheme.background,
+                        ),
+                        endY = 1400f,
+                    )
+                ),
     ) {
         Column(
             Modifier.fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = horizontalPadding)
                 .padding(top = 24.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -165,57 +182,134 @@ internal fun DashboardScreen(
                 )
             state.error?.let { error ->
                 HomeCard {
-                    Text(error, color = MaterialTheme.colorScheme.error)
+                    Text(
+                        if (data != null) "$error，以下保留上次结果" else error,
+                        color = MaterialTheme.colorScheme.error,
+                    )
                     TextButton(onClick = onRefresh) { Text("重试") }
                 }
             }
             if (data != null) {
-                HomeCard {
+                FitCard {
+                    Column(
+                        Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            "当天已记录热量",
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                data.calories.display(),
+                                modifier = Modifier.alignByBaseline(),
+                                fontSize = 36.sp,
+                                lineHeight = 44.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            if (data.calories != null)
+                                Text(
+                                    "kcal",
+                                    modifier = Modifier.alignByBaseline(),
+                                    fontSize = 12.sp,
+                                    lineHeight = 16.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                        }
+                        // 没有热量目标接口：这里是品牌装饰，不绘制虚构的完成进度。
+                        Box(
+                            Modifier.padding(top = 4.dp).width(168.dp).height(88.dp),
+                            contentAlignment = Alignment.BottomCenter,
+                        ) {
+                            val arcColor = MaterialTheme.colorScheme.primary.copy(alpha = .18f)
+                            Canvas(Modifier.fillMaxSize()) {
+                                val diameter = size.width - 24.dp.toPx()
+                                drawArc(
+                                    color = arcColor,
+                                    startAngle = 180f,
+                                    sweepAngle = 180f,
+                                    useCenter = false,
+                                    topLeft =
+                                        androidx.compose.ui.geometry.Offset(
+                                            12.dp.toPx(),
+                                            8.dp.toPx(),
+                                        ),
+                                    size = androidx.compose.ui.geometry.Size(diameter, diameter),
+                                    style = Stroke(6.dp.toPx(), cap = StrokeCap.Round),
+                                )
+                            }
+                            Image(
+                                painterResource(R.drawable.design_sprout),
+                                null,
+                                Modifier.padding(bottom = 2.dp).size(64.dp),
+                            )
+                        }
+                    }
                     Row(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Metric("体重", data.weight.display(), "kg", Modifier.weight(1f))
-                        Metric("已记录热量", data.calories.display(), "kcal", Modifier.weight(1f))
+                        Metric("体重", data.weight.display(), "kg", Modifier.weight(1f), true)
                         Metric(
-                            "训练",
+                            "运动",
                             if (data.workoutCount == 0) "—" else data.workoutMinutes.toString(),
                             "分钟",
                             Modifier.weight(1f),
+                            true,
+                        )
+                        Metric(
+                            "饮食",
+                            if (data.mealCount == 0) "—" else data.mealCount.toString(),
+                            "餐",
+                            Modifier.weight(1f),
+                            true,
                         )
                     }
-                    Spacer(Modifier.height(12.dp))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    if (state.date == today)
+                }
+                if (state.date == today)
+                    HomeCard {
+                        val goal = data.goal
                         Row(
-                            Modifier.fillMaxWidth()
-                                .clickable { onAction("体重目标") }
-                                .padding(top = 12.dp),
+                            Modifier.fillMaxWidth().clickable { onAction("体重目标") },
                             horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            val goal = data.goal
-                            Text(
-                                if (goal == null) "设置体重目标 ›"
-                                else
-                                    "${when(goal.type) { "LOSE_FAT" -> "减脂"
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    if (goal == null) "设置体重目标"
+                                    else
+                                        "${when(goal.type) { "LOSE_FAT" -> "减脂"
  "GAIN_MUSCLE" -> "增肌"
  else -> "保持" }} · 目标 ${goal.targetWeight.display()} kg",
-                                fontSize = 13.sp,
-                                lineHeight = 18.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                if (goal == null) "给记录一个方向"
-                                else
-                                    data.weight?.let {
-                                        "相差 ${kotlin.math.abs(it - goal.targetWeight).display()} kg"
-                                    } ?: "",
-                                fontSize = 12.sp,
-                                lineHeight = 16.sp,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                )
+                                Text(
+                                    if (goal == null) "给记录一个方向"
+                                    else
+                                        data.weight?.let {
+                                            "相差 ${kotlin.math.abs(it - goal.targetWeight).display()} kg"
+                                        } ?: "记录体重后查看变化",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 12.sp,
+                                )
+                            }
+                            Text("›", color = MaterialTheme.colorScheme.secondary)
                         }
-                }
+                    }
+                else
+                    HomeCard {
+                        Text(
+                            "正在查看 ${state.date.monthValue}月${state.date.dayOfMonth}日记录",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        TextButton(onClick = { onAction("全部记录") }) { Text("查看全部档案 ›") }
+                    }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 kinds.forEachIndexed { index, _ ->
@@ -231,12 +325,19 @@ internal fun DashboardScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Box(
-                                Modifier.size(32.dp)
-                                    .background(categoryColors[index], RoundedCornerShape(10.dp)),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Image(painterResource(icons[index]), null, Modifier.size(18.dp))
+                            Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
+                                Image(
+                                    painterResource(
+                                        listOf(
+                                            R.drawable.quick_body,
+                                            R.drawable.quick_meal,
+                                            R.drawable.quick_workout,
+                                            R.drawable.quick_photo,
+                                        )[index]
+                                    ),
+                                    null,
+                                    Modifier.size(36.dp),
+                                )
                             }
                             Text(labels[index], fontSize = 12.sp, lineHeight = 16.sp)
                         }
@@ -261,11 +362,21 @@ internal fun DashboardScreen(
                         )
                     }
                 else {
-                    Text("当天记录", fontSize = 19.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold)
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "当天记录",
+                            Modifier.weight(1f),
+                            fontSize = 19.sp,
+                            lineHeight = 26.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        TextButton(onClick = { onAction("全部记录") }) { Text("全部 ›") }
+                    }
                     data.records.forEach { record ->
                         val index = record.kind.ordinal
                         HomeCard {
                             Row(
+                                modifier = Modifier.fillMaxWidth().clickable { onRecord(record) },
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {

@@ -14,6 +14,9 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.fittrace.core.domain.DashboardRepository
 import com.fittrace.core.domain.ProfileRepository
+import com.fittrace.core.domain.RecordsRepository
+import com.fittrace.core.model.RecordKind
+import java.time.LocalDate
 
 @Composable
 fun MainRoute(
@@ -27,6 +30,9 @@ fun MainRoute(
     themeMode: String,
     onThemeMode: (String) -> Unit,
     onPolicy: (Boolean) -> Unit,
+    recordsRepository: RecordsRepository,
+    trainingRepository: com.fittrace.core.domain.TrainingRepository,
+    passwordPage: @Composable (() -> Unit) -> Unit,
 ) {
     key(userId) {
         val factory =
@@ -39,6 +45,24 @@ fun MainRoute(
                 viewModelFactory { initializer { ProfileViewModel(profileRepository) } }
             }
         val profile: ProfileViewModel = viewModel(key = "profile-$userId", factory = profileFactory)
+        val recordsFactory =
+            remember(recordsRepository) {
+                viewModelFactory { initializer { RecordsViewModel(recordsRepository) } }
+            }
+        val records: RecordsViewModel = viewModel(key = "records-$userId", factory = recordsFactory)
+        val recordsState by records.state.collectAsStateWithLifecycle()
+        val trendsFactory =
+            remember(recordsRepository) {
+                viewModelFactory { initializer { TrendsViewModel(recordsRepository) } }
+            }
+        val trends: TrendsViewModel = viewModel(key = "trends-$userId", factory = trendsFactory)
+        val trendsState by trends.state.collectAsStateWithLifecycle()
+        var recordKind by rememberSaveable { mutableStateOf<String?>(null) }
+        var archiveDate by rememberSaveable { mutableStateOf<String?>(null) }
+        var editorKind by rememberSaveable { mutableStateOf("BODY") }
+        var editorId by rememberSaveable { mutableStateOf<String?>(null) }
+        var editorDate by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+        var editorKey by rememberSaveable { mutableIntStateOf(0) }
         val state by model.state.collectAsStateWithLifecycle()
         val profileState by profile.state.collectAsStateWithLifecycle()
         var tab by rememberSaveable { mutableIntStateOf(0) }
@@ -58,6 +82,32 @@ fun MainRoute(
                 pages = pages + target
             } else notice = "个人资料尚未加载，请返回重试。"
         }
+        val create: (RecordKind) -> Unit = { kind ->
+            editorKind = kind.name
+            editorId = null
+            editorDate =
+                when {
+                    page == "records" || tab == 2 -> archiveDate ?: LocalDate.now().toString()
+                    tab == 0 -> state.date.toString()
+                    else -> LocalDate.now().toString()
+                }
+            editorKey++
+            pages = pages + if (kind == RecordKind.WORKOUT) "training" else "record-editor"
+        }
+        val openRecord: (RecordKind, String) -> Unit = { kind, id ->
+            editorKind = kind.name
+            editorId = id
+            editorDate = state.date.toString()
+            editorKey++
+            pages = pages + "record-editor"
+        }
+        LaunchedEffect(tab, page, recordKind, archiveDate) {
+            if (tab == 2 || page == "records")
+                records.select(
+                    recordKind?.let(RecordKind::valueOf),
+                    archiveDate?.let(LocalDate::parse),
+                )
+        }
         BackHandler(enabled = tab != 0 || page != null) { back() }
         LifecycleEventEffect(Lifecycle.Event.ON_START) {
             model.refresh()
@@ -71,18 +121,97 @@ fun MainRoute(
             }
         }
         Scaffold(
-            containerColor = MaterialTheme.colorScheme.background,
+            containerColor =
+                if (tab == 3 && page == null) MaterialTheme.colorScheme.primaryContainer
+                else MaterialTheme.colorScheme.background,
             bottomBar = {
                 if (page == null)
                     HomeNavigation(tab) {
-                        if (it == 1 || it == 2)
-                            notice = if (it == 1) "趋势暂未开放。" else "完整档案暂未开放，可先在首页按日期查看已有记录。"
-                        else tab = it
+                        tab = it
+                        if (it == 2) {
+                            recordKind = null
+                            archiveDate = null
+                        }
                     }
             },
         ) { padding ->
             Box(Modifier.fillMaxSize().padding(padding)) {
                 when (page) {
+                    "training" ->
+                        key(editorKey) {
+                            val factory = remember {
+                                viewModelFactory {
+                                    initializer {
+                                        TrainingViewModel(
+                                            trainingRepository,
+                                            recordsRepository,
+                                            LocalDate.parse(editorDate),
+                                        )
+                                    }
+                                }
+                            }
+                            val training: TrainingViewModel =
+                                viewModel(key = "training-$userId-$editorKey", factory = factory)
+                            val trainingState by training.state.collectAsStateWithLifecycle()
+                            LaunchedEffect(trainingState.saved) {
+                                if (trainingState.saved) {
+                                    back()
+                                    model.refresh()
+                                    records.refresh()
+                                    trends.load()
+                                }
+                            }
+                            TrainingScreen(trainingState, training, back) {
+                                pages = pages + "record-editor"
+                            }
+                        }
+                    "record-editor" ->
+                        key(editorKey) {
+                            val editorFactory = remember {
+                                viewModelFactory {
+                                    initializer {
+                                        RecordEditorViewModel(
+                                            recordsRepository,
+                                            RecordKind.valueOf(editorKind),
+                                            LocalDate.parse(editorDate),
+                                            editorId,
+                                        )
+                                    }
+                                }
+                            }
+                            val editor: RecordEditorViewModel =
+                                viewModel(
+                                    key = "editor-$userId-$editorKey",
+                                    factory = editorFactory,
+                                )
+                            val editorState by editor.state.collectAsStateWithLifecycle()
+                            LaunchedEffect(editorState.saved) {
+                                if (editorState.saved) {
+                                    back()
+                                    model.refresh()
+                                    records.refresh()
+                                    trends.load()
+                                    profile.load()
+                                }
+                            }
+                            RecordEditorScreen(editorState, editor, back)
+                        }
+                    "records" ->
+                        RecordsScreen(
+                            recordsState,
+                            recordKind?.let(RecordKind::valueOf),
+                            archiveDate?.let(LocalDate::parse),
+                            { recordKind = it?.name },
+                            { archiveDate = it?.toString() },
+                            records::refresh,
+                            records::load,
+                            { openRecord(it.kind, it.id) },
+                            create,
+                            back,
+                        )
+                    "security" ->
+                        ProfileSecurityScreen(userEmail, back) { pages = pages + "password" }
+                    "password" -> passwordPage(back)
                     "info" ->
                         profileState.profile?.let { ProfileInfoScreen(it, back) { open("edit") } }
                     "edit" ->
@@ -92,7 +221,11 @@ fun MainRoute(
                             profile::nickname,
                             profile::gender,
                             { profile.saveProfile(back) },
-                            { notice = "密码管理暂未开放，可在登录页使用“设置或找回密码”。" },
+                            { pages = pages + "security" },
+                            profile::avatar,
+                            { bytes, mime -> profile.uploadAvatar(recordsRepository, bytes, mime) },
+                            profile::uploadError,
+                            { profile.retryAvatar(recordsRepository) },
                         )
                     "goal" ->
                         GoalEditScreen(
@@ -119,6 +252,7 @@ fun MainRoute(
                             onThemeMode,
                             busy,
                             onLogout,
+                            { pages = pages + "security" },
                         )
                     "about" -> ProfileAboutScreen(versionName, back) { onPolicy(false) }
                     else ->
@@ -131,17 +265,57 @@ fun MainRoute(
                                     if (it == "体重目标") {
                                         pendingGoal = true
                                         profile.load()
-                                    } else notice = "$it 暂未开放。你可以先在首页按日期查看已有记录。"
+                                    } else
+                                        when (it) {
+                                            "记体重" -> create(RecordKind.BODY)
+                                            "记饮食" -> create(RecordKind.MEAL)
+                                            "记训练" -> create(RecordKind.WORKOUT)
+                                            "记照片" -> create(RecordKind.PHOTO)
+                                            "全部记录" -> {
+                                                archiveDate = state.date.toString()
+                                                recordKind = null
+                                                pages = pages + "records"
+                                            }
+                                        }
                                 },
+                                onRecord = { openRecord(it.kind, it.id) },
+                            )
+                        else if (tab == 1)
+                            TrendsScreen(trendsState, trends::load) { create(RecordKind.BODY) }
+                        else if (tab == 2)
+                            RecordsScreen(
+                                recordsState,
+                                recordKind?.let(RecordKind::valueOf),
+                                archiveDate?.let(LocalDate::parse),
+                                { recordKind = it?.name },
+                                { archiveDate = it?.toString() },
+                                records::refresh,
+                                records::load,
+                                { openRecord(it.kind, it.id) },
+                                create,
                             )
                         else
                             ProfileScreen(
                                 profileState,
                                 profile::load,
                                 { pages = pages + "settings" },
-                                { open("info") },
+                                { open("edit") },
                                 { open("goal") },
-                                { notice = "完整档案暂未开放，可先在首页按日期查看已有记录。" },
+                                {
+                                    archiveDate = null
+                                    recordKind = null
+                                    tab = 2
+                                },
+                                onRecords = { kind ->
+                                    archiveDate = null
+                                    recordKind = kind.name
+                                    pages = pages + "records"
+                                },
+                                onSecurity = { pages = pages + "security" },
+                                onPolicy = onPolicy,
+                                onAbout = { pages = pages + "about" },
+                                themeMode = themeMode,
+                                onThemeMode = onThemeMode,
                             )
                 }
             }

@@ -11,6 +11,21 @@ class ProfileApiTest {
         """{"code":"OK","message":"成功","data":{"id":"u","email":"hello@example.com","nickname":null,"gender":"UNSPECIFIED","avatarUrl":null,"createdAt":"2026-10-01T00:00:00Z","goal":{"type":"LOSE_FAT","startWeight":71,"targetWeight":68,"targetDate":null,"startedAt":"2026-10-01T00:00:00Z"}}}"""
 
     @Test
+    fun `explicit avatar removal includes null without affecting ordinary profile patches`() =
+        runTest {
+            MockWebServer().use { server ->
+                server.enqueue(MockResponse().setBody("""{"code":"OK","message":"","data":null}"""))
+                NetworkClient(server.url("/").toString())
+                    .profileApi
+                    .updateProfileWithAvatar(
+                        "Bearer token",
+                        ProfileWithAvatarUpdateDto("昵称", "UNSPECIFIED", null),
+                    )
+                assertTrue(server.takeRequest().body.readUtf8().contains("\"avatarUrl\":null"))
+            }
+        }
+
+    @Test
     fun `profile reads nullable fields and latest body can be absent`() = runTest {
         MockWebServer().use { server ->
             server.start()

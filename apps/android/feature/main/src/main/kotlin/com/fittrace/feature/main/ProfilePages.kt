@@ -2,8 +2,10 @@ package com.fittrace.feature.main
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -12,7 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -24,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import com.fittrace.core.model.*
 import java.time.*
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun ProfilePage(
@@ -35,7 +38,15 @@ internal fun ProfilePage(
 ) {
     Column(
         Modifier.fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        MaterialTheme.colorScheme.primaryContainer,
+                        MaterialTheme.colorScheme.background,
+                    ),
+                    endY = 700f,
+                )
+            )
             .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = profilePadding())
@@ -109,32 +120,201 @@ internal fun ProfileEditScreen(
     onGender: (UserGender) -> Unit,
     onSave: () -> Unit,
     onPassword: () -> Unit,
+    onAvatar: (String?) -> Unit = {},
+    onUpload: (ByteArray, String) -> Unit = { _, _ -> },
+    onUploadError: (String) -> Unit = {},
+    onRetryAvatar: () -> Unit = {},
 ) {
-    ProfilePage("账号设置", onBack, !state.saving) {
-        Text("个人资料", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        ProfileCard {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
-            ) {
-                ProfileAvatar(state.profile?.avatarUrl)
-                Text("头像")
+    var nicknameDialog by rememberSaveable { mutableStateOf(false) }
+    var nicknameDraft by rememberSaveable { mutableStateOf("") }
+    var nicknameError by remember { mutableStateOf(false) }
+    var genderDialog by remember { mutableStateOf(false) }
+    var avatarDialog by remember { mutableStateOf(false) }
+    var discard by remember { mutableStateOf(false) }
+    var reading by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
+    val dirty =
+        state.nickname != state.profile?.nickname.orEmpty() ||
+            state.gender != state.profile?.gender ||
+            state.avatarUrl != state.profile?.avatarUrl ||
+            state.avatarError != null
+    val back = {
+        if (!state.saving && !reading) {
+            if (dirty) discard = true else onBack()
+        }
+    }
+    androidx.activity.compose.BackHandler { back() }
+    val picker =
+        androidx.activity.compose.rememberLauncherForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts.GetContent()
+        ) { uri ->
+            if (uri != null) {
+                reading = true
+                scope.launch {
+                    val result =
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            runCatching { readSelectedImage(context, uri) }
+                        }
+                    reading = false
+                    result.fold(
+                        { onUpload(it.first, it.second) },
+                        { onUploadError(it.message ?: "无法读取照片，请重试") },
+                    )
+                }
             }
         }
-        ProfileField("昵称", state.nickname, onNickname, !state.saving)
-        Text("性别 · 选填", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        ProfileChoices(
-            UserGender.entries,
-            state.gender,
-            UserGender::genderLabel,
-            onGender,
-            !state.saving,
+    if (avatarDialog)
+        AlertDialog(
+            onDismissRequest = { avatarDialog = false },
+            title = { Text("修改头像") },
+            text = { Text("选择照片后，点击保存资料统一提交。") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        avatarDialog = false
+                        picker.launch("image/*")
+                    }
+                ) {
+                    Text("从相册选择")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        avatarDialog = false
+                        onAvatar(null)
+                    }
+                ) {
+                    Text("移除头像")
+                }
+            },
         )
-        Text("性别不影响记录和使用", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    if (nicknameDialog) {
+        AlertDialog(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+            properties =
+                androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+            onDismissRequest = { nicknameDialog = false },
+            title = { Text("修改昵称") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    androidx.compose.foundation.text.BasicTextField(
+                        value = nicknameDraft,
+                        onValueChange = {
+                            nicknameDraft = it
+                            nicknameError = false
+                        },
+                        modifier =
+                            Modifier.fillMaxWidth()
+                                .background(
+                                    MaterialTheme.colorScheme.primaryContainer,
+                                    RoundedCornerShape(16.dp),
+                                )
+                                .padding(16.dp),
+                        singleLine = true,
+                        textStyle =
+                            LocalTextStyle.current.copy(
+                                color = MaterialTheme.colorScheme.onSurface
+                            ),
+                        cursorBrush =
+                            androidx.compose.ui.graphics.SolidColor(
+                                MaterialTheme.colorScheme.secondary
+                            ),
+                    )
+                    Text(
+                        if (nicknameError) "昵称长度应为 1–40 字" else "1–40 字",
+                        style = MaterialTheme.typography.bodySmall,
+                        color =
+                            if (nicknameError) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (nicknameDraft.trim().length !in 1..40) nicknameError = true
+                        else {
+                            onNickname(nicknameDraft.trim())
+                            nicknameDialog = false
+                        }
+                    }
+                ) {
+                    Text("确认")
+                }
+            },
+            dismissButton = { TextButton(onClick = { nicknameDialog = false }) { Text("取消") } },
+        )
+    }
+    if (genderDialog)
+        AlertDialog(
+            onDismissRequest = { genderDialog = false },
+            title = { Text("性别") },
+            text = {
+                Column {
+                    UserGender.entries.forEach { gender ->
+                        TextButton(
+                            onClick = {
+                                onGender(gender)
+                                genderDialog = false
+                            }
+                        ) {
+                            Text(gender.genderLabel())
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { genderDialog = false }) { Text("取消") } },
+        )
+    if (discard)
+        AlertDialog(
+            onDismissRequest = { discard = false },
+            title = { Text("放弃资料修改？") },
+            text = { Text("未保存的资料将不会更新。") },
+            confirmButton = { TextButton(onClick = onBack) { Text("放弃修改") } },
+            dismissButton = { TextButton(onClick = { discard = false }) { Text("继续编辑") } },
+        )
+    ProfilePage("编辑资料", back, !state.saving && !reading) {
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+            ProfileAvatar(state.avatarUrl, 88.dp)
+            TextButton(onClick = { avatarDialog = true }, enabled = !state.saving && !reading) {
+                Text(if (reading || state.saving) "处理中…" else "修改头像")
+            }
+        }
+        ProfileCard {
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(enabled = !state.saving) {
+                    nicknameDraft = state.nickname
+                    nicknameError = false
+                    nicknameDialog = true
+                },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("昵称")
+                Text(state.nickname.ifBlank { "设置昵称" } + "  ›")
+            }
+            HorizontalDivider()
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(enabled = !state.saving) {
+                    genderDialog = true
+                },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("性别")
+                Text(state.gender.genderLabel() + "  ›")
+            }
+        }
+        state.avatarError?.let { error ->
+            ProfileError(error, if (state.canRetryAvatar) onRetryAvatar else null)
+            TextButton(onClick = { onAvatar(state.profile?.avatarUrl) }) { Text("取消头像更改") }
+        }
         state.formError?.let { ProfileError(it) }
         Button(
             onClick = onSave,
-            enabled = !state.saving && !state.loading,
+            enabled = !state.saving && !state.loading && !reading && state.avatarError == null,
             modifier = Modifier.fillMaxWidth().height(48.dp),
             shape = RoundedCornerShape(14.dp),
         ) {
@@ -147,7 +327,7 @@ internal fun ProfileEditScreen(
                 Text(state.profile?.email.orEmpty(), Modifier.weight(1f), fontSize = 14.sp)
             }
         }
-        ProfileNavigationRow("修改密码", null, R.drawable.home_profile, onPassword)
+        ProfileNavigationRow("登录安全", null, R.drawable.home_profile, onPassword)
     }
 }
 
@@ -164,84 +344,174 @@ internal fun GoalEditScreen(
     onSave: () -> Unit,
 ) {
     var calendar by rememberSaveable { mutableStateOf(false) }
-    ProfilePage("我的目标", onBack, !state.saving) {
-        Text("找到适合自己的节奏", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text("你现在更关注什么？", fontSize = 17.sp, fontWeight = FontWeight.Bold)
-        ProfileChoices(GoalType.entries, state.goalType, GoalType::goalLabel, onType, !state.saving)
-        Text(
-            when (state.goalType) {
-                GoalType.LOSE_FAT -> "让体重和围度稳步下降"
-                GoalType.GAIN_MUSCLE -> "关注体重、训练与身体变化"
-                GoalType.MAINTAIN -> "维持当前状态和记录习惯"
-            },
-            fontSize = 13.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+    var step by rememberSaveable { mutableIntStateOf(0) }
+    var discard by remember { mutableStateOf(false) }
+    val original = remember {
+        listOf(
+            state.goalType,
+            state.targetWeight,
+            state.currentWeight,
+            state.targetDate,
+            state.editingWeight,
         )
-        ProfileCard {
-            if (state.editingWeight) {
-                ProfileField("当前体重（kg）", state.currentWeight, onCurrent, !state.saving, true)
+    }
+    val changed =
+        original !=
+            listOf(
+                state.goalType,
+                state.targetWeight,
+                state.currentWeight,
+                state.targetDate,
+                state.editingWeight,
+            )
+    val back = {
+        if (!state.saving) {
+            if (step == 1) step = 0 else if (changed) discard = true else onBack()
+        }
+    }
+    androidx.activity.compose.BackHandler { back() }
+    if (discard)
+        AlertDialog(
+            onDismissRequest = { discard = false },
+            title = { Text("放弃目标修改？") },
+            text = { Text("未保存的目标将不会更新。") },
+            confirmButton = { TextButton(onClick = onBack) { Text("放弃修改") } },
+            dismissButton = { TextButton(onClick = { discard = false }) { Text("继续编辑") } },
+        )
+    ProfilePage("我的目标", back, !state.saving) {
+        LinearProgressIndicator(
+            progress = { if (step == 0) .5f else 1f },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (step == 0) {
+            Text("找到适合自己的节奏", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("你现在更关注什么？", fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            GoalType.entries.forEach { type ->
+                ProfileCard(onClick = if (state.saving) null else ({ onType(type) })) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(type.goalLabel(), fontWeight = FontWeight.Bold)
+                        RadioButton(
+                            state.goalType == type,
+                            { onType(type) },
+                            enabled = !state.saving,
+                        )
+                    }
+                }
+            }
+            Text(
+                when (state.goalType) {
+                    GoalType.LOSE_FAT -> "让体重和围度稳步下降"
+                    GoalType.GAIN_MUSCLE -> "关注体重、训练与身体变化"
+                    GoalType.MAINTAIN -> "维持当前状态和记录习惯"
+                },
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Button(onClick = { step = 1 }, modifier = Modifier.fillMaxWidth().height(52.dp)) {
+                Text("下一步")
+            }
+        } else {
+            Text("设置目标体重", style = MaterialTheme.typography.headlineSmall)
+            ProfileCard {
+                if (state.editingWeight) {
+                    ProfileField("当前体重（kg）", state.currentWeight, onCurrent, !state.saving, true)
+                    Text(
+                        "保存目标时会同步记录当前体重",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                } else {
+                    Text(
+                        "当前体重",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(
+                        verticalAlignment = Alignment.Bottom,
+                        modifier = Modifier.padding(top = 8.dp),
+                    ) {
+                        Text(
+                            state.currentWeight,
+                            fontSize = 34.sp,
+                            lineHeight = 44.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            " kg",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 5.dp),
+                        )
+                    }
+                    TextButton(
+                        onClick = onEditWeight,
+                        enabled = !state.saving,
+                        modifier = Modifier.align(Alignment.End),
+                    ) {
+                        Text("记录新的体重 ›")
+                    }
+                }
+            }
+            state.bodyError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            ProfileCard {
+                Text("目标体重", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedTextField(
+                    state.targetWeight,
+                    onTarget,
+                    Modifier.fillMaxWidth().padding(top = 12.dp),
+                    textStyle =
+                        LocalTextStyle.current.copy(
+                            fontSize = 36.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.secondary,
+                        ),
+                    label = { Text("目标体重（kg）") },
+                    singleLine = true,
+                    enabled = !state.saving,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                )
                 Text(
-                    "保存目标时会同步记录当前体重",
+                    "点击数字输入，最多两位小数",
+                    Modifier.padding(top = 8.dp),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp),
                 )
-            } else {
-                Text("当前体重", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(top = 8.dp)) {
-                    Text(
-                        state.currentWeight,
-                        fontSize = 34.sp,
-                        lineHeight = 44.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        " kg",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 5.dp),
-                    )
-                }
-                TextButton(
-                    onClick = onEditWeight,
-                    enabled = !state.saving,
-                    modifier = Modifier.align(Alignment.End),
-                ) {
-                    Text("记录新的体重 ›")
-                }
             }
-        }
-        state.bodyError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        ProfileField("目标体重（kg）", state.targetWeight, onTarget, !state.saving, true)
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("目标日期 · 选填", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            ProfileCard(onClick = if (state.saving) null else ({ calendar = true })) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(
-                        state.targetDate?.let {
-                            LocalDate.parse(it).format(DateTimeFormatter.ofPattern("yyyy年M月d日"))
-                        } ?: "选择目标日期",
-                        fontSize = 15.sp,
-                    )
-                    Text("›")
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "目标日期 · 选填",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                ProfileCard(onClick = if (state.saving) null else ({ calendar = true })) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(
+                            state.targetDate?.let {
+                                LocalDate.parse(it).format(DateTimeFormatter.ofPattern("yyyy年M月d日"))
+                            } ?: "选择目标日期",
+                            fontSize = 15.sp,
+                        )
+                        Text("›")
+                    }
                 }
+                if (state.targetDate != null)
+                    TextButton(onClick = { onDate(null) }, enabled = !state.saving) { Text("清除日期") }
             }
-            if (state.targetDate != null)
-                TextButton(onClick = { onDate(null) }, enabled = !state.saving) { Text("清除日期") }
-        }
-        Text(
-            "日期只是节奏参考，不影响日常记录",
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        state.formError?.let { ProfileError(it) }
-        Button(
-            onClick = onSave,
-            enabled = !state.saving && !state.loading,
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-            shape = RoundedCornerShape(14.dp),
-        ) {
-            Text(if (state.saving) "保存中…" else "保存目标")
+            Text(
+                "日期只是节奏参考，不影响日常记录",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            state.formError?.let { ProfileError(it) }
+            Button(
+                onClick = onSave,
+                enabled = !state.saving && !state.loading,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(14.dp),
+            ) {
+                Text(if (state.saving) "保存中…" else "保存目标")
+            }
         }
     }
     if (calendar) {
@@ -297,52 +567,62 @@ internal fun ProfileSettingsScreen(
     onMode: (String) -> Unit,
     busy: Boolean,
     onLogout: () -> Unit,
+    onSecurity: () -> Unit = {},
 ) {
     var logout by remember { mutableStateOf(false) }
-    ProfilePage("设置", onBack) {
-        Spacer(Modifier.height(8.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            ProfileNavigationRow("账号设置", "个人资料与登录安全", R.drawable.home_profile, onAccount)
-            ProfileNavigationRow("用户协议", "了解使用条款", R.drawable.profile_archive) { onPolicy(false) }
-            ProfileNavigationRow("隐私政策", "了解信息使用方式", R.drawable.profile_archive) { onPolicy(true) }
-            ProfileNavigationRow(
-                stringResource(R.string.about_title),
-                "应用介绍与版本信息",
-                R.drawable.home_home,
-                onAbout,
+    var appearance by remember { mutableStateOf(false) }
+    ProfilePage("设置", onBack, !busy) {
+        Text(
+            "账号与使用偏好",
+            fontSize = 13.sp,
+            lineHeight = 18.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        ProfileMenuGroup("账号设置") {
+            ProfileMenuRow("编辑资料", R.drawable.home_profile, enabled = !busy, onClick = onAccount)
+            ProfileMenuRow(
+                "登录安全",
+                R.drawable.profile_archive,
+                enabled = !busy,
+                onClick = onSecurity,
             )
         }
-        Text("显示模式", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        ProfileChoices(
-            listOf("SYSTEM", "LIGHT", "DARK"),
-            mode,
-            {
-                when (it) {
-                    "LIGHT" -> "浅色"
-                    "DARK" -> "深色"
-                    else -> "跟随系统"
-                }
-            },
-            onMode,
-        )
-        Spacer(Modifier.height(24.dp))
-        Button(
-            onClick = { logout = true },
-            colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.primary,
-                ),
-            enabled = !busy,
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-            shape = RoundedCornerShape(14.dp),
-        ) {
-            Text(if (busy) "退出中…" else "退出登录")
+        ProfileMenuGroup("通用") {
+            ProfileMenuRow("显示模式", R.drawable.home_photo, mode.modeLabel(), !busy) {
+                appearance = true
+            }
         }
+        ProfileMenuGroup("关于循形") {
+            ProfileMenuRow("用户协议", R.drawable.profile_archive, enabled = !busy) { onPolicy(false) }
+            ProfileMenuRow("隐私政策", R.drawable.profile_archive, enabled = !busy) { onPolicy(true) }
+            ProfileMenuRow("版本与关于", R.drawable.home_home, enabled = !busy, onClick = onAbout)
+        }
+        Spacer(Modifier.height(24.dp))
+        OutlinedButton(
+            onClick = { logout = true },
+            enabled = !busy,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+            shape = CircleShape,
+            colors =
+                ButtonDefaults.outlinedButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                ),
+        ) {
+            Text(if (busy) "退出中…" else "退出登录", fontWeight = FontWeight.Bold)
+        }
+        Text(
+            "记录日常，看见改变",
+            Modifier.align(Alignment.CenterHorizontally),
+            fontSize = 12.sp,
+            lineHeight = 18.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
+    if (appearance) ProfileAppearanceSheet(mode, onMode) { appearance = false }
     if (logout)
         AlertDialog(
-            onDismissRequest = { logout = false },
+            onDismissRequest = { if (!busy) logout = false },
             title = { Text("退出登录？") },
             text = { Text("退出后将清除本机登录状态，账号中的记录会保留。") },
             confirmButton = {
@@ -356,8 +636,34 @@ internal fun ProfileSettingsScreen(
                     Text("退出登录")
                 }
             },
-            dismissButton = { TextButton(onClick = { logout = false }) { Text("取消") } },
+            dismissButton = {
+                TextButton(onClick = { logout = false }, enabled = !busy) { Text("取消") }
+            },
         )
+}
+
+@Composable
+internal fun ProfileSecurityScreen(email: String, onBack: () -> Unit, onPassword: () -> Unit) {
+    ProfilePage("登录安全", onBack) {
+        ProfileMenuGroup("当前账号") {
+            Column(
+                Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("登录邮箱", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(email, fontSize = 15.sp)
+            }
+        }
+        ProfileMenuGroup("密码管理") {
+            ProfileMenuRow("设置或修改密码", R.drawable.profile_archive, onClick = onPassword)
+        }
+        Text(
+            "通过邮箱验证码验证身份后设置新密码。邮箱为当前登录账号，不可在此修改。",
+            fontSize = 13.sp,
+            lineHeight = 22.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 }
 
 @Composable
@@ -368,11 +674,7 @@ internal fun ProfileAboutScreen(versionName: String, onBack: () -> Unit, onPolic
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Image(
-                painterResource(R.drawable.profile_brand),
-                null,
-                Modifier.size(76.dp).clip(RoundedCornerShape(20.dp)),
-            )
+            Image(painterResource(R.drawable.design_sprout), null, Modifier.size(100.dp))
             Text(stringResource(R.string.app_name), fontSize = 26.sp, fontWeight = FontWeight.Bold)
             Text("FitTrace", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(

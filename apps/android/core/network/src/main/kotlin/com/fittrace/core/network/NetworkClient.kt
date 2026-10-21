@@ -40,6 +40,7 @@ class NetworkClient(
             )
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
+    val recordsApi: RecordsApi = retrofit.create(RecordsApi::class.java)
     val healthApi: HealthApi = retrofit.create(HealthApi::class.java)
     val authApi: AuthApi = retrofit.create(AuthApi::class.java)
     val profileApi: ProfileApi = retrofit.create(ProfileApi::class.java)

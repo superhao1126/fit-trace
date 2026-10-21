@@ -21,6 +21,12 @@ interface ProfileApi {
         @Body input: ProfileUpdateDto,
     ): Response<ApiEnvelope<ProfileDto>>
 
+    @PATCH("users/me/profile")
+    suspend fun updateProfileWithAvatar(
+        @Header("Authorization") authorization: String,
+        @Body input: ProfileWithAvatarUpdateDto,
+    ): Response<ApiEnvelope<ProfileDto>>
+
     @PATCH("users/me/goal")
     suspend fun updateGoal(
         @Header("Authorization") authorization: String,
@@ -51,6 +57,13 @@ data class FitnessGoalDto(
 @Serializable data class ProfileBodyDto(val weight: Double, val recordedAt: String)
 
 @Serializable data class ProfileUpdateDto(val nickname: String, val gender: String)
+
+@Serializable
+data class ProfileWithAvatarUpdateDto(
+    val nickname: String,
+    val gender: String,
+    val avatarUrl: String?,
+)
 
 @Serializable
 data class GoalUpdateDto(
