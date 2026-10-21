@@ -150,7 +150,7 @@ class DashboardScreenTest {
         compose.onNodeWithText("860").assertIsDisplayed()
         compose.onNodeWithText("减脂 · 目标 68 kg").assertIsDisplayed()
         capture("home-populated-390")
-        compose.onNodeWithText("180").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("180 分钟").performScrollTo().assertIsDisplayed()
         capture("home-populated-summary-390")
     }
 
@@ -169,6 +169,43 @@ class DashboardScreenTest {
         }
         compose.onNodeWithText("重试").assertIsDisplayed()
         compose.onNodeWithText("从今天的一次记录开始").assertDoesNotExist()
+        capture("home-failed-390")
+    }
+
+    @Test
+    fun `initial loading has placeholders and keeps quick recording available`() {
+        compose.setContent {
+            FitTraceTheme {
+                DashboardScreen(DashboardUiState(today, null, true), {}, {}, {}, today = today)
+            }
+        }
+        compose.onNodeWithContentDescription("正在加载记录").assertIsDisplayed()
+        compose.onNodeWithText("kcal").assertDoesNotExist()
+        compose.onNodeWithText("记体重").assertIsDisplayed()
+        capture("home-loading-390")
+    }
+
+    @Test
+    fun `historical home hides today goal and offers supplementary recording`() {
+        var action: String? = null
+        val date = today.minusDays(1)
+        compose.setContent {
+            FitTraceTheme {
+                DashboardScreen(
+                    DashboardUiState(date, dashboardFixture(), false),
+                    {},
+                    {},
+                    { action = it },
+                    today = today,
+                )
+            }
+        }
+        compose.onNodeWithText("历史记录").assertIsDisplayed()
+        compose.onNodeWithText("设置一个体重目标").assertDoesNotExist()
+        capture("home-history-390")
+        compose.onNodeWithText("补记 ›").performClick()
+        compose.onAllNodesWithText("记运动").onLast().performClick()
+        assertEquals("记训练", action)
     }
 
     private fun capture(name: String) {

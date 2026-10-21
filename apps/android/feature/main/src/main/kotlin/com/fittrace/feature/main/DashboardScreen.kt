@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,10 +16,12 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -37,7 +40,7 @@ import java.util.Locale
 
 private val Chinese = Locale.SIMPLIFIED_CHINESE
 private val kinds = RecordKind.entries
-private val labels = listOf("记体重", "记饮食", "记训练", "记照片")
+private val labels = listOf("记体重", "记饮食", "记运动", "记照片")
 private val icons =
     listOf(
         R.drawable.home_body,
@@ -60,13 +63,16 @@ internal fun DashboardScreen(
     onRecord: (DiaryRecord) -> Unit = {},
 ) {
     var calendar by rememberSaveable { mutableStateOf(false) }
+    var supplement by remember { mutableStateOf(false) }
     var week by
         rememberSaveable(state.date.toString()) {
             mutableStateOf(
                 state.date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).toString()
             )
         }
+    val scroll = rememberScrollState()
     val data = state.data
+    val dark = MaterialTheme.colorScheme.background.luminance() < .5f
     val horizontalPadding =
         if (
             with(LocalDensity.current) { LocalWindowInfo.current.containerSize.width.toDp() } <
@@ -77,36 +83,37 @@ internal fun DashboardScreen(
     PullToRefreshBox(
         isRefreshing = state.loading && data != null,
         onRefresh = onRefresh,
-        modifier =
-            modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            MaterialTheme.colorScheme.primaryContainer,
-                            MaterialTheme.colorScheme.background,
-                        ),
-                        endY = 1400f,
-                    )
-                ),
+        modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
     ) {
+        Box(
+            Modifier.offset(y = with(LocalDensity.current) { -scroll.value.toDp() })
+                .fillMaxWidth()
+                .height(265.dp)
+                .clip(RoundedCornerShape(bottomStart = 26.dp, bottomEnd = 26.dp))
+                .background(
+                    Brush.linearGradient(
+                        if (dark) listOf(Color(0xFF29482A), Color(0xFF164F36), Color(0xFF1D2D23))
+                        else listOf(Color(0xFFDDF8B4), Color(0xFFADF4CA), Color(0xFFEDF6EB))
+                    )
+                )
+        )
         Column(
             Modifier.fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scroll)
                 .padding(horizontal = horizontalPadding)
                 .padding(top = 24.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        if (state.date == today) "今天"
-                        else state.date.format(DateTimeFormatter.ofPattern("M月d日")),
-                        fontSize = 30.sp,
+                        if (state.date == today) "今日记录" else "历史记录",
+                        fontSize = 27.sp,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        state.date.format(DateTimeFormatter.ofPattern("M月d日 · EEEE", Chinese)),
+                        if (state.date == today) "记录日常，看见改变"
+                        else state.date.format(DateTimeFormatter.ofPattern("M月d日 · EEEE", Chinese)),
                         fontSize = 13.sp,
                         lineHeight = 18.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -114,7 +121,7 @@ internal fun DashboardScreen(
                     )
                 }
                 if (state.date != today)
-                    TextButton(onClick = { onDate(today) }) { Text("今天", fontSize = 12.sp) }
+                    TextButton(onClick = { onDate(today) }) { Text("回到今天", fontSize = 12.sp) }
                 TextButton(onClick = { calendar = true }) { Text("日历") }
             }
             var drag by remember { mutableFloatStateOf(0f) }
@@ -139,13 +146,14 @@ internal fun DashboardScreen(
                     val date = LocalDate.parse(week).plusDays(index.toLong())
                     val selected = date == state.date
                     val color =
-                        if (selected) MaterialTheme.colorScheme.onPrimary
+                        if (selected) MaterialTheme.colorScheme.secondary
                         else MaterialTheme.colorScheme.onSurface
                     Column(
                         Modifier.weight(1f)
-                            .height(64.dp)
+                            .padding(horizontal = 3.dp)
+                            .height(54.dp)
                             .background(
-                                if (selected) MaterialTheme.colorScheme.primary
+                                if (selected) MaterialTheme.colorScheme.surface
                                 else Color.Transparent,
                                 RoundedCornerShape(16.dp),
                             )
@@ -154,7 +162,13 @@ internal fun DashboardScreen(
                                 this.selected = selected
                                 if (date > today) disabled()
                             }
-                            .clickable(enabled = date <= today) { onDate(date) },
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                enabled = date <= today,
+                            ) {
+                                onDate(date)
+                            },
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
@@ -166,8 +180,8 @@ internal fun DashboardScreen(
                         )
                         Text(
                             date.dayOfMonth.toString(),
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                             color = color.copy(alpha = if (date > today) .3f else 1f),
                             modifier = Modifier.padding(top = 5.dp),
                         )
@@ -176,18 +190,52 @@ internal fun DashboardScreen(
                     }
                 }
             }
-            if (state.loading)
-                LinearProgressIndicator(
-                    Modifier.fillMaxWidth().semantics { contentDescription = "正在加载记录" }
-                )
+            if (state.loading && data == null) HomeLoadingCard()
             state.error?.let { error ->
-                HomeCard {
-                    Text(
-                        if (data != null) "$error，以下保留上次结果" else error,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                    TextButton(onClick = onRefresh) { Text("重试") }
-                }
+                if (data != null) {
+                    Surface(
+                        shape = RoundedCornerShape(18.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(start = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("刷新失败 · 当前为上次加载内容", Modifier.weight(1f), fontSize = 11.sp)
+                            TextButton(onClick = onRefresh) { Text("重试", fontSize = 12.sp) }
+                        }
+                    }
+                } else
+                    HomeCard {
+                        Column(
+                            Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Image(
+                                painterResource(R.drawable.design_sprout),
+                                null,
+                                Modifier.size(80.dp),
+                            )
+                            Text(
+                                "首页暂时加载失败",
+                                Modifier.padding(top = 24.dp),
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(
+                                error,
+                                Modifier.padding(top = 12.dp),
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            OutlinedButton(
+                                onClick = onRefresh,
+                                modifier = Modifier.padding(top = 20.dp).fillMaxWidth(.8f),
+                            ) {
+                                Text("重试")
+                            }
+                        }
+                    }
             }
             if (data != null) {
                 FitCard {
@@ -196,57 +244,65 @@ internal fun DashboardScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Text(
-                            "当天已记录热量",
+                            if (state.date == today) "今日已记录热量" else "当天已记录热量",
                             fontSize = 12.sp,
                             lineHeight = 16.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                data.calories.display(),
-                                modifier = Modifier.alignByBaseline(),
-                                fontSize = 36.sp,
-                                lineHeight = 44.sp,
-                                fontWeight = FontWeight.Bold,
-                            )
-                            if (data.calories != null)
-                                Text(
-                                    "kcal",
-                                    modifier = Modifier.alignByBaseline(),
-                                    fontSize = 12.sp,
-                                    lineHeight = 16.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                        }
+                        Text(
+                            data.calories.display(),
+                            fontSize = 34.sp,
+                            lineHeight = 42.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            "kcal",
+                            fontSize = 11.sp,
+                            lineHeight = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                         // 没有热量目标接口：这里是品牌装饰，不绘制虚构的完成进度。
                         Box(
-                            Modifier.padding(top = 4.dp).width(168.dp).height(88.dp),
+                            Modifier.padding(top = 4.dp).width(180.dp).height(62.dp),
                             contentAlignment = Alignment.BottomCenter,
                         ) {
-                            val arcColor = MaterialTheme.colorScheme.primary.copy(alpha = .18f)
+                            val arcColor = MaterialTheme.colorScheme.primary.copy(alpha = .12f)
+                            val brandColor = MaterialTheme.colorScheme.primary
                             Canvas(Modifier.fillMaxSize()) {
                                 val diameter = size.width - 24.dp.toPx()
                                 drawArc(
                                     color = arcColor,
                                     startAngle = 180f,
-                                    sweepAngle = 180f,
+                                    sweepAngle = 68f,
                                     useCenter = false,
                                     topLeft =
                                         androidx.compose.ui.geometry.Offset(
                                             12.dp.toPx(),
                                             8.dp.toPx(),
                                         ),
-                                    size = androidx.compose.ui.geometry.Size(diameter, diameter),
+                                    size =
+                                        androidx.compose.ui.geometry.Size(diameter, 96.dp.toPx()),
+                                    style = Stroke(6.dp.toPx(), cap = StrokeCap.Round),
+                                )
+                                drawArc(
+                                    color = brandColor,
+                                    startAngle = 292f,
+                                    sweepAngle = 68f,
+                                    useCenter = false,
+                                    topLeft =
+                                        androidx.compose.ui.geometry.Offset(
+                                            12.dp.toPx(),
+                                            8.dp.toPx(),
+                                        ),
+                                    size =
+                                        androidx.compose.ui.geometry.Size(diameter, 96.dp.toPx()),
                                     style = Stroke(6.dp.toPx(), cap = StrokeCap.Round),
                                 )
                             }
                             Image(
                                 painterResource(R.drawable.design_sprout),
                                 null,
-                                Modifier.padding(bottom = 2.dp).size(64.dp),
+                                Modifier.padding(bottom = 4.dp).size(44.dp),
                             )
                         }
                     }
@@ -257,65 +313,98 @@ internal fun DashboardScreen(
                         Metric("体重", data.weight.display(), "kg", Modifier.weight(1f), true)
                         Metric(
                             "运动",
-                            if (data.workoutCount == 0) "—" else data.workoutMinutes.toString(),
-                            "分钟",
+                            if (data.workoutCount == 0) "未记录" else data.workoutMinutes.toString(),
+                            if (data.workoutCount == 0) "" else "分钟",
                             Modifier.weight(1f),
                             true,
                         )
                         Metric(
                             "饮食",
-                            if (data.mealCount == 0) "—" else data.mealCount.toString(),
-                            "餐",
+                            if (data.mealCount == 0) "未记录" else data.mealCount.toString(),
+                            if (data.mealCount == 0) "" else "餐",
                             Modifier.weight(1f),
                             true,
                         )
                     }
                 }
-                if (state.date == today)
-                    HomeCard {
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color =
+                        if (state.date == today) MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.surface,
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .clickable { onAction(if (state.date == today) "体重目标" else "全部记录") }
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         val goal = data.goal
-                        Row(
-                            Modifier.fillMaxWidth().clickable { onAction("体重目标") },
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    if (goal == null) "设置体重目标"
-                                    else
-                                        "${when(goal.type) { "LOSE_FAT" -> "减脂"
+                        if (state.date == today) {
+                            Text("⚑", Modifier.padding(end = 12.dp), fontSize = 22.sp)
+                            Text(
+                                if (goal == null) "设置一个体重目标"
+                                else
+                                    "${when(goal.type) { "LOSE_FAT" -> "减脂"
  "GAIN_MUSCLE" -> "增肌"
  else -> "保持" }} · 目标 ${goal.targetWeight.display()} kg",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
-                                )
-                                Text(
-                                    if (goal == null) "给记录一个方向"
-                                    else
-                                        data.weight?.let {
-                                            "相差 ${kotlin.math.abs(it - goal.targetWeight).display()} kg"
-                                        } ?: "记录体重后查看变化",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 12.sp,
-                                )
+                                Modifier.weight(1f),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(
+                                if (goal == null) "去设置 ›" else "调整 ›",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.secondary,
+                            )
+                        } else {
+                            Text(
+                                "正在查看 ${state.date.monthValue}月${state.date.dayOfMonth}日的记录",
+                                Modifier.weight(1f),
+                                fontSize = 12.sp,
+                            )
+                            Box {
+                                TextButton(
+                                    onClick = { supplement = true },
+                                    contentPadding = PaddingValues(0.dp),
+                                ) {
+                                    Text("补记 ›", fontSize = 12.sp)
+                                }
+                                DropdownMenu(
+                                    expanded = supplement,
+                                    onDismissRequest = { supplement = false },
+                                ) {
+                                    labels.forEachIndexed { index, label ->
+                                        DropdownMenuItem(
+                                            text = { Text(label) },
+                                            onClick = {
+                                                supplement = false
+                                                onAction(if (index == 2) "记训练" else label)
+                                            },
+                                        )
+                                    }
+                                }
                             }
-                            Text("›", color = MaterialTheme.colorScheme.secondary)
                         }
                     }
-                else
-                    HomeCard {
-                        Text(
-                            "正在查看 ${state.date.monthValue}月${state.date.dayOfMonth}日记录",
-                            style = MaterialTheme.typography.bodySmall,
+                }
+            }
+            if (state.loading && data == null) {
+                Box(
+                    Modifier.fillMaxWidth()
+                        .height(48.dp)
+                        .background(
+                            MaterialTheme.colorScheme.primaryContainer,
+                            RoundedCornerShape(16.dp),
                         )
-                        TextButton(onClick = { onAction("全部记录") }) { Text("查看全部档案 ›") }
-                    }
+                )
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 kinds.forEachIndexed { index, _ ->
                     Surface(
                         Modifier.weight(1f).heightIn(min = 80.dp).clickable {
-                            onAction(labels[index])
+                            onAction(if (index == 2) "记训练" else labels[index])
                         },
                         shape = RoundedCornerShape(20.dp),
                         color = MaterialTheme.colorScheme.surface,
@@ -336,7 +425,7 @@ internal fun DashboardScreen(
                                         )[index]
                                     ),
                                     null,
-                                    Modifier.size(36.dp),
+                                    Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)),
                                 )
                             }
                             Text(labels[index], fontSize = 12.sp, lineHeight = 16.sp)
@@ -344,34 +433,64 @@ internal fun DashboardScreen(
                     }
                 }
             }
+            if (state.loading && data == null) {
+                Box(
+                    Modifier.fillMaxWidth()
+                        .height(108.dp)
+                        .background(
+                            MaterialTheme.colorScheme.primaryContainer,
+                            RoundedCornerShape(18.dp),
+                        )
+                )
+                Text(
+                    "正在读取当天记录…",
+                    Modifier.align(Alignment.CenterHorizontally),
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else if (data == null && state.error != null) {
+                Text(
+                    "也可以直接记录，或从底栏查看其他页面",
+                    Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             if (data != null) {
+                Row(
+                    Modifier.fillMaxWidth().height(24.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        if (state.date == today) "今日记录" else "当天记录",
+                        Modifier.weight(1f),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    TextButton(
+                        onClick = { onAction("全部记录") },
+                        contentPadding = PaddingValues(0.dp),
+                    ) {
+                        Text("全部 ›", fontSize = 12.sp)
+                    }
+                }
                 if (data.records.isEmpty())
                     HomeCard {
                         Text(
                             if (state.date == today) "从今天的一次记录开始" else "这一天还没有记录",
-                            fontSize = 19.sp,
-                            lineHeight = 26.sp,
+                            fontSize = 15.sp,
+                            lineHeight = 22.sp,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
-                            "体重、饮食、训练或照片\n选一项记下来，慢慢看见变化",
-                            fontSize = 14.sp,
-                            lineHeight = 25.sp,
+                            "体重、饮食、运动或照片，选一项记下来",
+                            fontSize = 11.sp,
+                            lineHeight = 18.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 16.dp, bottom = 20.dp),
+                            modifier = Modifier.padding(top = 8.dp, bottom = 24.dp),
                         )
                     }
                 else {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            "当天记录",
-                            Modifier.weight(1f),
-                            fontSize = 19.sp,
-                            lineHeight = 26.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        TextButton(onClick = { onAction("全部记录") }) { Text("全部 ›") }
-                    }
                     data.records.forEach { record ->
                         val index = record.kind.ordinal
                         HomeCard {
@@ -403,7 +522,11 @@ internal fun DashboardScreen(
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                         )
-                                        Text(record.value, fontSize = 13.sp)
+                                        Text(
+                                            record.value,
+                                            fontSize = 13.sp,
+                                            color = MaterialTheme.colorScheme.secondary,
+                                        )
                                     }
                                     Text(
                                         "${record.recordedAt.timeLabel()} · ${record.subtitle}",
@@ -419,6 +542,11 @@ internal fun DashboardScreen(
                         }
                     }
                 }
+                Text(
+                    "热量仅汇总已填写食物，不代表完整全天摄入。",
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 val trend = data.trend
                 if (
                     trend.bodyRecordedDays > 0 ||
@@ -525,26 +653,24 @@ private fun Metric(
     modifier: Modifier,
     small: Boolean = false,
 ) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(
+        modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
         Text(
             label,
-            fontSize = 12.sp,
-            lineHeight = 16.sp,
+            fontSize = 10.sp,
+            lineHeight = 14.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            value,
-            fontSize = if (small) 19.sp else 30.sp,
-            lineHeight = if (small) 26.sp else 38.sp,
+            if (unit.isEmpty()) value else "$value $unit",
+            fontSize = if (small) 15.sp else 30.sp,
+            lineHeight = if (small) 22.sp else 38.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            unit,
-            fontSize = 11.sp,
-            lineHeight = 15.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -565,7 +691,12 @@ internal fun HomeNavigation(tab: Int, onTab: (Int) -> Unit) {
                     Modifier.weight(1f)
                         .fillMaxHeight()
                         .semantics { selected = tab == index }
-                        .clickable { onTab(index) },
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) {
+                            onTab(index)
+                        },
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
@@ -604,3 +735,24 @@ private fun String.timeLabel(): String =
                 .format(DateTimeFormatter.ofPattern("HH:mm"))
         }
         .getOrDefault("")
+
+@Composable
+private fun HomeLoadingCard() {
+    val color = MaterialTheme.colorScheme.primaryContainer
+    HomeCard {
+        Column(
+            Modifier.fillMaxWidth().height(194.dp).semantics { contentDescription = "正在加载记录" },
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            Box(Modifier.size(110.dp, 14.dp).background(color, RoundedCornerShape(6.dp)))
+            Box(Modifier.size(120.dp, 32.dp).background(color, RoundedCornerShape(12.dp)))
+            Box(Modifier.size(180.dp, 60.dp).background(color, RoundedCornerShape(14.dp)))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+                repeat(3) {
+                    Box(Modifier.size(65.dp, 18.dp).background(color, RoundedCornerShape(6.dp)))
+                }
+            }
+        }
+    }
+}
