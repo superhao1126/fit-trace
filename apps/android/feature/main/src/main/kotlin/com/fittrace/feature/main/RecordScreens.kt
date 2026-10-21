@@ -317,9 +317,11 @@ internal fun RecordEditorScreen(
                 foodIndex = null
                 addFood = true
             },
+            selectedFoods = d.foods,
+            mealLabel =
+                "${OffsetDateTime.parse(d.time).atZoneSameInstant(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("M月d日"))} · ${mealLabels[d.type] ?: "饮食"}",
         ) { food ->
             model.edit { it.copy(foods = it.foods + food) }
-            foodLibrary = false
         }
     if (addFood)
         FoodDialog(foodIndex?.let { d.foods.getOrNull(it) }, { addFood = false }) { food ->
