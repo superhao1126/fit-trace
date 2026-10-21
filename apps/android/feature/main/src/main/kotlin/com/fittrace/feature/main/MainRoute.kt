@@ -17,6 +17,7 @@ import com.fittrace.core.domain.ProfileRepository
 import com.fittrace.core.domain.RecordsRepository
 import com.fittrace.core.model.RecordKind
 import java.time.LocalDate
+import java.time.YearMonth
 
 @Composable
 fun MainRoute(
@@ -59,6 +60,10 @@ fun MainRoute(
         val trendsState by trends.state.collectAsStateWithLifecycle()
         var recordKind by rememberSaveable { mutableStateOf<String?>(null) }
         var archiveDate by rememberSaveable { mutableStateOf<String?>(null) }
+        var archiveMonth by rememberSaveable { mutableStateOf(YearMonth.now().toString()) }
+        val selectedArchiveMonth =
+            archiveDate?.let { YearMonth.from(LocalDate.parse(it)) }
+                ?: YearMonth.parse(archiveMonth)
         var editorKind by rememberSaveable { mutableStateOf("BODY") }
         var editorId by rememberSaveable { mutableStateOf<String?>(null) }
         var editorDate by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
@@ -101,11 +106,12 @@ fun MainRoute(
             editorKey++
             pages = pages + "record-editor"
         }
-        LaunchedEffect(tab, page, recordKind, archiveDate) {
+        LaunchedEffect(tab, page, recordKind, archiveDate, archiveMonth) {
             if (tab == 2 || page == "records")
                 records.select(
                     recordKind?.let(RecordKind::valueOf),
                     archiveDate?.let(LocalDate::parse),
+                    month = selectedArchiveMonth,
                 )
         }
         BackHandler(enabled = tab != 0 || page != null) { back() }
@@ -202,12 +208,21 @@ fun MainRoute(
                             recordKind?.let(RecordKind::valueOf),
                             archiveDate?.let(LocalDate::parse),
                             { recordKind = it?.name },
-                            { archiveDate = it?.toString() },
+                            {
+                                archiveMonth =
+                                    (it?.let(YearMonth::from) ?: selectedArchiveMonth).toString()
+                                archiveDate = it?.toString()
+                            },
                             records::refresh,
                             records::load,
                             { openRecord(it.kind, it.id) },
                             create,
                             back,
+                            month = selectedArchiveMonth,
+                            onMonth = {
+                                archiveMonth = it.toString()
+                                archiveDate = null
+                            },
                         )
                     "security" ->
                         ProfileSecurityScreen(userEmail, back) { pages = pages + "password" }
@@ -293,11 +308,21 @@ fun MainRoute(
                                 recordKind?.let(RecordKind::valueOf),
                                 archiveDate?.let(LocalDate::parse),
                                 { recordKind = it?.name },
-                                { archiveDate = it?.toString() },
+                                {
+                                    archiveMonth =
+                                        (it?.let(YearMonth::from) ?: selectedArchiveMonth)
+                                            .toString()
+                                    archiveDate = it?.toString()
+                                },
                                 records::refresh,
                                 records::load,
                                 { openRecord(it.kind, it.id) },
                                 create,
+                                month = selectedArchiveMonth,
+                                onMonth = {
+                                    archiveMonth = it.toString()
+                                    archiveDate = null
+                                },
                             )
                         else
                             ProfileScreen(

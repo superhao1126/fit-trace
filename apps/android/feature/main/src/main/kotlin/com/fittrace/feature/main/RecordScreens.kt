@@ -4,7 +4,6 @@ import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -28,106 +27,6 @@ import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-@Composable
-internal fun RecordsScreen(
-    state: RecordsState,
-    kind: RecordKind?,
-    date: LocalDate?,
-    onKind: (RecordKind?) -> Unit,
-    onDate: (LocalDate?) -> Unit,
-    onRefresh: () -> Unit,
-    onMore: () -> Unit,
-    onOpen: (RecordItem) -> Unit,
-    onCreate: (RecordKind) -> Unit,
-    onBack: (() -> Unit)? = null,
-) {
-    var calendar by remember { mutableStateOf(false) }
-    FitPage(
-        if (kind == null) "记录档案" else kind.label(),
-        onBack,
-        action = { TextButton(onClick = onRefresh, enabled = !state.loading) { Text("刷新") } },
-    ) {
-        Row(
-            Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            FilterChip(kind == null, { onKind(null) }, { Text("全部") })
-            RecordKind.entries.forEach { category ->
-                FilterChip(kind == category, { onKind(category) }, { Text(category.label()) })
-            }
-        }
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = { calendar = true }) { Text(date?.toString() ?: "全部日期") }
-            if (date != null) TextButton(onClick = { onDate(null) }) { Text("清除日期") }
-            Spacer(Modifier.weight(1f))
-            if (kind != null) TextButton(onClick = { onCreate(kind) }) { Text("＋ 记录") }
-        }
-        if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-        state.error?.let { FitMessage(it, if (state.items.isEmpty()) onRefresh else onMore, true) }
-        if (!state.loading && state.error == null && state.items.isEmpty())
-            FitMessage("还没有${kind?.label().orEmpty()}记录，从一次记录开始。")
-        if (state.items.isEmpty() && !state.loading && state.error == null) {
-            Row(
-                Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                (kind?.let { listOf(it) } ?: RecordKind.entries).forEach { category ->
-                    OutlinedButton(onClick = { onCreate(category) }) {
-                        Text("记${category.label()}")
-                    }
-                }
-            }
-        }
-        var day = ""
-        state.items.forEach { item ->
-            val itemDay = item.time.localTime().substringBefore(' ')
-            if (day != itemDay) {
-                Text(itemDay, style = MaterialTheme.typography.titleSmall)
-                day = itemDay
-            }
-            FitCard(Modifier.clickable { onOpen(item) }) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    item.image?.let { AsyncImage(it, item.title, Modifier.size(64.dp)) }
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(item.title, fontWeight = FontWeight.Bold)
-                        Text(
-                            item.summary.ifBlank { item.kind.label() },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            item.time.localTime().substringAfter(' '),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Text(
-                        item.value,
-                        color = MaterialTheme.colorScheme.secondary,
-                        style = MaterialTheme.typography.labelLarge,
-                    )
-                }
-            }
-        }
-        if (state.items.size < state.total)
-            OutlinedButton(
-                onClick = onMore,
-                enabled = !state.loading,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("加载更多（${state.items.size}/${state.total}）")
-            }
-    }
-    if (calendar)
-        RecordDateDialog(date ?: LocalDate.now(), { calendar = false }) {
-            onDate(it)
-            calendar = false
-        }
-}
 
 @Composable
 internal fun RecordEditorScreen(

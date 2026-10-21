@@ -26,6 +26,7 @@ data class RecordsState(
     val error: String? = null,
     val page: Int = 0,
     val total: Int = 0,
+    val loadMoreError: Boolean = false,
 )
 
 class RecordsViewModel(private val repository: RecordsRepository) : ViewModel() {
@@ -34,36 +35,59 @@ class RecordsViewModel(private val repository: RecordsRepository) : ViewModel() 
     private var request: Job? = null
     private var kind: RecordKind? = null
     private var date: LocalDate? = null
+    private var month: YearMonth? = null
     private val pages = mutableMapOf<RecordKind, Int>()
     private val totals = mutableMapOf<RecordKind, Int>()
 
-    fun select(kind: RecordKind?, date: LocalDate?, force: Boolean = false) {
-        if (!force && this.kind == kind && this.date == date && mutable.value.page > 0) return
-        val sameContext = this.kind == kind && this.date == date
+    fun select(
+        kind: RecordKind?,
+        date: LocalDate?,
+        force: Boolean = false,
+        month: YearMonth? = null,
+    ) {
+        if (
+            !force &&
+                this.kind == kind &&
+                this.date == date &&
+                this.month == month &&
+                mutable.value.page > 0
+        )
+            return
+        val sameContext = this.kind == kind && this.date == date && this.month == month
         this.kind = kind
         this.date = date
+        this.month = month
         request?.cancel()
         pages.clear()
         totals.clear()
         mutable.value =
-            if (sameContext) mutable.value.copy(loading = true, error = null) else RecordsState()
+            if (sameContext) mutable.value.copy(loading = true, error = null, loadMoreError = false)
+            else RecordsState()
         load()
     }
 
-    fun refresh() = select(kind, date, true)
+    fun refresh() = select(kind, date, true, month)
 
     fun load() {
         if (mutable.value.loading && request?.isActive == true) return
-        mutable.value = mutable.value.copy(loading = true, error = null)
+        mutable.value = mutable.value.copy(loading = true, error = null, loadMoreError = false)
         val replacing = pages.isEmpty()
         val selectedKind = kind
         val selectedDate = date
+        val selectedMonth = month
         request =
             viewModelScope.launch {
                 val zone = ZoneId.systemDefault()
-                val from = selectedDate?.atStartOfDay(zone)?.toOffsetDateTime()?.toString()
+                val from =
+                    (selectedDate ?: selectedMonth?.atDay(1))
+                        ?.atStartOfDay(zone)
+                        ?.toOffsetDateTime()
+                        ?.toString()
                 val to =
-                    selectedDate?.plusDays(1)?.atStartOfDay(zone)?.toOffsetDateTime()?.toString()
+                    (selectedDate?.plusDays(1) ?: selectedMonth?.plusMonths(1)?.atDay(1))
+                        ?.atStartOfDay(zone)
+                        ?.toOffsetDateTime()
+                        ?.toString()
                 val pending = mutableListOf<RecordItem>()
                 val nextPages = pages.toMutableMap()
                 val nextTotals = totals.toMutableMap()
@@ -92,7 +116,11 @@ class RecordsViewModel(private val repository: RecordsRepository) : ViewModel() 
                 // 一页中的所有类型成功后再提交，重试不会丢页或重复追加。
                 if (failure != null)
                     mutable.value =
-                        mutable.value.copy(loading = false, error = failure!!.recordMessage())
+                        mutable.value.copy(
+                            loading = false,
+                            error = failure!!.recordMessage(),
+                            loadMoreError = !replacing,
+                        )
                 else {
                     pages.putAll(nextPages)
                     totals.putAll(nextTotals)
