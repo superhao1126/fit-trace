@@ -11,10 +11,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
@@ -37,15 +35,16 @@ internal fun RecordEditorScreen(
         BodyRecordScreen(state, model, onBack)
         return
     }
+    if (state.draft.kind == RecordKind.MEAL) {
+        MealRecordScreen(state, model, onBack)
+        return
+    }
     val d = state.draft
     var editing by rememberSaveable { mutableStateOf(d.id == null) }
     var leave by remember { mutableStateOf(false) }
     var delete by remember { mutableStateOf(false) }
     var calendar by remember { mutableStateOf(false) }
     var clock by remember { mutableStateOf(false) }
-    var foodLibrary by remember { mutableStateOf(false) }
-    var addFood by remember { mutableStateOf(false) }
-    var foodIndex by remember { mutableStateOf<Int?>(null) }
     var selectedUri by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -106,68 +105,7 @@ internal fun RecordEditorScreen(
             }
             when (d.kind) {
                 RecordKind.BODY -> Unit
-                RecordKind.MEAL -> {
-                    ChoiceRow(mealLabels, d.type, editing && !state.saving) { value ->
-                        model.edit { it.copy(type = value) }
-                    }
-                    Text("已选食物 · ${d.foods.size} 项", fontWeight = FontWeight.Bold)
-                    d.foods.forEachIndexed { index, food ->
-                        FitCard {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f)) {
-                                    Text(food.name, fontWeight = FontWeight.Bold)
-                                    Text(
-                                        "${food.amount.orEmpty()} · ${food.calories?.let { "$it kcal" } ?: "热量待补充"}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                    )
-                                }
-                                if (editing) {
-                                    TextButton(
-                                        onClick = {
-                                            foodIndex = index
-                                            addFood = true
-                                        },
-                                        enabled = !state.saving,
-                                    ) {
-                                        Text("修改")
-                                    }
-                                    TextButton(
-                                        onClick = {
-                                            model.edit {
-                                                it.copy(
-                                                    foods =
-                                                        it.foods.filterIndexed { i, _ ->
-                                                            i != index
-                                                        }
-                                                )
-                                            }
-                                        },
-                                        enabled = !state.saving,
-                                    ) {
-                                        Text("移除")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if (editing)
-                        OutlinedButton(
-                            onClick = {
-                                foodIndex = null
-                                foodLibrary = true
-                            },
-                            enabled = !state.saving && d.foods.size < 50,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text("＋ 添加食物")
-                        }
-                    Text(
-                        if (d.foods.isNotEmpty() && d.foods.all { it.calories != null })
-                            "已记录 ${d.foods.sumOf { it.calories ?: 0 }} kcal"
-                        else "未知热量保留为空，核对后保存",
-                        color = MaterialTheme.colorScheme.secondary,
-                    )
-                }
+                RecordKind.MEAL -> Unit
                 RecordKind.WORKOUT -> {
                     ChoiceRow(workoutLabels, d.type, editing && !state.saving) { value ->
                         model.edit { it.copy(type = value, name = workoutLabels[value].orEmpty()) }
@@ -309,38 +247,10 @@ internal fun RecordEditorScreen(
             }
             clock = false
         }
-    if (foodLibrary)
-        FoodLibrarySheet(
-            { foodLibrary = false },
-            {
-                foodLibrary = false
-                foodIndex = null
-                addFood = true
-            },
-            selectedFoods = d.foods,
-            mealLabel =
-                "${OffsetDateTime.parse(d.time).atZoneSameInstant(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("M月d日"))} · ${mealLabels[d.type] ?: "饮食"}",
-        ) { food ->
-            model.edit { it.copy(foods = it.foods + food) }
-        }
-    if (addFood)
-        FoodDialog(foodIndex?.let { d.foods.getOrNull(it) }, { addFood = false }) { food ->
-            model.edit {
-                it.copy(
-                    foods =
-                        if (foodIndex == null) it.foods + food
-                        else
-                            it.foods.mapIndexed { index, entry ->
-                                if (index == foodIndex) food else entry
-                            }
-                )
-            }
-            addFood = false
-        }
 }
 
 @Composable
-private fun FoodDialog(existing: FoodEntry?, onDismiss: () -> Unit, onSave: (FoodEntry) -> Unit) {
+internal fun FoodDialog(existing: FoodEntry?, onDismiss: () -> Unit, onSave: (FoodEntry) -> Unit) {
     var name by remember { mutableStateOf(existing?.name.orEmpty()) }
     var amount by remember { mutableStateOf(existing?.amount.orEmpty()) }
     var calories by remember { mutableStateOf(existing?.calories?.toString().orEmpty()) }

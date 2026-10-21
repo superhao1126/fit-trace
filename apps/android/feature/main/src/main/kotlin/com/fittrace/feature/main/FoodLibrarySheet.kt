@@ -33,13 +33,15 @@ internal fun FoodLibrarySheet(
     onCustom: () -> Unit,
     selectedFoods: List<FoodEntry> = emptyList(),
     mealLabel: String = "选择食物",
+    portionFoodName: String? = null,
+    portionGrams: String = "100",
     onAdd: (FoodEntry) -> Unit,
 ) {
     val foods = catalogFoodsRemembered()
     var search by rememberSaveable { mutableStateOf("") }
     var category by rememberSaveable { mutableStateOf("全部") }
-    var selectedName by rememberSaveable { mutableStateOf<String?>(null) }
-    var grams by rememberSaveable { mutableStateOf("100") }
+    var selectedName by rememberSaveable { mutableStateOf(portionFoodName) }
+    var grams by rememberSaveable { mutableStateOf(portionGrams) }
     var error by remember { mutableStateOf<String?>(null) }
     val selected = foods.firstOrNull { it.name == selectedName }
     val matches =
@@ -260,7 +262,9 @@ internal fun FoodLibrarySheet(
                         fontWeight = FontWeight.Bold,
                     )
                     TextButton(
-                        onClick = { selectedName = null },
+                        onClick = {
+                            if (portionFoodName != null) onDismiss() else selectedName = null
+                        },
                         modifier =
                             Modifier.width(40.dp).semantics { contentDescription = "关闭份量编辑" },
                         contentPadding = PaddingValues(0.dp),
@@ -385,7 +389,11 @@ internal fun FoodLibrarySheet(
                 ) {
                     Text("加入清单", color = MaterialTheme.colorScheme.onPrimary)
                 }
-                TextButton(onClick = { selectedName = null }) { Text("继续选择") }
+                TextButton(
+                    onClick = { if (portionFoodName != null) onDismiss() else selectedName = null }
+                ) {
+                    Text("继续选择")
+                }
             }
     }
 }

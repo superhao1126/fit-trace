@@ -64,12 +64,12 @@ class RecordScreensTest {
             val state by model.state.collectAsState()
             FitTraceTheme { RecordEditorScreen(state, model, {}) }
         }
-        compose.onNodeWithText("＋ 添加食物").performScrollTo().performClick()
         compose.onNodeWithText("米饭（熟）").performClick()
         compose.onNodeWithText("加入清单").performClick()
-        compose.onNodeWithText("核对这餐").performClick()
+        compose.onNode(hasText("核对这餐") and hasClickAction()).performClick()
         compose.onNodeWithText("米饭（熟）").assertIsDisplayed()
-        compose.onNodeWithText("100 g · 130 kcal").assertIsDisplayed()
+        compose.onNodeWithText("100 g").assertIsDisplayed()
+        compose.onNodeWithText("130 kcal").assertIsDisplayed()
         Assert.assertFalse(model.state.value.saved)
         capture("meal-selected-320")
     }
