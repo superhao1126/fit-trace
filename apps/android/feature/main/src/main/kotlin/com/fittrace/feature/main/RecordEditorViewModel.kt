@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.fittrace.core.domain.RecordsRepository
 import com.fittrace.core.model.*
 import java.time.*
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -35,6 +36,7 @@ data class EditorState(
     val saved: Boolean = false,
     val dirty: Boolean = false,
     val loadingFailed: Boolean = false,
+    val previousBody: BodyEntry? = null,
 )
 
 class RecordEditorViewModel(
@@ -66,14 +68,41 @@ class RecordEditorViewModel(
         )
     val state = mutable.asStateFlow()
 
+    private var referenceRequest: Job? = null
+
     init {
+        if (kind == RecordKind.BODY && recordId == null) loadBodyReference()
         if (recordId != null) load()
     }
 
     fun edit(change: (RecordDraft) -> RecordDraft) {
-        if (!mutable.value.saving && !mutable.value.loading)
-            mutable.value =
-                mutable.value.copy(draft = change(mutable.value.draft), dirty = true, error = null)
+        if (!mutable.value.saving && !mutable.value.loading) {
+            val old = mutable.value.draft
+            val next = change(old)
+            mutable.value = mutable.value.copy(draft = next, dirty = true, error = null)
+            if (next.kind == RecordKind.BODY && old.time != next.time) loadBodyReference()
+        }
+    }
+
+    private fun loadBodyReference() {
+        referenceRequest?.cancel()
+        val draft = mutable.value.draft
+        mutable.value = mutable.value.copy(previousBody = null)
+        referenceRequest =
+            viewModelScope.launch {
+                val result = repository.bodies(1, null, draft.time)
+                if (result is AppResult.Success) {
+                    val previous =
+                        result.data.entries
+                            .filter {
+                                it.id != draft.id &&
+                                    OffsetDateTime.parse(it.recordedAt).toInstant() <
+                                        OffsetDateTime.parse(draft.time).toInstant()
+                            }
+                            .maxByOrNull { OffsetDateTime.parse(it.recordedAt).toInstant() }
+                    mutable.value = mutable.value.copy(previousBody = previous)
+                }
+            }
     }
 
     fun load() {

@@ -17,7 +17,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import com.fittrace.core.designsystem.*
@@ -34,11 +33,14 @@ internal fun RecordEditorScreen(
     model: RecordEditorViewModel,
     onBack: () -> Unit,
 ) {
+    if (state.draft.kind == RecordKind.BODY) {
+        BodyRecordScreen(state, model, onBack)
+        return
+    }
     val d = state.draft
     var editing by rememberSaveable { mutableStateOf(d.id == null) }
     var leave by remember { mutableStateOf(false) }
     var delete by remember { mutableStateOf(false) }
-    var more by rememberSaveable { mutableStateOf(false) }
     var calendar by remember { mutableStateOf(false) }
     var clock by remember { mutableStateOf(false) }
     var foodLibrary by remember { mutableStateOf(false) }
@@ -103,51 +105,7 @@ internal fun RecordEditorScreen(
                 }
             }
             when (d.kind) {
-                RecordKind.BODY -> {
-                    Text("当前体重", fontWeight = FontWeight.Bold)
-                    FitCard {
-                        OutlinedTextField(
-                            d.weight,
-                            { value -> model.edit { it.copy(weight = value) } },
-                            Modifier.fillMaxWidth(),
-                            label = { Text("体重 · kg") },
-                            textStyle =
-                                LocalTextStyle.current.copy(
-                                    fontSize = 36.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.secondary,
-                                ),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            singleLine = true,
-                            readOnly = !editing,
-                            enabled = !state.saving,
-                        )
-                        Text(
-                            "体重必填，其余指标选填",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    FitCard {
-                        NumberInput("体脂率 · %（选填）", d.bodyFat, editing && !state.saving) { value ->
-                            model.edit { it.copy(bodyFat = value) }
-                        }
-                        TextButton(onClick = { more = !more }) {
-                            Text(if (more) "收起围度" else "围度与备注 · 展开")
-                        }
-                        if (more || !editing) {
-                            NumberInput("腰围 · cm", d.waist, editing && !state.saving) { value ->
-                                model.edit { it.copy(waist = value) }
-                            }
-                            NumberInput("胸围 · cm", d.chest, editing && !state.saving) { value ->
-                                model.edit { it.copy(chest = value) }
-                            }
-                            NumberInput("臀围 · cm", d.hip, editing && !state.saving) { value ->
-                                model.edit { it.copy(hip = value) }
-                            }
-                        }
-                    }
-                }
+                RecordKind.BODY -> Unit
                 RecordKind.MEAL -> {
                     ChoiceRow(mealLabels, d.type, editing && !state.saving) { value ->
                         model.edit { it.copy(type = value) }
@@ -494,7 +452,7 @@ internal fun RecordDateDialog(date: LocalDate, onDismiss: () -> Unit, onSave: (L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RecordTimeDialog(time: LocalTime, onDismiss: () -> Unit, onSave: (LocalTime) -> Unit) {
+internal fun RecordTimeDialog(time: LocalTime, onDismiss: () -> Unit, onSave: (LocalTime) -> Unit) {
     val state = rememberTimePickerState(time.hour, time.minute, true)
     AlertDialog(
         onDismissRequest = onDismiss,

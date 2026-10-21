@@ -35,8 +35,12 @@ class RecordScreensTest {
             val state by model.state.collectAsState()
             FitTraceTheme(true) { RecordEditorScreen(state, model, {}) }
         }
-        compose.onNodeWithText("体重 · kg").performTextInput("70.2")
-        compose.onNodeWithText("保存记录").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("输入体重").performClick()
+        listOf("7", "0", ".", "2").forEach {
+            compose.onNodeWithText(it, useUnmergedTree = true).performClick()
+        }
+        compose.onNodeWithText("完成输入").performClick()
+        compose.onNodeWithText("保存记录").performClick()
         compose.waitUntil {
             compose
                 .onAllNodesWithText("网络连接失败", substring = true)
