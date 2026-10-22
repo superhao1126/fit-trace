@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fittrace.core.designsystem.*
 import com.fittrace.core.model.*
+import java.time.LocalDate
 import kotlinx.coroutines.delay
 
 @Composable
@@ -45,12 +46,28 @@ internal fun TrainingScreen(
     var adding by remember { mutableStateOf<CatalogExercise?>(null) }
     var replacing by remember { mutableStateOf<TrainingTemplate?>(null) }
     var editing by remember { mutableStateOf<Int?>(null) }
+    var previewDay by rememberSaveable { mutableStateOf<Int?>(null) }
+    val weekdayLabels = listOf("日", "一", "二", "三", "四", "五", "六")
+    val previewTemplate =
+        state.templates.firstOrNull { template ->
+            template.id == state.plan.firstOrNull { it.weekday == previewDay }?.templateId
+        }
+    val startPreview: () -> Unit = {
+        previewTemplate?.let { template ->
+            if (state.exercises.isNotEmpty()) replacing = template
+            else {
+                model.use(template)
+                page = "session"
+            }
+        }
+    }
     val back = {
         if (!state.saving) {
             if (page == "template-editor") {
                 model.cancelTemplate()
                 page = "templates"
-            } else if ((page == "session" || state.draftError) && state.exercises.isNotEmpty())
+            } else if (page == "plan-detail") page = "plan"
+            else if ((page == "session" || state.draftError) && state.exercises.isNotEmpty())
                 leave = true
             else if (page != "tools") page = "tools" else onBack()
         }
@@ -65,6 +82,7 @@ internal fun TrainingScreen(
             "template-editor" -> "编辑训练模板"
             "templates" -> "我的模板"
             "plan" -> "每周计划"
+            "plan-detail" -> "周${previewDay?.let { weekdayLabels[it] }.orEmpty()}训练计划"
             else -> "运动与训练"
         },
         back,
@@ -86,7 +104,14 @@ internal fun TrainingScreen(
                     )
                 }
             })
+        else if (page == "plan-detail" && previewTemplate != null)
+            ({
+                Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 14.dp)) {
+                    FitSaveButton(state.saving || state.loading, startPreview, "按此计划开始训练")
+                }
+            })
         else null,
+        scrollKey = page,
     ) {
         if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         state.error?.let { FitMessage(it, if (page != "session") model::load else null, true) }
@@ -253,45 +278,92 @@ internal fun TrainingScreen(
                     }
                 }
             }
+            "plan-detail" -> {
+                if (previewTemplate != null) TrainingPlanDetails(previewTemplate)
+                else FitMessage("该训练模板暂不可用，请重试加载。", model::load, true)
+            }
             "plan" -> {
-                Text("为每一天选择模板，也可以安排休息。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("点击训练日查看动作；更换模板后请保存每周计划。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                val today = LocalDate.now().dayOfWeek.value % 7
                 state.plan
                     .sortedBy { it.weekday }
                     .forEach { day ->
                         var expanded by remember { mutableStateOf(false) }
-                        FitCard {
-                            Text("周${listOf("日", "一", "二", "三", "四", "五", "六")[day.weekday]}")
-                            Box {
-                                TextButton(
-                                    onClick = { expanded = true },
-                                    enabled = !state.loading && !state.saving && state.planReady,
-                                ) {
-                                    Text(
-                                        if (day.templateId == null) "休息"
-                                        else
-                                            state.templates.find { it.id == day.templateId }?.name
-                                                ?: "模板暂不可用"
-                                    )
-                                }
-                                DropdownMenu(expanded, { expanded = false }) {
-                                    DropdownMenuItem(
-                                        { Text("休息") },
-                                        {
-                                            model.planDay(day.weekday, null)
-                                            expanded = false
-                                        },
-                                    )
-                                    state.templates.forEach { template ->
+                        val label = "周${weekdayLabels[day.weekday]}"
+                        val template = state.templates.firstOrNull { it.id == day.templateId }
+                        val ready = !state.loading && !state.saving && state.planReady
+                        FitCard(
+                            if (template != null)
+                                Modifier.clickable(enabled = ready) {
+                                        previewDay = day.weekday
+                                        page = "plan-detail"
+                                    }
+                                    .semantics { contentDescription = "查看${label}训练动作" }
+                            else Modifier
+                        ) {
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    if (day.weekday == today) "$label · 今天" else label,
+                                    Modifier.weight(1f),
+                                    fontWeight =
+                                        if (day.weekday == today) FontWeight.Bold
+                                        else FontWeight.Normal,
+                                )
+                                Box {
+                                    TextButton(
+                                        onClick = { expanded = true },
+                                        enabled = ready,
+                                        modifier =
+                                            Modifier.semantics {
+                                                contentDescription = "更换${label}模板"
+                                            },
+                                    ) {
+                                        Text(if (day.templateId == null) "安排训练" else "更换模板")
+                                    }
+                                    DropdownMenu(expanded, { expanded = false }) {
                                         DropdownMenuItem(
-                                            { Text(template.name) },
+                                            { Text("休息") },
                                             {
-                                                model.planDay(day.weekday, template.id)
+                                                model.planDay(day.weekday, null)
                                                 expanded = false
                                             },
                                         )
+                                        state.templates.forEach { choice ->
+                                            DropdownMenuItem(
+                                                { Text(choice.name) },
+                                                {
+                                                    model.planDay(day.weekday, choice.id)
+                                                    expanded = false
+                                                },
+                                            )
+                                        }
                                     }
                                 }
                             }
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    template?.name
+                                        ?: if (day.templateId == null) "休息" else "模板暂不可用",
+                                    Modifier.weight(1f),
+                                    fontWeight = FontWeight.Bold,
+                                    color =
+                                        if (template != null) MaterialTheme.colorScheme.secondary
+                                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                if (template != null) Text("›", fontSize = 22.sp)
+                            }
+                            if (template != null)
+                                Text(
+                                    "${template.exercises.size} 个动作 · ${template.exercises.sumOf { it.sets.size }} 组 · 预计 ${template.durationMinutes} 分钟",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                         }
                     }
                 Button(
@@ -639,6 +711,7 @@ private fun TrainingPage(
     title: String,
     back: () -> Unit,
     footer: (@Composable () -> Unit)?,
+    scrollKey: String,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Scaffold(
@@ -662,7 +735,7 @@ private fun TrainingPage(
             }
             Column(
                 Modifier.weight(1f)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(key(scrollKey) { rememberScrollState() })
                     .padding(horizontal = 24.dp)
                     .padding(bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
