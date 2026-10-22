@@ -45,9 +45,9 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/liberica-jdk-21.jdk/Contents/Home ./
 | core/network | 25 | 0 / 0 / 0 |
 | core/data | 26 | 0 / 0 / 0 |
 | feature/auth | 18 | 0 / 0 / 0 |
-| feature/main | 72 | 0 / 0 / 0 |
+| feature/main | 76 | 0 / 0 / 0 |
 | app（devDebug） | 5 | 0 / 0 / 0 |
-| 合计 | **146** | **0 / 0 / 0** |
+| 合计 | **150** | **0 / 0 / 0** |
 
 新增交互测试覆盖明确保存、失败保留、未知热量、部分提交重试、历史日期、草稿恢复、收藏恢复、上次训练分页、模板更新、照片筛选/删除/取消退出、餐食图片保留/移除，以及 AI 核对、模拟状态与识别中退出保护。测试使用受控 Repository 或 MockWebServer，验证接口合同与客户端行为。
 
@@ -65,7 +65,7 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/liberica-jdk-21.jdk/Contents/Home ./
 
 APK：`app/build/outputs/apk/prod/debug/app-prod-debug.apk`。
 
-SHA-256：`c41a108f8783afa0e3cc93179d78fcbf65bc4a9f4447726239b80d31969884ef`。
+SHA-256：`5076a37920442653547df977a42b33ad8450ace689b6d7c731846e8822adca67`。
 
 ## 仍需区分的边界
 
@@ -74,3 +74,13 @@ SHA-256：`c41a108f8783afa0e3cc93179d78fcbf65bc4a9f4447726239b80d31969884ef`。
 - Android 日期/时间、系统文件选择器和部分逐组数字表单沿用原生组件；没有声明与全部静态画板逐像素一致。
 - 真实账号 API、真实 AI 模型效果、真实图片服务器、系统进程回收恢复、后台休息提醒与手机交互尚未验收；当前休息计时支持页面内显示和恢复，不含后台通知。
 - 指纹登录继续按此前计划延期，没有混入本轮。
+
+## 真机反馈修复补充
+
+- `e0e2c53`：体重标尺随拖动连续平移，固定中心指针对应当前体重；松手对齐到 0.1 kg。测试直接比较拖动前后标尺区域像素，并核对体重变化。
+- `4165556`：按 Figma `163:4767` 的统一浅绿色圆角栏修正份量输入框，移除嵌套边框和浮动标签，数字居中；保留小数录入、25 g 加减及范围校验。已查看浅色390与深色320截图。
+- `d5fbdf6`：添加和重新选择餐食照片时提供“拍照 / 从相册选择”。系统相机通过受限缓存 FileProvider 返回完整照片，取消时删除临时文件并保留原照片；相册取消同样保留原照片。来源选择后使用原有校验、上传和显式保存流程。
+
+补充测试覆盖拍照取消后重新拍照、完整文件回调、Provider 非导出及临时 URI 授权、相册 MIME 类型与成功/取消，以及份量小数和双向加减。本次完整验证共150项测试通过；已核对 prod Debug 合并 Manifest 中 Provider 的实际 authority。未安装或操作手机，系统相机与相册真机验收仍待进行。
+
+新增截图：`feature/main/build/reports/body-screenshots/body-ruler-drag-390.png`、`feature/main/build/reports/food-screenshots/food-portion-390.png`、`food-portion-dark-320.png`、`feature/main/build/reports/meal-screenshots/meal-photo-source-390.png`。
