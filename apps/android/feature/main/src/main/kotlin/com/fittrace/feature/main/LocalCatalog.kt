@@ -19,6 +19,9 @@ data class CatalogExercise(
     val unit: String,
     val steps: List<String>,
     val tips: String,
+    val images: List<String> = emptyList(),
+    val mediaSourceUrl: String = "",
+    val sourceUrl: String = "",
 )
 
 internal fun catalogFoods(context: Context): List<CatalogFood> {
@@ -38,6 +41,17 @@ internal fun catalogFoods(context: Context): List<CatalogFood> {
 }
 
 internal fun catalogExercises(context: Context): List<CatalogExercise> {
+    val mediaArray =
+        JSONArray(
+            context.assets.open("catalog/exercise-media.json").bufferedReader().use {
+                it.readText()
+            }
+        )
+    val media =
+        (0 until mediaArray.length()).associate { index ->
+            val entry = mediaArray.getJSONObject(index)
+            entry.getString("id") to entry
+        }
     val array =
         JSONArray(
             context.assets.open("catalog/exercises.json").bufferedReader().use { it.readText() }
@@ -53,6 +67,16 @@ internal fun catalogExercises(context: Context): List<CatalogExercise> {
                 obj.getString("unit"),
                 (0 until steps.length()).map(steps::getString),
                 obj.getString("tips"),
+                media[obj.getString("id")]
+                    ?.getJSONArray("images")
+                    ?.let { images ->
+                        (0 until images.length()).map {
+                            "file:///android_asset/catalog/" + images.getString(it)
+                        }
+                    }
+                    .orEmpty(),
+                media[obj.getString("id")]?.getString("sourceUrl").orEmpty(),
+                obj.optString("sourceUrl"),
             )
         }
     }

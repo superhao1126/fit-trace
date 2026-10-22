@@ -573,12 +573,7 @@ private fun ExerciseSheet(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Image(
-                                painterResource(R.drawable.strength_dumbbells),
-                                null,
-                                Modifier.size(34.dp).clip(RoundedCornerShape(8.dp)),
-                                contentScale = ContentScale.Crop,
-                            )
+                            ExercisePhoto(exercise, Modifier.size(44.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(
                                     exercise.name,
@@ -624,28 +619,16 @@ private fun ExerciseSheet(
         }
     }
     detail?.let { exercise ->
-        FitDialog(
-            onDismissRequest = { detail = null },
-            title = { Text(exercise.name) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    exercise.steps.forEachIndexed { i, step -> Text("${i+1}. $step") }
-                    Text(exercise.tips)
-                }
-            },
-            confirmButton = {
-                FitDialogButton(
-                    onClick = {
+        ExerciseTutorial(
+            exercise,
+            onDismiss = { detail = null },
+            onAdd =
+                if (exercise.id in selected) null
+                else
+                    ({
                         onAdd(exercise)
                         detail = null
-                    }
-                ) {
-                    Text("加入训练")
-                }
-            },
-            dismissButton = {
-                FitDialogButton(primary = false, onClick = { detail = null }) { Text("返回") }
-            },
+                    }),
         )
     }
 }

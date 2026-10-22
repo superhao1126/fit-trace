@@ -29,7 +29,12 @@ class TrainingPlanNavigationTest {
             40,
             listOf("绳索臂屈伸", "绳索下压", "哑铃颈后臂屈伸", "哑铃弯举").mapIndexed { index, name ->
                 TrainingExercise(
-                    "arm-$index",
+                    listOf(
+                        "cable-overhead-triceps-extension",
+                        "triceps-pushdown",
+                        "dumbbell-overhead-triceps-extension",
+                        "dumbbell-biceps-curl",
+                    )[index],
                     name,
                     "reps",
                     90,
@@ -37,6 +42,103 @@ class TrainingPlanNavigationTest {
                 )
             },
         )
+
+    @OptIn(coil3.annotation.DelicateCoilApi::class)
+    @Before
+    fun decodeBundledImages() {
+        coil3.SingletonImageLoader.setUnsafe(
+            coil3.ImageLoader.Builder(compose.activity)
+                .components { add(coil3.decode.BitmapFactoryDecoder.Factory()) }
+                .build()
+        )
+    }
+
+    @Test
+    fun `tutorial renders both local poses and closes without changing plan or draft`() {
+        val model = show(existingDraft = true)
+        val before = model.state.value
+        openArms()
+        compose.onNodeWithContentDescription("查看绳索臂屈伸教程").performClick()
+        compose.waitUntil(10000) {
+            compose
+                .onAllNodes(
+                    hasContentDescription("绳索臂屈伸示范图1") and
+                        SemanticsMatcher.expectValue(
+                            androidx.compose.ui.semantics.SemanticsProperties.StateDescription,
+                            "动作图已加载",
+                        )
+                )
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+        compose.onNodeWithText("动作步骤").assertIsDisplayed()
+        compose.onNodeWithText("示范图 2").performClick()
+        compose.waitUntil(10000) {
+            compose
+                .onAllNodes(
+                    hasContentDescription("绳索臂屈伸示范图2") and
+                        SemanticsMatcher.expectValue(
+                            androidx.compose.ui.semantics.SemanticsProperties.StateDescription,
+                            "动作图已加载",
+                        )
+                )
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+        capture("weekly-plan-arm-tutorial-390")
+        compose.onNodeWithText("动作要点").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("看完了").performClick()
+        compose.onNodeWithText("周四训练计划").assertIsDisplayed()
+        assertEquals(before.exercises, model.state.value.exercises)
+        assertEquals(before.plan, model.state.value.plan)
+        assertEquals(0, writes)
+    }
+
+    @Test
+    @Config(qualifiers = "w320dp-h640dp-mdpi")
+    fun `tutorial remains readable with reachable close action on narrow dark screen`() {
+        show(dark = true)
+        openArms()
+        compose.onNodeWithContentDescription("查看绳索臂屈伸教程").performClick()
+        compose.waitUntil(10000) {
+            compose
+                .onAllNodes(
+                    hasContentDescription("绳索臂屈伸示范图1") and
+                        SemanticsMatcher.expectValue(
+                            androidx.compose.ui.semantics.SemanticsProperties.StateDescription,
+                            "动作图已加载",
+                        )
+                )
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+        compose.onNodeWithText("看完了").assertIsDisplayed()
+        capture("weekly-plan-arm-tutorial-dark-320")
+        compose.onNodeWithText("动作要点").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("看完了").performClick()
+        compose.onNodeWithText("周四训练计划").assertIsDisplayed()
+    }
+
+    @Test
+    fun `catalog media decodes offline and all planned exercises have tutorial steps`() {
+        val context = compose.activity
+        val exercises = catalogExercises(context)
+        assertEquals(37, exercises.size)
+        assertEquals(30, exercises.count { it.images.isNotEmpty() })
+        exercises.forEach { exercise ->
+            assertTrue(exercise.steps.isNotEmpty())
+            assertTrue(exercise.tips.isNotBlank())
+            exercise.images.forEach { uri ->
+                context.assets.open(uri.removePrefix("file:///android_asset/")).use {
+                    assertNotNull(exercise.id, android.graphics.BitmapFactory.decodeStream(it))
+                }
+            }
+        }
+        val rdl = exercises.single { it.id == "dumbbell-romanian-deadlift" }
+        assertTrue(rdl.images.isEmpty())
+        assertTrue(rdl.sourceUrl.endsWith("/dumbbell-romanian-deadlift"))
+    }
+
     private var writes = 0
     private val repository =
         object : TrainingRepositoryFake() {
@@ -143,7 +245,7 @@ class TrainingPlanNavigationTest {
 
     private fun capture(name: String) {
         compose.runOnIdle {
-            val view = compose.activity.window.decorView
+            val view = android.view.inspector.WindowInspector.getGlobalWindowViews().last()
             val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
             view.draw(Canvas(bitmap))
             val file = File("build/reports/strength-screenshots/$name.png")
