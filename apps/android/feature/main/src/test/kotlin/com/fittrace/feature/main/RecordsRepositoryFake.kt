@@ -22,6 +22,25 @@ internal open class RecordsRepositoryFake : RecordsRepository {
         to: String?,
     ): AppResult<RecordPage<MealEntry>> = AppResult.Success(RecordPage(emptyList(), 0))
 
+    override suspend fun mealFavorites(): AppResult<List<MealFavorite>> =
+        AppResult.Success(emptyList())
+
+    override suspend fun saveMealFavorite(
+        name: String,
+        foods: List<FoodEntry>,
+    ): AppResult<MealFavorite> = AppResult.Failure(AppError.Network)
+
+    override suspend fun removeMealFavorite(id: String): AppResult<Unit> =
+        AppResult.Failure(AppError.Network)
+
+    override suspend fun recognizeMealText(description: String): AppResult<FoodRecognition> =
+        AppResult.Failure(AppError.Network)
+
+    override suspend fun recognizeMealPhoto(
+        imageUrl: String,
+        hint: String?,
+    ): AppResult<FoodRecognition> = AppResult.Failure(AppError.Network)
+
     override suspend fun meal(id: String): AppResult<MealEntry> =
         AppResult.Failure(AppError.Network)
 

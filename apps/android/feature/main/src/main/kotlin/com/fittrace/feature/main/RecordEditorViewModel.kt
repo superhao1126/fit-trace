@@ -78,6 +78,7 @@ class RecordEditorViewModel(
             )
         )
     val state = mutable.asStateFlow()
+    internal val mealTools = MealToolsController(repository, viewModelScope)
 
     private var referenceRequest: Job? = null
 

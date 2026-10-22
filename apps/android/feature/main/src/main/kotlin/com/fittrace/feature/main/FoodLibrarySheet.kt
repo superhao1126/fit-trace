@@ -35,6 +35,7 @@ internal fun FoodLibrarySheet(
     mealLabel: String = "选择食物",
     portionFoodName: String? = null,
     portionGrams: String = "100",
+    onTools: (() -> Unit)? = null,
     onAdd: (FoodEntry) -> Unit,
 ) {
     val foods = catalogFoodsRemembered()
@@ -99,6 +100,10 @@ internal fun FoodLibrarySheet(
                             ),
                     )
                 }
+                if (onTools != null)
+                    TextButton(onClick = onTools, modifier = Modifier.fillMaxWidth()) {
+                        Text("AI 速记 · 最近 · 常用餐", fontSize = 13.sp)
+                    }
                 Row(Modifier.weight(1f)) {
                     LazyColumn(
                         Modifier.width(86.dp)

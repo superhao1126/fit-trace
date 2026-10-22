@@ -56,7 +56,12 @@ internal fun FoodDialog(existing: FoodEntry?, onDismiss: () -> Unit, onSave: (Fo
                         error = "热量应为 0–100000 的整数，未知请留空"
                     else
                         onSave(
-                            FoodEntry(name.trim(), amount.ifBlank { null }, calories.toIntOrNull())
+                            FoodEntry(
+                                name.trim(),
+                                amount.ifBlank { null },
+                                calories.toIntOrNull(),
+                                existing?.aiGenerated ?: false,
+                            )
                         )
                 }
             ) {

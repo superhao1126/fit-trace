@@ -19,6 +19,16 @@ interface RecordsRepository {
         to: String? = null,
     ): AppResult<RecordPage<MealEntry>>
 
+    suspend fun mealFavorites(): AppResult<List<MealFavorite>>
+
+    suspend fun saveMealFavorite(name: String, foods: List<FoodEntry>): AppResult<MealFavorite>
+
+    suspend fun removeMealFavorite(id: String): AppResult<Unit>
+
+    suspend fun recognizeMealText(description: String): AppResult<FoodRecognition>
+
+    suspend fun recognizeMealPhoto(imageUrl: String, hint: String?): AppResult<FoodRecognition>
+
     suspend fun meal(id: String): AppResult<MealEntry>
 
     suspend fun saveMeal(input: MealInput, id: String? = null): AppResult<MealEntry>

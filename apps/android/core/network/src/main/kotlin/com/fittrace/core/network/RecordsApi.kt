@@ -8,6 +8,35 @@ import retrofit2.Response
 import retrofit2.http.*
 
 interface RecordsApi {
+    @GET("meals/favorites")
+    suspend fun mealFavorites(
+        @Header("Authorization") token: String
+    ): Response<ApiEnvelope<List<MealFavoriteDto>>>
+
+    @POST("meals/favorites")
+    suspend fun saveMealFavorite(
+        @Header("Authorization") token: String,
+        @Body input: MealFavoriteInputDto,
+    ): Response<ApiEnvelope<MealFavoriteDto>>
+
+    @DELETE("meals/favorites/{id}")
+    suspend fun removeMealFavorite(
+        @Header("Authorization") token: String,
+        @Path("id") id: String,
+    ): Response<ApiEnvelope<Unit>>
+
+    @POST("ai/food-text")
+    suspend fun recognizeMealText(
+        @Header("Authorization") token: String,
+        @Body input: FoodTextInputDto,
+    ): Response<ApiEnvelope<FoodRecognitionDto>>
+
+    @POST("ai/food-recognition")
+    suspend fun recognizeMealPhoto(
+        @Header("Authorization") token: String,
+        @Body input: FoodPhotoInputDto,
+    ): Response<ApiEnvelope<FoodRecognitionDto>>
+
     @GET("insights/overview")
     suspend fun insights(
         @Header("Authorization") token: String,
@@ -188,7 +217,12 @@ data class BodyInputDto(
 )
 
 @Serializable
-data class FoodEntryDto(val name: String, val amount: String? = null, val calories: Int? = null)
+data class FoodEntryDto(
+    val name: String,
+    val amount: String? = null,
+    val calories: Int? = null,
+    val aiGenerated: Boolean = false,
+)
 
 @Serializable
 data class MealEntryDto(
@@ -323,3 +357,22 @@ data class PeriodInsightsDto(
 @Serializable data class InsightMealsDto(val count: Int, val recordedDays: Int)
 
 @Serializable data class InsightWorkoutsDto(val count: Int, val totalMinutes: Int)
+
+@Serializable
+data class MealFavoriteDto(val id: String, val name: String, val foods: List<FoodEntryDto>)
+
+@Serializable data class MealFavoriteInputDto(val name: String, val foods: List<FoodEntryDto>)
+
+@Serializable data class FoodTextInputDto(val description: String)
+
+@Serializable data class FoodPhotoInputDto(val imageUrl: String, val hint: String? = null)
+
+@Serializable
+data class FoodRecognitionDto(val provider: String, val foods: List<RecognizedFoodDto>)
+
+@Serializable
+data class RecognizedFoodDto(
+    val name: String,
+    val estimatedAmount: String? = null,
+    val estimatedCalories: Int? = null,
+)

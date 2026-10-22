@@ -21,7 +21,16 @@ data class BodyInput(
     val note: String?,
 )
 
-data class FoodEntry(val name: String, val amount: String?, val calories: Int?)
+data class FoodEntry(
+    val name: String,
+    val amount: String?,
+    val calories: Int?,
+    val aiGenerated: Boolean = false,
+)
+
+data class MealFavorite(val id: String, val name: String, val foods: List<FoodEntry>)
+
+data class FoodRecognition(val provider: String, val foods: List<FoodEntry>)
 
 data class MealEntry(
     val id: String,

@@ -115,4 +115,48 @@ class RecordsApiTest {
             assertEquals("DELETE", server.takeRequest().method)
         }
     }
+
+    @Test
+    fun `meal AI and favorites use authenticated contracts preserve unknown estimates and origin`() =
+        runTest {
+            MockWebServer().use { server ->
+                val api = NetworkClient(server.url("/api/v1/").toString()).recordsApi
+                server.enqueue(
+                    MockResponse()
+                        .setBody(
+                            """{"code":"OK","message":"","data":{"provider":"configured-model","imageUrl":"","foods":[{"name":"自制菜","estimatedAmount":null,"estimatedCalories":null}]}}"""
+                        )
+                )
+                val recognized =
+                    api.recognizeMealText("Bearer token", FoodTextInputDto("一份自制菜")).body()!!.data!!
+                assertNull(recognized.foods.single().estimatedCalories)
+                val request = server.takeRequest()
+                assertEquals("/api/v1/ai/food-text", request.requestUrl!!.encodedPath)
+                assertEquals("Bearer token", request.getHeader("Authorization"))
+                assertTrue(request.body.readUtf8().contains("一份自制菜"))
+                server.enqueue(
+                    MockResponse()
+                        .setBody(
+                            """{"code":"OK","message":"","data":{"id":"fav","name":"常用午餐","foods":[{"name":"自制菜","amount":null,"calories":null,"aiGenerated":true}]}}"""
+                        )
+                )
+                val favorite =
+                    api.saveMealFavorite(
+                            "Bearer token",
+                            MealFavoriteInputDto(
+                                "常用午餐",
+                                listOf(FoodEntryDto("自制菜", null, null, true)),
+                            ),
+                        )
+                        .body()!!
+                        .data!!
+                assertTrue(favorite.foods.single().aiGenerated)
+                val saved = server.takeRequest()
+                assertEquals("/api/v1/meals/favorites", saved.requestUrl!!.encodedPath)
+                assertTrue(saved.body.readUtf8().contains("\"aiGenerated\":true"))
+                server.enqueue(MockResponse().setBody("""{"code":"OK","message":"","data":null}"""))
+                assertTrue(api.removeMealFavorite("Bearer token", "fav").isSuccessful)
+                assertEquals("DELETE", server.takeRequest().method)
+            }
+        }
 }

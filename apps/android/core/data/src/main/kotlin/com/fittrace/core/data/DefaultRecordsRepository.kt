@@ -111,6 +111,69 @@ class DefaultRecordsRepository(
     ): AppResult<RecordPage<MealEntry>> =
         auth.authorized { token -> page({ api.meals(token, page, from, to) }, { it.model() }) }
 
+    override suspend fun mealFavorites(): AppResult<List<MealFavorite>> =
+        auth.authorized { token ->
+            requests
+                .call { api.mealFavorites(token) }
+                .map { list ->
+                    list.map {
+                        MealFavorite(
+                            it.id,
+                            it.name,
+                            it.foods.map { f ->
+                                FoodEntry(f.name, f.amount, f.calories, f.aiGenerated)
+                            },
+                        )
+                    }
+                }
+        }
+
+    override suspend fun saveMealFavorite(
+        name: String,
+        foods: List<FoodEntry>,
+    ): AppResult<MealFavorite> =
+        auth.authorized { token ->
+            requests
+                .call {
+                    api.saveMealFavorite(
+                        token,
+                        MealFavoriteInputDto(
+                            name,
+                            foods.map {
+                                FoodEntryDto(it.name, it.amount, it.calories, it.aiGenerated)
+                            },
+                        ),
+                    )
+                }
+                .map {
+                    MealFavorite(
+                        it.id,
+                        it.name,
+                        it.foods.map { f -> FoodEntry(f.name, f.amount, f.calories, f.aiGenerated) },
+                    )
+                }
+        }
+
+    override suspend fun removeMealFavorite(id: String): AppResult<Unit> =
+        auth.authorized { token -> requests.unit { api.removeMealFavorite(token, id) } }
+
+    override suspend fun recognizeMealText(description: String): AppResult<FoodRecognition> =
+        auth.authorized { token ->
+            requests
+                .call { api.recognizeMealText(token, FoodTextInputDto(description)) }
+                .map { it.recognition() }
+        }
+
+    override suspend fun recognizeMealPhoto(
+        imageUrl: String,
+        hint: String?,
+    ): AppResult<FoodRecognition> =
+        auth.authorized { token ->
+            requests
+                .call { api.recognizeMealPhoto(token, FoodPhotoInputDto(imageUrl, hint)) }
+                .map { it.recognition() }
+        }
+
     override suspend fun meal(id: String): AppResult<MealEntry> =
         auth.authorized { token -> requests.call { api.meal(token, id) }.map { it.model() } }
 
@@ -120,7 +183,9 @@ class DefaultRecordsRepository(
                 MealInputDto(
                     input.type,
                     input.recordedAt,
-                    input.foods.map { FoodEntryDto(it.name, it.amount, it.calories) },
+                    input.foods.map {
+                        FoodEntryDto(it.name, it.amount, it.calories, it.aiGenerated)
+                    },
                     input.note,
                     input.imageUrl,
                 )
@@ -245,7 +310,7 @@ private fun MealEntryDto.model() =
         id,
         type,
         recordedAt,
-        foods.map { FoodEntry(it.name, it.amount, it.calories) },
+        foods.map { FoodEntry(it.name, it.amount, it.calories, it.aiGenerated) },
         totalCalories,
         note,
         imageUrl,
@@ -287,3 +352,9 @@ private fun TrainingExerciseDto.model() =
 
 private fun TrainingTemplateDto.model() =
     TrainingTemplate(id, name, durationMinutes, exercises.map { it.model() })
+
+private fun FoodRecognitionDto.recognition() =
+    FoodRecognition(
+        provider,
+        foods.map { FoodEntry(it.name, it.estimatedAmount, it.estimatedCalories, true) },
+    )

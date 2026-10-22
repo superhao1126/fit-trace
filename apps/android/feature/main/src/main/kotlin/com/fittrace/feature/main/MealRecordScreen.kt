@@ -45,6 +45,7 @@ internal fun MealRecordScreen(
     var leave by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
     var readingPhoto by remember { mutableStateOf(false) }
+    var tools by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     val catalog = remember(context) { catalogFoods(context) }
     val time = OffsetDateTime.parse(draft.time).atZoneSameInstant(ZoneId.systemDefault())
@@ -143,6 +144,14 @@ internal fun MealRecordScreen(
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                     )
+                    Spacer(Modifier.weight(1f))
+                    if (editing)
+                        TextButton(
+                            onClick = { tools = true },
+                            enabled = !state.saving && !readingPhoto,
+                        ) {
+                            Text("饮食工具", fontSize = 12.sp)
+                        }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Surface(
@@ -392,9 +401,23 @@ internal fun MealRecordScreen(
             },
             draft.foods,
             "${time.format(DateTimeFormatter.ofPattern("M月d日"))} · ${mealLabels[draft.type] ?: "饮食"}",
+            onTools = {
+                picker = false
+                tools = true
+            },
         ) { food ->
             if (draft.foods.size < 50) model.edit { it.copy(foods = it.foods + food) }
             else model.error("每餐最多添加 50 项食物")
+        }
+    if (tools)
+        MealToolsSheet(model.mealTools, draft, { tools = false }) { foods ->
+            if (foods.isEmpty() || draft.foods.size + foods.size > 50) {
+                model.mealTools.error("每餐需 1–50 项食物，请先调整清单")
+                false
+            } else {
+                model.edit { it.copy(foods = it.foods + foods) }
+                true
+            }
         }
     if (custom) {
         val food = index?.let { draft.foods.getOrNull(it) }
