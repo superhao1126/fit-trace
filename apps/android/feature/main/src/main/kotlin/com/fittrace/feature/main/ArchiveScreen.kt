@@ -41,6 +41,7 @@ internal fun RecordsScreen(
     onMonth: (YearMonth) -> Unit = {},
 ) {
     if (kind == RecordKind.PHOTO) {
+        LaunchedEffect(date) { if (date != null) onDate(null) }
         PhotoArchiveScreen(
             state,
             month,

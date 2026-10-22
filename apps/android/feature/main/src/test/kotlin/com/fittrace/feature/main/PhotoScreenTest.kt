@@ -199,6 +199,29 @@ class PhotoScreenTest {
         capture("photo-empty-390")
     }
 
+    @Test
+    fun `entering monthly photo archive clears a hidden single day filter`() {
+        var cleared = false
+        compose.setContent {
+            FitTraceTheme {
+                RecordsScreen(
+                    RecordsState(loading = false),
+                    RecordKind.PHOTO,
+                    date,
+                    {},
+                    { cleared = it == null },
+                    {},
+                    {},
+                    {},
+                    {},
+                    month = YearMonth.of(2026, 10),
+                )
+            }
+        }
+        compose.waitUntil { cleared }
+        compose.onNodeWithText("身材照片").assertIsDisplayed()
+    }
+
     private fun capture(name: String) {
         compose.runOnIdle {
             val view = compose.activity.window.decorView
