@@ -1,6 +1,7 @@
 /* global structuredClone */
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
@@ -135,4 +136,57 @@ test('weekly plans persist seven days for owner and allow preset templates', asy
   assert.deepEqual(data.where, { userId: 'owner' });
   assert.equal(data.create.userId, 'owner');
   assert.deepEqual(data.update.days, days);
+});
+
+test('five-day gym actions keep exact variants and Android catalog matches server validation', async () => {
+  const split = [
+    ['lat-pulldown', 'seated-cable-row', 'bent-over-dumbbell-row', 'straight-arm-pulldown'],
+    ['barbell-bench-press', 'pec-deck-fly', 'chest-press-machine', 'incline-press'],
+    [
+      'dumbbell-lateral-raise',
+      'seated-dumbbell-shoulder-press',
+      'cable-face-pull',
+      'reverse-pec-deck-fly',
+    ],
+    [
+      'cable-overhead-triceps-extension',
+      'triceps-pushdown',
+      'dumbbell-overhead-triceps-extension',
+      'dumbbell-biceps-curl',
+    ],
+    ['smith-squat', 'incline-leg-press', 'seated-hip-abduction', 'dumbbell-romanian-deadlift'],
+  ];
+  const androidCatalog = JSON.parse(
+    readFileSync(
+      new URL('../../android/feature/main/src/main/assets/catalog/exercises.json', import.meta.url),
+      'utf8',
+    ),
+  );
+  assert.deepEqual(androidCatalog, exerciseLibrary);
+  assert.equal(new Set(split.flat()).size, 20);
+  for (const ids of split) {
+    const planExercises = ids.map((id) => {
+      const exercise = exerciseLibrary.find((item) => item.id === id);
+      assert.ok(exercise, id);
+      assert.ok(exercise.steps.length > 0);
+      return {
+        exerciseId: id,
+        name: exercise.name,
+        unit: 'reps',
+        restSeconds: 90,
+        sets: Array.from({ length: 4 }, () => ({ reps: 12, weightKg: 0, completed: false })),
+      };
+    });
+    const input = { name: '图示五日训练', durationMinutes: 40, exercises: planExercises };
+    assert.equal((await validate(plainToInstance(dto.TrainingTemplateDto, input))).length, 0);
+    assert.deepEqual(training.normalizeExercises(planExercises, true), planExercises);
+  }
+  assert.notEqual(
+    exerciseLibrary.find((e) => e.id === 'row').name,
+    exerciseLibrary.find((e) => e.id === 'bent-over-dumbbell-row').name,
+  );
+  assert.notEqual(
+    exerciseLibrary.find((e) => e.id === 'straight-arm-pulldown').bodyPart,
+    exerciseLibrary.find((e) => e.id === 'triceps-pushdown').bodyPart,
+  );
 });

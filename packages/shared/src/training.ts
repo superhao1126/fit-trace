@@ -1,3 +1,4 @@
+import { gymExercises } from './training-gym-exercises.js';
 import { additionalExercises } from './training-exercises.js';
 
 export interface Exercise {
@@ -102,6 +103,7 @@ export const exerciseLibrary: Exercise[] = [
     sourceUrl: 'https://www.acefitness.org/resources/everyone/exercise-library/32/front-plank/',
   },
   ...additionalExercises,
+  ...gymExercises,
 ];
 export function makeTrainingExercise(exercise: Exercise, sets = 3, reps = 10): TrainingExercise {
   return {
