@@ -535,7 +535,10 @@ private fun WeightInputSheet(value: String, onDismiss: () -> Unit, onValue: (Str
     var input by rememberSaveable { mutableStateOf(value) }
     var fresh by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf(false) }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
         Column(
             Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,

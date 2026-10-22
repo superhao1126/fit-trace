@@ -2,10 +2,14 @@ package com.fittrace.feature.main
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.view.inspector.WindowInspector
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.*
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.core.graphics.Insets
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.fittrace.core.designsystem.FitTraceTheme
 import com.fittrace.core.model.*
 import java.io.File
@@ -50,7 +54,7 @@ class BodyRecordScreenTest {
         compose.onNodeWithContentDescription("体重标尺").performTouchInput { swipeLeft() }
         assertNotEquals("70.2", model.state.value.draft.weight)
         compose.onNodeWithContentDescription("输入体重").performClick()
-        capture("body-keypad-390")
+        capture("body-keypad-390", sheet = true)
         listOf("7", "0", ".", "2").forEach {
             compose.onNodeWithText(it, useUnmergedTree = true).performClick()
         }
@@ -160,9 +164,43 @@ class BodyRecordScreenTest {
         assertTrue(model.state.value.draft.weight.toDouble() in 1.0..500.0)
     }
 
-    private fun capture(name: String) {
+    @Test
+    @Config(sdk = [35], qualifiers = "w390dp-h640dp-mdpi")
+    fun `weight keypad opens with complete confirm button above gesture navigation without pulling sheet`() {
+        val model = RecordEditorViewModel(RecordsRepositoryFake(), RecordKind.BODY, date, null)
+        model.edit { it.copy(weight = "90.3") }
+        compose.setContent {
+            val state by model.state.collectAsState()
+            FitTraceTheme { RecordEditorScreen(state, model, {}) }
+        }
+        compose.onNodeWithContentDescription("输入体重").performClick()
         compose.runOnIdle {
-            val view = compose.activity.window.decorView
+            ViewCompat.dispatchApplyWindowInsets(
+                WindowInspector.getGlobalWindowViews().last(),
+                WindowInsetsCompat.Builder()
+                    .setInsets(WindowInsetsCompat.Type.navigationBars(), Insets.of(0, 0, 0, 24))
+                    .setVisible(WindowInsetsCompat.Type.navigationBars(), true)
+                    .build(),
+            )
+        }
+        val button = compose.onNodeWithText("完成输入").assertIsDisplayed()
+        val clipped = button.fetchSemanticsNode().boundsInRoot
+        val full = button.getUnclippedBoundsInRoot()
+        assertTrue("完成输入文字不能被底部裁切", clipped.height >= (full.bottom - full.top).value - .5f)
+        val windowHeight =
+            compose.runOnIdle { WindowInspector.getGlobalWindowViews().last().height }
+        assertTrue("按钮必须在手势导航区域之上", full.bottom.value <= windowHeight - 24)
+        capture("body-keypad-visible-390", sheet = true)
+        button.performClick()
+        assertEquals("90.3", model.state.value.draft.weight)
+        compose.onNodeWithText("输入体重 · kg").assertDoesNotExist()
+    }
+
+    private fun capture(name: String, sheet: Boolean = false) {
+        compose.runOnIdle {
+            val view =
+                if (sheet) WindowInspector.getGlobalWindowViews().last()
+                else compose.activity.window.decorView
             val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
             view.draw(Canvas(bitmap))
             val file = File("build/reports/body-screenshots/$name.png")
