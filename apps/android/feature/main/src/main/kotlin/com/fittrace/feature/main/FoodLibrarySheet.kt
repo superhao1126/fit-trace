@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -14,12 +15,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -297,11 +300,11 @@ internal fun FoodLibrarySheet(
                     }
                 }
                 Surface(
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(16.dp),
                     color = MaterialTheme.colorScheme.primaryContainer,
                 ) {
                     Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 10.dp),
+                        Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         TextButton(
@@ -317,22 +320,26 @@ internal fun FoodLibrarySheet(
                         ) {
                             Text("−", fontSize = 24.sp)
                         }
-                        OutlinedTextField(
-                            grams,
-                            {
+                        BasicTextField(
+                            value = grams,
+                            onValueChange = {
                                 grams = it
                                 error = null
                             },
-                            Modifier.weight(1f),
-                            label = { Text("可食份量 · g") },
+                            modifier =
+                                Modifier.weight(1f).padding(vertical = 8.dp).semantics {
+                                    contentDescription = "可食份量 · g"
+                                },
                             singleLine = true,
                             textStyle =
                                 LocalTextStyle.current.copy(
                                     fontSize = 26.sp,
                                     fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                 ),
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            shape = RoundedCornerShape(20.dp),
                         )
                         TextButton(
                             onClick = {

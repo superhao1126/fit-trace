@@ -45,7 +45,7 @@ class FoodLibrarySheetTest {
         compose.onNodeWithText("150g").performClick()
         compose.onNodeWithText("当前约 195 kcal").assertIsDisplayed()
         capture("food-portion-390")
-        compose.onNodeWithText("可食份量 · g").performTextReplacement("0")
+        compose.onNodeWithContentDescription("可食份量 · g").performTextReplacement("0")
         compose.onNodeWithText("加入清单").performClick()
         compose.onNodeWithText("请输入 0–10000 g 范围内的正数").assertIsDisplayed()
         assertTrue(selected.isEmpty())
@@ -73,6 +73,25 @@ class FoodLibrarySheetTest {
         capture("food-search-empty-dark-320")
         compose.onNodeWithText("自定义食物").performClick()
         assertTrue(custom)
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w320dp-h720dp-mdpi")
+    fun `dark narrow portion accepts decimals and both stepper buttons`() {
+        var selected: FoodEntry? = null
+        compose.setContent {
+            FitTraceTheme(true) {
+                FoodLibrarySheet({}, {}, portionFoodName = "米饭（熟）") { selected = it }
+            }
+        }
+        compose.onNodeWithContentDescription("可食份量 · g").performTextReplacement("100.5")
+        compose.onNodeWithContentDescription("减少 25 克").performClick()
+        compose.onNodeWithText("75.5").assertExists()
+        compose.onNodeWithContentDescription("增加 25 克").performClick()
+        compose.onNodeWithText("100.5").assertExists()
+        capture("food-portion-dark-320")
+        compose.onNodeWithText("加入清单").performClick()
+        assertEquals("100.5 g", selected!!.amount)
     }
 
     private fun capture(name: String) {
