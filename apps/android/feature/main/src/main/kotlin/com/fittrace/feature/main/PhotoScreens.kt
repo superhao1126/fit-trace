@@ -424,7 +424,7 @@ private fun PhotoAngles(
 }
 
 @Composable
-private fun PhotoImage(url: String, modifier: Modifier, fit: Boolean = false) {
+internal fun PhotoImage(url: String, modifier: Modifier, fit: Boolean = false) {
     var failed by remember(url) { mutableStateOf(false) }
     var loading by remember(url) { mutableStateOf(true) }
     var retry by remember(url) { mutableIntStateOf(0) }

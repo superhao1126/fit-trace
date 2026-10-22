@@ -122,6 +122,7 @@ class DefaultRecordsRepository(
                     input.recordedAt,
                     input.foods.map { FoodEntryDto(it.name, it.amount, it.calories) },
                     input.note,
+                    input.imageUrl,
                 )
             requests
                 .call {

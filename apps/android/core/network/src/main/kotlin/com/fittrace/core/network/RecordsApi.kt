@@ -207,6 +207,7 @@ data class MealInputDto(
     val recordedAt: String,
     val foods: List<FoodEntryDto>,
     val note: String?,
+    val imageUrl: String?,
 )
 
 @Serializable

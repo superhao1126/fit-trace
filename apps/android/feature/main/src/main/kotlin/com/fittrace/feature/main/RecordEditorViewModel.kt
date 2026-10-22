@@ -245,7 +245,7 @@ class RecordEditorViewModel(
                         )
                     RecordKind.MEAL ->
                         repository.saveMeal(
-                            MealInput(d.type, d.time, d.foods, d.note.ifBlank { null }),
+                            MealInput(d.type, d.time, d.foods, d.note.ifBlank { null }, d.imageUrl),
                             d.id,
                         )
                     RecordKind.WORKOUT ->

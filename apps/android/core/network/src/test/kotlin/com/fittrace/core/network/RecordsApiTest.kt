@@ -70,10 +70,12 @@ class RecordsApiTest {
                         "2026-10-19T12:00:00+08:00",
                         listOf(FoodEntryDto("自制午餐", "1 碗", null)),
                         null,
+                        null,
                     ),
                 )
                 val meal = server.takeRequest().body.readUtf8()
                 assertTrue(meal.contains("自制午餐"))
+                assertTrue(meal.contains("\"imageUrl\":null"))
                 assertFalse(meal.contains("\"calories\":0"))
                 server.enqueue(MockResponse().setBody("""{"code":"OK","message":"","data":null}"""))
                 api.updateWorkout(

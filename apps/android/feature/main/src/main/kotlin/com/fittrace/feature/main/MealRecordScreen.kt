@@ -44,11 +44,12 @@ internal fun MealRecordScreen(
     var meal by remember { mutableStateOf(false) }
     var leave by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
+    var readingPhoto by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val catalog = remember(context) { catalogFoods(context) }
     val time = OffsetDateTime.parse(draft.time).atZoneSameInstant(ZoneId.systemDefault())
     val back = {
-        if (!state.saving) {
+        if (!state.saving && !readingPhoto) {
             if (state.dirty) leave = true else onBack()
         }
     }
@@ -78,7 +79,7 @@ internal fun MealRecordScreen(
                             if (!editing) editing = true
                             else if (draft.foods.isEmpty()) picker = true else model.save()
                         },
-                        enabled = !state.saving,
+                        enabled = !state.saving && !readingPhoto,
                         modifier = Modifier.fillMaxWidth().height(48.dp),
                     ) {
                         if (state.saving)
@@ -341,6 +342,7 @@ internal fun MealRecordScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
+                        MealPhotoCard(state, model, editing) { readingPhoto = it }
                         if (editing)
                             OutlinedTextField(
                                 draft.note,

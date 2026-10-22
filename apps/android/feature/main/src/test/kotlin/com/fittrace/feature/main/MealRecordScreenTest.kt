@@ -110,6 +110,46 @@ class MealRecordScreenTest {
         capture("meal-load-failed-390")
     }
 
+    @Test
+    fun `meal editing preserves photo until explicit removal is saved`() {
+        val writes = mutableListOf<MealInput>()
+        val image = "https://example.test/meal.jpg"
+        val repo =
+            object : RecordsRepositoryFake() {
+                override suspend fun meal(id: String) =
+                    AppResult.Success(
+                        MealEntry(
+                            id,
+                            "LUNCH",
+                            "2026-10-19T12:00:00+08:00",
+                            listOf(FoodEntry("午餐", "1 份", null)),
+                            null,
+                            null,
+                            image,
+                        )
+                    )
+
+                override suspend fun saveMeal(input: MealInput, id: String?): AppResult<MealEntry> {
+                    writes += input
+                    return AppResult.Failure(AppError.Network)
+                }
+            }
+        val model = RecordEditorViewModel(repo, RecordKind.MEAL, date, "meal")
+        compose.setContent {
+            val state by model.state.collectAsState()
+            FitTraceTheme { RecordEditorScreen(state, model, {}) }
+        }
+        compose.waitUntil { !model.state.value.loading }
+        compose.onNodeWithText("编辑这餐").performClick()
+        compose.onNodeWithText("保存这餐").performClick()
+        compose.waitUntil { writes.size == 1 }
+        assertEquals(image, writes.first().imageUrl)
+        compose.onNodeWithText("移除餐食照片").performScrollTo().performClick()
+        compose.onNodeWithText("保存这餐").performClick()
+        compose.waitUntil { writes.size == 2 }
+        assertNull(writes.last().imageUrl)
+    }
+
     private fun capture(name: String) {
         compose.runOnIdle {
             val view = compose.activity.window.decorView

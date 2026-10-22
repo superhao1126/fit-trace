@@ -38,6 +38,7 @@ data class MealInput(
     val recordedAt: String,
     val foods: List<FoodEntry>,
     val note: String?,
+    val imageUrl: String? = null,
 )
 
 data class WorkoutEntry(
