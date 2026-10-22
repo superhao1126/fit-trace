@@ -39,6 +39,10 @@ internal fun RecordEditorScreen(
         MealRecordScreen(state, model, onBack)
         return
     }
+    if (state.draft.kind == RecordKind.WORKOUT) {
+        WorkoutRecordScreen(state, model, onBack)
+        return
+    }
     val d = state.draft
     var editing by rememberSaveable { mutableStateOf(d.id == null) }
     var leave by remember { mutableStateOf(false) }
@@ -106,35 +110,7 @@ internal fun RecordEditorScreen(
             when (d.kind) {
                 RecordKind.BODY -> Unit
                 RecordKind.MEAL -> Unit
-                RecordKind.WORKOUT -> {
-                    ChoiceRow(workoutLabels, d.type, editing && !state.saving) { value ->
-                        model.edit { it.copy(type = value, name = workoutLabels[value].orEmpty()) }
-                    }
-                    FitCard {
-                        OutlinedTextField(
-                            d.name,
-                            { value -> model.edit { it.copy(name = value) } },
-                            Modifier.fillMaxWidth(),
-                            label = { Text("运动名称") },
-                            readOnly = !editing,
-                            enabled = !state.saving,
-                            singleLine = true,
-                        )
-                        NumberInput("时长 · 分钟", d.duration, editing && !state.saving, true) { value
-                            ->
-                            model.edit { it.copy(duration = value) }
-                        }
-                        NumberInput("消耗 · kcal（选填）", d.calories, editing && !state.saving, true) {
-                            value ->
-                            model.edit { it.copy(calories = value) }
-                        }
-                    }
-                    Text(
-                        "消耗未知时留空，不自动估算",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
+                RecordKind.WORKOUT -> Unit
                 RecordKind.PHOTO -> {
                     ChoiceRow(photoLabels, d.type, editing && !state.saving) { value ->
                         model.edit { it.copy(type = value) }

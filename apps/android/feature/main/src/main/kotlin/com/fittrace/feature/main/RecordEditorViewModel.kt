@@ -26,6 +26,15 @@ data class RecordDraft(
     val note: String = "",
     val foods: List<FoodEntry> = emptyList(),
     val imageUrl: String? = null,
+    val exercises: List<TrainingExercise>? = null,
+)
+
+data class WorkoutSelection(
+    val type: String,
+    val name: String,
+    val minutes: String = "",
+    val calories: String = "",
+    val note: String = "",
 )
 
 data class EditorState(
@@ -37,6 +46,7 @@ data class EditorState(
     val dirty: Boolean = false,
     val loadingFailed: Boolean = false,
     val previousBody: BodyEntry? = null,
+    val workouts: List<WorkoutSelection> = emptyList(),
 )
 
 class RecordEditorViewModel(
@@ -141,6 +151,7 @@ class RecordEditorViewModel(
                                 duration = entry.durationMinutes.toString(),
                                 calories = entry.calories?.toString().orEmpty(),
                                 time = entry.startedAt,
+                                exercises = entry.exercises,
                                 note = entry.note.orEmpty(),
                             )
                         }
@@ -239,6 +250,7 @@ class RecordEditorViewModel(
                                 d.duration.toInt(),
                                 d.calories.toIntOrNull(),
                                 d.note.ifBlank { null },
+                                d.exercises,
                             ),
                             d.id,
                         )
@@ -254,6 +266,78 @@ class RecordEditorViewModel(
                     is AppResult.Failure ->
                         mutable.value.copy(saving = false, error = result.error.recordMessage())
                 }
+        }
+    }
+
+    fun selectWorkout(item: WorkoutSelection, index: Int? = null) {
+        if (mutable.value.saving) return
+        val items = mutable.value.workouts.toMutableList()
+        if (index == null) items.add(item) else if (index in items.indices) items[index] = item
+        mutable.value = mutable.value.copy(workouts = items, dirty = true, error = null)
+    }
+
+    fun removeWorkout(index: Int) {
+        if (mutable.value.saving) return
+        mutable.value =
+            mutable.value.copy(
+                workouts = mutable.value.workouts.filterIndexed { i, _ -> i != index },
+                dirty = true,
+                error = null,
+            )
+    }
+
+    fun saveWorkouts() {
+        val state = mutable.value
+        if (state.saving || state.loading || state.draft.id != null) return
+        if (state.workouts.isEmpty()) {
+            error("请至少添加一项运动")
+            return
+        }
+        state.workouts.forEach { item ->
+            validateRecord(
+                    state.draft.copy(
+                        type = item.type,
+                        name = item.name,
+                        duration = item.minutes,
+                        calories = item.calories,
+                        note = item.note,
+                    )
+                )
+                ?.let {
+                    error(it)
+                    return
+                }
+        }
+        mutable.value = state.copy(saving = true, error = null)
+        viewModelScope.launch {
+            // Remove each acknowledged item before continuing so retry never resends it.
+            for (item in state.workouts) {
+                val result =
+                    repository.saveWorkout(
+                        WorkoutInput(
+                            item.type,
+                            item.name.trim(),
+                            state.draft.time,
+                            item.minutes.toInt(),
+                            item.calories.toIntOrNull(),
+                            item.note.ifBlank { null },
+                        )
+                    )
+                when (result) {
+                    is AppResult.Success ->
+                        mutable.value =
+                            mutable.value.copy(workouts = mutable.value.workouts.drop(1))
+                    is AppResult.Failure -> {
+                        mutable.value =
+                            mutable.value.copy(
+                                saving = false,
+                                error = "${result.error.recordMessage()}，未保存的运动已保留",
+                            )
+                        return@launch
+                    }
+                }
+            }
+            mutable.value = mutable.value.copy(saving = false, saved = true, dirty = false)
         }
     }
 
