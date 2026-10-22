@@ -74,10 +74,21 @@ class LocalTrainingDraftStore(context: Context, accountId: String) : TrainingDra
                 .put("minutes", draft.minutes)
                 .put("exercises", items)
         draft.restUntil?.let { root.put("restUntil", it) }
-        preferences.edit().putString(date, root.toString()).apply()
+        check(preferences.edit().putString(date, root.toString()).commit()) {
+            "Unable to persist training draft"
+        }
+    }
+
+    override fun favoriteExercises(): Set<String> =
+        preferences.getStringSet("favorite-exercises", emptySet()).orEmpty().toSet()
+
+    override fun setFavoriteExercises(ids: Set<String>) {
+        check(preferences.edit().putStringSet("favorite-exercises", ids).commit()) {
+            "Unable to persist favorites"
+        }
     }
 
     override fun clear(date: String) {
-        preferences.edit().remove(date).apply()
+        check(preferences.edit().remove(date).commit()) { "Unable to clear training draft" }
     }
 }

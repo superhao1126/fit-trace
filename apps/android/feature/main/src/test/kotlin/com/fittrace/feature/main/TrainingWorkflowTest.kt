@@ -36,6 +36,14 @@ class TrainingWorkflowTest {
             values[date] = draft
         }
 
+        private var favorites = emptySet<String>()
+
+        override fun favoriteExercises() = favorites
+
+        override fun setFavoriteExercises(ids: Set<String>) {
+            favorites = ids
+        }
+
         override fun clear(date: String) {
             values.remove(date)
         }
@@ -51,6 +59,7 @@ class TrainingWorkflowTest {
                     }
                     .also { models += it }
             runCurrent()
+            first.favoriteExercise("plank")
             first.add(exercise)
             first.minutes("15")
             first.set(0, 0, TrainingSet(35, 0.0, true))
@@ -62,6 +71,7 @@ class TrainingWorkflowTest {
                 TrainingViewModel(TrainingRepositoryFake(), RecordsRepositoryFake(), date, drafts)
                     .also { models += it }
             runCurrent()
+            assertEquals(setOf("plank"), second.state.value.favoriteExercises)
             assertTrue(second.state.value.restored)
             assertEquals(
                 TrainingSet(35, 0.0, true),

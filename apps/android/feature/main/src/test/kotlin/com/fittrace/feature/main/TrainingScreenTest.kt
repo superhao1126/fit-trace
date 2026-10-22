@@ -72,6 +72,40 @@ class TrainingScreenTest {
         capture("strength-template-dark-320")
     }
 
+    @Test
+    @Config(sdk = [35], qualifiers = "w320dp-h720dp-mdpi")
+    fun `numeric panel adds planned sets without marking complete and favorites filter actual actions`() {
+        val model =
+            TrainingViewModel(
+                TrainingRepositoryFake(),
+                RecordsRepositoryFake(),
+                LocalDate.of(2026, 10, 19),
+            )
+        compose.setContent {
+            val state by model.state.collectAsState()
+            FitTraceTheme(true) { TrainingScreen(state, model, {}, {}) }
+        }
+        compose.onNodeWithText("开始力量训练").performClick()
+        compose.onNodeWithText("＋ 添加动作").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("收藏徒手深蹲").performClick()
+        compose.onNodeWithText("我的常用").performClick()
+        compose.onNodeWithText("徒手深蹲").assertIsDisplayed()
+        compose.onNodeWithText("跪姿俯卧撑").assertDoesNotExist()
+        compose.onNodeWithText("徒手深蹲").performClick()
+        compose.onNodeWithText("加入训练").performClick()
+        compose.onNodeWithText("1", useUnmergedTree = true).performClick()
+        compose.onNodeWithText("2", useUnmergedTree = true).performClick()
+        compose.onNodeWithContentDescription("输入次数").performClick()
+        compose.onNodeWithText("1", useUnmergedTree = true).performClick()
+        compose.onNodeWithText("0", useUnmergedTree = true).performClick()
+        capture("strength-numeric-dark-320", true)
+        compose.onNodeWithText("加入动作清单").performScrollTo().performClick()
+        compose.waitUntil { model.state.value.exercises.isNotEmpty() }
+        val sets = model.state.value.exercises.single().sets
+        Assert.assertEquals(3, sets.size)
+        Assert.assertTrue(sets.all { it.reps == 10 && it.weightKg == 12.0 && !it.completed })
+    }
+
     private fun capture(name: String, sheet: Boolean = false) {
         compose.runOnIdle {
             val view =

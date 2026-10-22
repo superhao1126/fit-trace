@@ -15,5 +15,9 @@ interface TrainingDraftStore {
 
     fun write(date: String, draft: TrainingDraft)
 
+    fun favoriteExercises(): Set<String>
+
+    fun setFavoriteExercises(ids: Set<String>)
+
     fun clear(date: String)
 }

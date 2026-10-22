@@ -30,6 +30,7 @@ data class TrainingState(
     val editingTemplate: Boolean = false,
     val templateId: String? = null,
     val previousLoading: Boolean = false,
+    val favoriteExercises: Set<String> = emptySet(),
 )
 
 class TrainingViewModel(
@@ -46,6 +47,8 @@ class TrainingViewModel(
     private var sessionBeforeTemplate: TrainingState? = null
 
     init {
+        mutable.value =
+            mutable.value.copy(favoriteExercises = drafts?.favoriteExercises().orEmpty())
         drafts?.read(date.toString())?.let {
             mutable.value =
                 mutable.value.copy(
@@ -108,9 +111,22 @@ class TrainingViewModel(
         if (!mutable.value.saving) mutable.value = mutable.value.copy(minutes = value, error = null)
     }
 
-    fun add(exercise: CatalogExercise) {
+    fun add(
+        exercise: CatalogExercise,
+        reps: Int = if (exercise.unit == "seconds") 20 else 10,
+        weight: Double = 0.0,
+        groups: Int = 1,
+    ) {
         val s = mutable.value
-        if (s.saving || s.exercises.size >= 20) return
+        if (
+            s.saving ||
+                s.exercises.size >= 20 ||
+                reps !in 1..3600 ||
+                groups !in 1..20 ||
+                !weight.isFinite() ||
+                weight !in 0.0..1000.0
+        )
+            return
         if (s.exercises.any { it.exerciseId == exercise.id }) return
         mutable.value =
             s.copy(
@@ -121,11 +137,25 @@ class TrainingViewModel(
                             exercise.name,
                             exercise.unit,
                             60,
-                            listOf(
-                                TrainingSet(if (exercise.unit == "seconds") 20 else 10, 0.0, false)
-                            ),
+                            List(groups) { TrainingSet(reps, weight, false) },
                         ),
                 error = null,
+            )
+    }
+
+    fun favoriteExercise(id: String) {
+        val old = mutable.value.favoriteExercises
+        val next = if (id in old) old - id else old + id
+        runCatching { drafts?.setFavoriteExercises(next) }
+            .fold(
+                {
+                    mutable.value =
+                        mutable.value.copy(
+                            favoriteExercises = next,
+                            notice = if (id in next) "已加入常用动作" else "已移除常用动作",
+                        )
+                },
+                { mutable.value = mutable.value.copy(notice = "常用动作保存失败，请重试") },
             )
     }
 

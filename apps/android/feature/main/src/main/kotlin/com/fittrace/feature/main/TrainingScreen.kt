@@ -42,6 +42,7 @@ internal fun TrainingScreen(
     var leave by remember { mutableStateOf(false) }
     var finish by remember { mutableStateOf(false) }
     var libraryFromTools by remember { mutableStateOf(false) }
+    var adding by remember { mutableStateOf<CatalogExercise?>(null) }
     var replacing by remember { mutableStateOf<TrainingTemplate?>(null) }
     var editing by remember { mutableStateOf<Int?>(null) }
     val back = {
@@ -297,14 +298,25 @@ internal fun TrainingScreen(
         }
     }
     if (library)
-        ExerciseSheet(state.exercises.map { it.exerciseId }.toSet(), { library = false }) {
+        ExerciseSheet(
+            state.exercises.map { it.exerciseId }.toSet(),
+            state.favoriteExercises,
+            model::favoriteExercise,
+            { library = false },
+        ) {
+            adding = it
+        }
+    adding?.let { exercise ->
+        StrengthInputSheet(exercise, { adding = null }) { reps, weight, groups ->
             if (libraryFromTools) {
                 model.beginTemplate()
                 page = "template-editor"
                 libraryFromTools = false
             }
-            model.add(it)
+            model.add(exercise, reps, weight, groups)
+            adding = null
         }
+    }
     editing?.let { ei ->
         state.exercises.getOrNull(ei)?.let { exercise ->
             StrengthSetsSheet(
@@ -401,6 +413,8 @@ internal fun TrainingScreen(
 @Composable
 private fun ExerciseSheet(
     selected: Set<String>,
+    favorites: Set<String>,
+    favorite: (String) -> Unit,
     onDismiss: () -> Unit,
     onAdd: (CatalogExercise) -> Unit,
 ) {
@@ -434,7 +448,8 @@ private fun ExerciseSheet(
                             RoundedCornerShape(14.dp),
                         )
                 ) {
-                    (listOf("全部") + exercises.map { it.bodyPart }.distinct()).forEach { part ->
+                    (listOf("我的常用", "全部") + exercises.map { it.bodyPart }.distinct()).forEach { part
+                        ->
                         Text(
                             part,
                             Modifier.fillMaxWidth()
@@ -454,7 +469,9 @@ private fun ExerciseSheet(
                 }
                 val filtered =
                     exercises.filter {
-                        (category == "全部" || it.bodyPart == category) &&
+                        (category == "全部" ||
+                            (category == "我的常用" && it.id in favorites) ||
+                            it.bodyPart == category) &&
                             (it.name.contains(search) || it.equipment.contains(search))
                     }
                 LazyColumn(Modifier.weight(1f)) {
@@ -486,6 +503,21 @@ private fun ExerciseSheet(
                                 )
                             }
                             TextButton(
+                                onClick = { favorite(exercise.id) },
+                                contentPadding = PaddingValues(0.dp),
+                                modifier =
+                                    Modifier.width(28.dp).semantics {
+                                        contentDescription =
+                                            if (exercise.id in favorites) "取消常用${exercise.name}"
+                                            else "收藏${exercise.name}"
+                                    },
+                            ) {
+                                Text(
+                                    if (exercise.id in favorites) "★" else "☆",
+                                    color = MaterialTheme.colorScheme.secondary,
+                                )
+                            }
+                            TextButton(
                                 onClick = { onAdd(exercise) },
                                 enabled = exercise.id !in selected,
                                 contentPadding = PaddingValues(0.dp),
@@ -512,7 +544,16 @@ private fun ExerciseSheet(
                     Text(exercise.tips)
                 }
             },
-            confirmButton = { TextButton(onClick = { onAdd(exercise) }) { Text("加入训练") } },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onAdd(exercise)
+                        detail = null
+                    }
+                ) {
+                    Text("加入训练")
+                }
+            },
             dismissButton = { TextButton(onClick = { detail = null }) { Text("返回") } },
         )
     }
