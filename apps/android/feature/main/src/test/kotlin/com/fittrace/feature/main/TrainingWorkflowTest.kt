@@ -194,4 +194,37 @@ class TrainingWorkflowTest {
             assertEquals("plank", model.state.value.exercises.single().exerciseId)
             assertEquals("plank", drafts.read(date.toString())!!.exercises.single().exerciseId)
         }
+
+    @Test
+    fun `draft write failure is not reported as retained and clears after successful retry`() =
+        runTest(dispatcher) {
+            var fail = true
+            val store =
+                object : TrainingDraftStore {
+                    override fun read(date: String): TrainingDraft? = null
+
+                    override fun write(date: String, draft: TrainingDraft) {
+                        if (fail) error("disk full")
+                    }
+
+                    override fun clear(date: String) {}
+
+                    override fun favoriteExercises() = emptySet<String>()
+
+                    override fun setFavoriteExercises(ids: Set<String>) {}
+                }
+            val model =
+                TrainingViewModel(TrainingRepositoryFake(), RecordsRepositoryFake(), date, store)
+                    .also { models += it }
+            runCurrent()
+            model.add(exercise)
+            runCurrent()
+            assertTrue(model.state.value.draftError)
+            assertEquals("本机草稿保存失败，请勿关闭应用", model.state.value.notice)
+            fail = false
+            model.minutes("20")
+            runCurrent()
+            assertFalse(model.state.value.draftError)
+            assertNull(model.state.value.notice)
+        }
 }

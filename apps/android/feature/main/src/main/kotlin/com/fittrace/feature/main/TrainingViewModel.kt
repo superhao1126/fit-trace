@@ -31,6 +31,7 @@ data class TrainingState(
     val templateId: String? = null,
     val previousLoading: Boolean = false,
     val favoriteExercises: Set<String> = emptySet(),
+    val draftError: Boolean = false,
 )
 
 class TrainingViewModel(
@@ -75,8 +76,22 @@ class TrainingViewModel(
                                     drafts.clear(date.toString())
                                 else drafts.write(date.toString(), draft)
                             }
+                            .onSuccess {
+                                mutable.value =
+                                    mutable.value.copy(
+                                        draftError = false,
+                                        notice =
+                                            mutable.value.notice.takeUnless {
+                                                it == "本机草稿保存失败，请勿关闭应用"
+                                            },
+                                    )
+                            }
                             .onFailure {
-                                mutable.value = mutable.value.copy(notice = "本机草稿保存失败，请勿关闭应用")
+                                mutable.value =
+                                    mutable.value.copy(
+                                        draftError = true,
+                                        notice = "本机草稿保存失败，请勿关闭应用",
+                                    )
                             }
                     }
                 }

@@ -50,7 +50,8 @@ internal fun TrainingScreen(
             if (page == "template-editor") {
                 model.cancelTemplate()
                 page = "templates"
-            } else if (page == "session" && state.exercises.isNotEmpty()) leave = true
+            } else if ((page == "session" || state.draftError) && state.exercises.isNotEmpty())
+                leave = true
             else if (page != "tools") page = "tools" else onBack()
         }
     }
@@ -362,7 +363,10 @@ internal fun TrainingScreen(
             title = { Text("离开训练？") },
             text = {
                 Column {
-                    Text("已保留本机草稿，下次可继续本日期的训练。")
+                    Text(
+                        if (state.draftError) "本机草稿写入失败，请保持页面打开并继续训练重试，或明确放弃本次草稿。"
+                        else "已保留本机草稿，下次可继续本日期的训练。"
+                    )
                     TextButton(
                         onClick = {
                             model.discard()
@@ -379,7 +383,8 @@ internal fun TrainingScreen(
                     onClick = {
                         leave = false
                         page = "tools"
-                    }
+                    },
+                    enabled = !state.draftError,
                 ) {
                     Text("返回工具")
                 }
