@@ -1,8 +1,6 @@
 package com.fittrace.feature.main
 
 import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -41,20 +39,17 @@ internal fun MealPhotoCard(
             )
         }
     }
-    val picker =
-        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { value ->
-            value?.let { selected ->
-                runCatching {
-                    context.contentResolver.takePersistableUriPermission(
-                        selected,
-                        android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION,
-                    )
-                }
-                uri = selected.toString()
-                model.edit { it.copy(imageUrl = null) }
-                upload(selected)
-            }
-        }
+    var choosingSource by rememberSaveable { mutableStateOf(false) }
+    MealPhotoSourcePicker(
+        visible = choosingSource,
+        onDismiss = { choosingSource = false },
+        onSelected = { selected ->
+            uri = selected.toString()
+            model.edit { it.copy(imageUrl = null) }
+            upload(selected)
+        },
+        onError = model::error,
+    )
     LaunchedEffect(uri, state.draft.imageUrl, reading) {
         onReading(reading || (uri != null && state.draft.imageUrl == null))
     }
@@ -66,7 +61,7 @@ internal fun MealPhotoCard(
             if (editing) {
                 val busy = state.saving || reading
                 OutlinedButton(
-                    onClick = { picker.launch(arrayOf("image/jpeg", "image/png", "image/webp")) },
+                    onClick = { choosingSource = true },
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
