@@ -97,6 +97,13 @@ fun MainRoute(
                     tab == 0 -> state.date.toString()
                     else -> LocalDate.now().toString()
                 }
+            if (kind == RecordKind.PHOTO)
+                records.select(
+                    RecordKind.PHOTO,
+                    null,
+                    force = true,
+                    month = YearMonth.from(LocalDate.parse(editorDate)),
+                )
             editorKey++
             pages = pages + if (kind == RecordKind.WORKOUT) "training" else "record-editor"
         }
@@ -107,8 +114,25 @@ fun MainRoute(
             editorKey++
             pages = pages + "record-editor"
         }
-        LaunchedEffect(tab, page, recordKind, archiveDate, archiveMonth) {
-            if (tab == 2 || page == "records")
+        LaunchedEffect(
+            tab,
+            page,
+            recordKind,
+            archiveDate,
+            archiveMonth,
+            editorKind,
+            editorId,
+            editorDate,
+        ) {
+            if (
+                page == "record-editor" && editorKind == RecordKind.PHOTO.name && editorId == null
+            ) {
+                records.select(
+                    RecordKind.PHOTO,
+                    null,
+                    month = YearMonth.from(LocalDate.parse(editorDate)),
+                )
+            } else if (tab == 2 || page == "records")
                 records.select(
                     recordKind?.let(RecordKind::valueOf),
                     archiveDate?.let(LocalDate::parse),
@@ -201,6 +225,19 @@ fun MainRoute(
                                     trends.load()
                                     profile.load()
                                 }
+                            }
+                            if (editorState.draft.kind == RecordKind.PHOTO && editorId == null) {
+                                PhotoArchiveScreen(
+                                    recordsState,
+                                    YearMonth.from(LocalDate.parse(editorDate)),
+                                    {},
+                                    records::refresh,
+                                    records::load,
+                                    { openRecord(it.kind, it.id) },
+                                    {},
+                                    back,
+                                    {},
+                                )
                             }
                             RecordEditorScreen(editorState, editor, back)
                         }

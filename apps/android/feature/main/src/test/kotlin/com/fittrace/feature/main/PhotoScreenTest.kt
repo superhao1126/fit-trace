@@ -23,6 +23,7 @@ import org.robolectric.annotation.GraphicsMode
 class PhotoScreenTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
+    @OptIn(coil3.annotation.DelicateCoilApi::class)
     @Before
     fun imageDecoder() {
         coil3.SingletonImageLoader.setUnsafe(
@@ -79,6 +80,10 @@ class PhotoScreenTest {
         assertEquals(image, saved!!.imageUrl)
         assertEquals("阶段记录", model.state.value.draft.note)
         compose.onNodeWithText("重新保存").assertIsEnabled()
+        compose.onNodeWithContentDescription("返回").performClick()
+        compose.onNodeWithText("继续记录").performClick()
+        compose.onNodeWithText("重新保存").assertIsEnabled()
+        assertEquals(image, model.state.value.draft.imageUrl)
     }
 
     @Test
@@ -224,7 +229,7 @@ class PhotoScreenTest {
 
     private fun capture(name: String) {
         compose.runOnIdle {
-            val view = compose.activity.window.decorView
+            val view = android.view.inspector.WindowInspector.getGlobalWindowViews().last()
             val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
             view.draw(Canvas(bitmap))
             val file = File("build/reports/photo-screenshots/$name.png")

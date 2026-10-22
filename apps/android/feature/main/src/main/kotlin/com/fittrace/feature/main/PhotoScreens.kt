@@ -33,6 +33,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun PhotoRecordScreen(
     state: EditorState,
@@ -83,152 +84,174 @@ internal fun PhotoRecordScreen(
         }
     }
     BackHandler { back() }
-    PhotoPage(
-        if (creating) "添加身材照片" else "照片详情",
-        back,
-        footer = {
-            if (!state.loading && !state.loadingFailed) {
-                Column(
-                    Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    if (creating) {
-                        Button(
-                            onClick = model::save,
-                            enabled = !busy && d.imageUrl != null,
-                            modifier = Modifier.fillMaxWidth().height(50.dp),
-                        ) {
-                            Text(
-                                if (state.uploading || reading) "正在上传…"
-                                else if (state.saving) "正在保存…"
-                                else if (state.error != null && d.imageUrl != null) "重新保存"
-                                else "保存照片"
-                            )
-                        }
-                    } else
-                        OutlinedButton(
-                            onClick = { deleting = true },
-                            enabled = !busy,
-                            modifier = Modifier.fillMaxWidth().height(50.dp),
-                        ) {
-                            Text("删除照片", color = MaterialTheme.colorScheme.error)
-                        }
-                }
-            }
-        },
-    ) {
-        when {
-            state.loading -> {
-                LinearProgressIndicator(Modifier.fillMaxWidth())
-                Text("正在读取照片…", fontSize = 13.sp)
-            }
-            state.loadingFailed -> FitMessage("照片读取失败", model::load, true)
-            else -> {
-                state.error?.let { FitMessage(it, error = true) }
-                if (!creating)
-                    Text(
-                        "${time.format(DateTimeFormatter.ofPattern("M月d日"))} · ${photoLabels[d.type] ?: "其他"}",
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                FitCard {
-                    val image = selectedUri ?: d.imageUrl
-                    if (image == null)
-                        Box(
-                            Modifier.fillMaxWidth()
-                                .height(220.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.primaryContainer,
-                                    RoundedCornerShape(16.dp),
-                                ),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text("选择一张照片，记录身体的变化", fontSize = 13.sp)
-                        }
-                    else
-                        PhotoImage(
-                            image,
-                            Modifier.fillMaxWidth().height(if (creating) 240.dp else 390.dp),
-                            fit = true,
-                        )
-                    if (creating) {
-                        OutlinedButton(
-                            onClick = {
-                                picker.launch(arrayOf("image/jpeg", "image/png", "image/webp"))
-                            },
-                            enabled = !busy,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(if (image == null) "从相册选择" else "重新选择")
-                        }
-                        if (!busy && selectedUri != null && d.imageUrl == null)
-                            TextButton(onClick = { upload(selectedUri!!.toUri()) }) { Text("重试上传") }
-                        if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-                        Text(
-                            if (state.uploading || reading) "正在上传，请稍候…"
-                            else if (d.imageUrl != null) "已上传，保存后加入照片归档"
-                            else "支持 JPG / PNG / WebP，最大 6 MB",
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-                if (creating) {
-                    PhotoAngles(
-                        d.type,
-                        { value -> model.edit { it.copy(type = value) } },
-                        !busy,
-                        all = false,
-                    )
-                    FitCard {
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Text("拍摄日期", fontSize = 13.sp)
-                            TextButton(onClick = { date = true }, enabled = !busy) {
+    val content: @Composable () -> Unit = {
+        PhotoPage(
+            if (creating) "添加身材照片" else "照片详情",
+            back,
+            footer = {
+                if (!state.loading && !state.loadingFailed) {
+                    Column(
+                        Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        if (creating) {
+                            Button(
+                                onClick = model::save,
+                                enabled = !busy && d.imageUrl != null,
+                                modifier = Modifier.fillMaxWidth().height(50.dp),
+                            ) {
                                 Text(
-                                    time.format(DateTimeFormatter.ofPattern("yyyy年M月d日")) + " ›",
-                                    fontSize = 12.sp,
+                                    if (state.uploading || reading) "正在上传…"
+                                    else if (state.saving) "正在保存…"
+                                    else if (state.error != null && d.imageUrl != null) "重新保存"
+                                    else "保存照片"
                                 )
                             }
-                        }
-                        TextButton(onClick = { clock = true }, enabled = !busy) {
-                            Text("拍摄时间 · ${time.format(DateTimeFormatter.ofPattern("HH:mm"))}")
-                        }
-                        OutlinedTextField(
-                            d.note,
-                            { value -> model.edit { it.copy(note = value) } },
-                            Modifier.fillMaxWidth(),
-                            label = { Text("备注（选填）") },
-                            maxLines = 4,
-                            enabled = !busy,
-                            shape = RoundedCornerShape(14.dp),
-                        )
+                        } else
+                            OutlinedButton(
+                                onClick = { deleting = true },
+                                enabled = !busy,
+                                modifier = Modifier.fillMaxWidth().height(50.dp),
+                            ) {
+                                Text("删除照片", color = MaterialTheme.colorScheme.error)
+                            }
                     }
-                    Text(
-                        "尽量保持相同光线、距离和拍摄角度。",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else
+                }
+            },
+        ) {
+            when {
+                state.loading -> {
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                    Text("正在读取照片…", fontSize = 13.sp)
+                }
+                state.loadingFailed -> FitMessage("照片读取失败", model::load, true)
+                else -> {
+                    state.error?.let { FitMessage(it, error = true) }
+                    if (!creating)
+                        Text(
+                            "${time.format(DateTimeFormatter.ofPattern("M月d日"))} · ${photoLabels[d.type] ?: "其他"}",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     FitCard {
-                        Text(
-                            "备注",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(d.note.ifBlank { "未填写备注" }, fontSize = 14.sp)
-                        Text(
-                            d.time.localTime(),
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        val image = selectedUri ?: d.imageUrl
+                        if (image == null)
+                            Box(
+                                Modifier.fillMaxWidth()
+                                    .height(220.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.primaryContainer,
+                                        RoundedCornerShape(16.dp),
+                                    ),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text("选择一张照片，记录身体的变化", fontSize = 13.sp)
+                            }
+                        else
+                            PhotoImage(
+                                image,
+                                Modifier.fillMaxWidth().height(if (creating) 160.dp else 390.dp),
+                                fit = true,
+                            )
+                        if (creating) {
+                            OutlinedButton(
+                                onClick = {
+                                    picker.launch(arrayOf("image/jpeg", "image/png", "image/webp"))
+                                },
+                                enabled = !busy,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(if (image == null) "从相册选择" else "重新选择")
+                            }
+                            if (!busy && selectedUri != null && d.imageUrl == null)
+                                TextButton(onClick = { upload(selectedUri!!.toUri()) }) {
+                                    Text("重试上传")
+                                }
+                            if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+                            Text(
+                                if (state.uploading || reading) "正在上传，请稍候…"
+                                else if (d.imageUrl != null) "已上传，保存后加入照片归档"
+                                else "支持 JPG / PNG / WebP，最大 6 MB",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
+                    if (creating) {
+                        PhotoAngles(
+                            d.type,
+                            { value -> model.edit { it.copy(type = value) } },
+                            !busy,
+                            all = false,
+                        )
+                        FitCard {
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text("拍摄日期", fontSize = 13.sp)
+                                TextButton(onClick = { date = true }, enabled = !busy) {
+                                    Text(
+                                        time.format(DateTimeFormatter.ofPattern("yyyy年M月d日")) +
+                                            " ›",
+                                        fontSize = 12.sp,
+                                    )
+                                }
+                            }
+                            TextButton(onClick = { clock = true }, enabled = !busy) {
+                                Text("拍摄时间 · ${time.format(DateTimeFormatter.ofPattern("HH:mm"))}")
+                            }
+                            OutlinedTextField(
+                                d.note,
+                                { value -> model.edit { it.copy(note = value) } },
+                                Modifier.fillMaxWidth(),
+                                label = { Text("备注（选填）") },
+                                maxLines = 4,
+                                enabled = !busy,
+                                shape = RoundedCornerShape(14.dp),
+                            )
+                        }
+                        Text(
+                            "尽量保持相同光线、距离和拍摄角度。",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else
+                        FitCard {
+                            Text(
+                                "备注",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(d.note.ifBlank { "未填写备注" }, fontSize = 14.sp)
+                            Text(
+                                d.time.localTime(),
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                }
             }
         }
     }
+    val latestBusy by rememberUpdatedState(busy)
+    val latestDirty by rememberUpdatedState(state.dirty)
+    val photoSheetState =
+        rememberModalBottomSheetState(
+            skipPartiallyExpanded = true,
+            confirmValueChange = { target ->
+                if (target == SheetValue.Hidden && (latestBusy || latestDirty)) {
+                    if (!latestBusy) leave = true
+                    false
+                } else true
+            },
+        )
+    if (creating)
+        ModalBottomSheet(onDismissRequest = back, sheetState = photoSheetState, dragHandle = null) {
+            Box(Modifier.fillMaxWidth().fillMaxHeight(.94f)) { content() }
+        }
+    else content()
     if (date)
         RecordDateDialog(time.toLocalDate(), { date = false }) { value ->
             model.edit {
@@ -339,7 +362,10 @@ internal fun PhotoArchiveScreen(
                         FitMessage(it, if (state.loadMoreError) more else refresh, true)
                     }
                     val items =
-                        state.items.filter { angle.isBlank() || it.title == photoLabels[angle] }
+                        state.items.filter {
+                            it.kind == com.fittrace.core.model.RecordKind.PHOTO &&
+                                (angle.isBlank() || it.title == photoLabels[angle])
+                        }
                     if (items.isEmpty())
                         FitCard {
                             Text(
