@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.fittrace.core.designsystem.*
 import java.time.*
 import java.time.format.DateTimeFormatter
 
@@ -353,7 +354,7 @@ internal fun MealRecordScreen(
                         }
                         MealPhotoCard(state, model, editing) { readingPhoto = it }
                         if (editing)
-                            OutlinedTextField(
+                            FitTextField(
                                 draft.note,
                                 { value -> model.edit { it.copy(note = value) } },
                                 Modifier.fillMaxWidth(),
@@ -361,7 +362,6 @@ internal fun MealRecordScreen(
                                 label = { Text("备注（选填）") },
                                 minLines = 2,
                                 maxLines = 4,
-                                shape = RoundedCornerShape(16.dp),
                             )
                         else if (draft.note.isNotBlank())
                             InsightsCard {
@@ -378,14 +378,7 @@ internal fun MealRecordScreen(
                             lineHeight = 17.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        state.error?.let {
-                            Text(
-                                it,
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                            )
-                        }
+                        state.error?.let { FitInlineMessage(it) }
                     }
                 }
             }
@@ -513,15 +506,19 @@ internal fun MealRecordScreen(
             }
         }
     if (leave)
-        AlertDialog(
+        FitDialog(
             onDismissRequest = { leave = false },
             title = { Text("放弃本次修改？") },
             text = { Text("未保存的输入会丢失。") },
-            confirmButton = { TextButton(onClick = onBack) { Text("放弃修改") } },
-            dismissButton = { TextButton(onClick = { leave = false }) { Text("继续编辑") } },
+            confirmButton = {
+                FitDialogButton(destructive = true, onClick = onBack) { Text("放弃修改") }
+            },
+            dismissButton = {
+                FitDialogButton(primary = false, onClick = { leave = false }) { Text("继续编辑") }
+            },
         )
     if (deleting)
-        AlertDialog(
+        FitDialog(
             onDismissRequest = { deleting = false },
             title = { Text("删除这条记录？") },
             text = {
@@ -530,15 +527,18 @@ internal fun MealRecordScreen(
                 )
             },
             confirmButton = {
-                TextButton(
+                FitDialogButton(
+                    destructive = true,
                     onClick = {
                         deleting = false
                         model.delete()
-                    }
+                    },
                 ) {
                     Text("确认删除")
                 }
             },
-            dismissButton = { TextButton(onClick = { deleting = false }) { Text("取消") } },
+            dismissButton = {
+                FitDialogButton(primary = false, onClick = { deleting = false }) { Text("取消") }
+            },
         )
 }

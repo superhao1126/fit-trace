@@ -209,13 +209,12 @@ internal fun WorkoutRecordScreen(
                             }
                         }
                         selecting -> {
-                            OutlinedTextField(
+                            FitTextField(
                                 query,
                                 { query = it },
                                 Modifier.fillMaxWidth(),
                                 placeholder = { Text("搜索运动名称") },
                                 singleLine = true,
-                                shape = RoundedCornerShape(24.dp),
                                 enabled = !state.saving,
                             )
                             Row(
@@ -388,29 +387,34 @@ internal fun WorkoutRecordScreen(
             clock = false
         }
     if (leave)
-        AlertDialog(
+        FitDialog(
             onDismissRequest = { leave = false },
             title = { Text("放弃本次修改？") },
             text = { Text("未保存的运动会丢失。") },
-            confirmButton = { TextButton(onClick = onBack) { Text("放弃") } },
-            dismissButton = { TextButton(onClick = { leave = false }) { Text("继续记录") } },
+            confirmButton = { FitDialogButton(onClick = onBack) { Text("放弃") } },
+            dismissButton = {
+                FitDialogButton(primary = false, onClick = { leave = false }) { Text("继续记录") }
+            },
         )
     if (deleting)
-        AlertDialog(
+        FitDialog(
             onDismissRequest = { deleting = false },
             title = { Text("删除运动记录？") },
             text = { Text("删除后无法恢复。") },
             confirmButton = {
-                TextButton(
+                FitDialogButton(
+                    destructive = true,
                     onClick = {
                         deleting = false
                         model.delete()
-                    }
+                    },
                 ) {
                     Text("确认删除")
                 }
             },
-            dismissButton = { TextButton(onClick = { deleting = false }) { Text("取消") } },
+            dismissButton = {
+                FitDialogButton(primary = false, onClick = { deleting = false }) { Text("取消") }
+            },
         )
 }
 
@@ -458,7 +462,7 @@ private fun WorkoutInputSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text("填写运动时长", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            OutlinedTextField(
+            FitTextField(
                 name,
                 { name = it },
                 Modifier.fillMaxWidth(),
@@ -503,7 +507,7 @@ private fun WorkoutInputSheet(
                         }
                     }
                 }
-            OutlinedTextField(
+            FitTextField(
                 calories,
                 { calories = it },
                 Modifier.fillMaxWidth(),
@@ -516,14 +520,14 @@ private fun WorkoutInputSheet(
                 fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            OutlinedTextField(
+            FitTextField(
                 note,
                 { note = it },
                 Modifier.fillMaxWidth(),
                 label = { Text("备注（选填）") },
                 maxLines = 3,
             )
-            error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
+            error?.let { FitInlineMessage(it) }
             Button(
                 onClick = {
                     val next =

@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fittrace.core.designsystem.*
 import com.fittrace.core.model.*
 import java.time.*
 import java.time.format.DateTimeFormatter
@@ -285,14 +286,7 @@ internal fun BodyRecordScreen(
                                 Text(draft.note.ifBlank { "—" }, fontSize = 15.sp)
                             }
                         }
-                        state.error?.let {
-                            Text(
-                                it,
-                                Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                        }
+                        state.error?.let { FitInlineMessage(it) }
                     }
                 }
             }
@@ -326,14 +320,13 @@ internal fun BodyRecordScreen(
                 BodySupplementInput("臀围 · cm（选填）", draft.hip) { value ->
                     model.edit { it.copy(hip = value) }
                 }
-                OutlinedTextField(
+                FitTextField(
                     draft.note,
                     { value -> model.edit { it.copy(note = value) } },
                     Modifier.fillMaxWidth(),
                     label = { Text("备注（选填）") },
                     minLines = 2,
                     maxLines = 4,
-                    shape = RoundedCornerShape(14.dp),
                 )
                 Button(onClick = { more = false }, modifier = Modifier.fillMaxWidth()) {
                     Text("确认补充", color = Color(0xFF092B17))
@@ -370,15 +363,19 @@ internal fun BodyRecordScreen(
             clock = false
         }
     if (leave)
-        AlertDialog(
+        FitDialog(
             onDismissRequest = { leave = false },
             title = { Text("放弃本次修改？") },
             text = { Text("未保存的输入会丢失。") },
-            confirmButton = { TextButton(onClick = onBack) { Text("放弃修改") } },
-            dismissButton = { TextButton(onClick = { leave = false }) { Text("继续编辑") } },
+            confirmButton = {
+                FitDialogButton(destructive = true, onClick = onBack) { Text("放弃修改") }
+            },
+            dismissButton = {
+                FitDialogButton(primary = false, onClick = { leave = false }) { Text("继续编辑") }
+            },
         )
     if (deleting)
-        AlertDialog(
+        FitDialog(
             onDismissRequest = { deleting = false },
             title = { Text("删除这条记录？") },
             text = {
@@ -387,16 +384,19 @@ internal fun BodyRecordScreen(
                 )
             },
             confirmButton = {
-                TextButton(
+                FitDialogButton(
+                    destructive = true,
                     onClick = {
                         deleting = false
                         model.delete()
-                    }
+                    },
                 ) {
                     Text("确认删除")
                 }
             },
-            dismissButton = { TextButton(onClick = { deleting = false }) { Text("取消") } },
+            dismissButton = {
+                FitDialogButton(primary = false, onClick = { deleting = false }) { Text("取消") }
+            },
         )
 }
 
@@ -430,14 +430,13 @@ private fun BodyDetailRow(label: String, value: String) {
 
 @Composable
 private fun BodySupplementInput(label: String, value: String, onValue: (String) -> Unit) {
-    OutlinedTextField(
+    FitTextField(
         value,
         onValue,
         Modifier.fillMaxWidth(),
         label = { Text(label) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-        shape = RoundedCornerShape(14.dp),
     )
 }
 
@@ -549,12 +548,7 @@ private fun WeightInputSheet(value: String, onDismiss: () -> Unit, onValue: (Str
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.secondary,
             )
-            if (error)
-                Text(
-                    "请填写 1～500 kg 的体重，最多两位小数",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.error,
-                )
+            if (error) FitInlineMessage("请填写 1～500 kg 的体重，最多两位小数")
             listOf(
                     listOf("1", "2", "3", "⌫"),
                     listOf("4", "5", "6", ""),

@@ -2,7 +2,6 @@ package com.fittrace.feature.main
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -60,7 +59,7 @@ internal fun MealToolsSheet(
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        OutlinedTextField(
+                        FitTextField(
                             description,
                             { description = it },
                             Modifier.fillMaxWidth(),
@@ -68,7 +67,6 @@ internal fun MealToolsSheet(
                             enabled = !state.busy,
                             minLines = 3,
                             maxLines = 5,
-                            shape = RoundedCornerShape(16.dp),
                         )
                         FitSaveButton(state.busy, { controller.recognize(description) }, "识别餐食描述")
                         if (draft.imageUrl != null)
@@ -151,7 +149,7 @@ internal fun MealToolsSheet(
                         state.favoritesError?.let { FitMessage(it, controller::load, true) }
                         if (draft.foods.isNotEmpty())
                             FitCard {
-                                OutlinedTextField(
+                                FitTextField(
                                     name,
                                     { name = it },
                                     Modifier.fillMaxWidth(),
@@ -237,12 +235,12 @@ internal fun MealToolsSheet(
         }
     }
     deleting?.let { favorite ->
-        AlertDialog(
+        FitDialog(
             onDismissRequest = { deleting = null },
             title = { Text("移除这份常用餐？") },
             text = { Text("不会删除已有饮食记录。") },
             confirmButton = {
-                TextButton(
+                FitDialogButton(
                     onClick = {
                         controller.removeFavorite(favorite.id)
                         deleting = null
@@ -251,7 +249,9 @@ internal fun MealToolsSheet(
                     Text("确认移除")
                 }
             },
-            dismissButton = { TextButton(onClick = { deleting = null }) { Text("取消") } },
+            dismissButton = {
+                FitDialogButton(primary = false, onClick = { deleting = null }) { Text("取消") }
+            },
         )
     }
 }

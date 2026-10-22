@@ -527,10 +527,7 @@ private fun ProfileWeight(
 
 @Composable
 internal fun ProfileError(error: String, retry: (() -> Unit)? = null) {
-    ProfileCard {
-        Text(error, fontSize = 13.sp, color = MaterialTheme.colorScheme.error)
-        retry?.let { TextButton(onClick = it) { Text("重试") } }
-    }
+    com.fittrace.core.designsystem.FitMessage(error, retry, error = true)
 }
 
 @Composable

@@ -7,26 +7,22 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.fittrace.core.designsystem.*
 import com.fittrace.core.model.FoodEntry
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -87,20 +83,12 @@ internal fun FoodLibrarySheet(
                         )
                         TextButton(onClick = onCustom) { Text("自定义", fontSize = 13.sp) }
                     }
-                    OutlinedTextField(
+                    FitTextField(
                         search,
                         { search = it },
                         Modifier.fillMaxWidth(),
                         placeholder = { Text("搜索食物名称，例如：米饭", fontSize = 13.sp) },
                         singleLine = true,
-                        shape = RoundedCornerShape(28.dp),
-                        colors =
-                            OutlinedTextFieldDefaults.colors(
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.surface,
-                                focusedBorderColor = MaterialTheme.colorScheme.surface,
-                            ),
                     )
                 }
                 if (onTools != null)
@@ -299,63 +287,25 @@ internal fun FoodLibrarySheet(
                         )
                     }
                 }
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                ) {
-                    Row(
-                        Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        TextButton(
-                            onClick = {
-                                grams =
-                                    ((grams.toDoubleOrNull() ?: 100.0) - 25)
-                                        .coerceAtLeast(1.0)
-                                        .number()
-                                error = null
-                            },
-                            modifier =
-                                Modifier.width(40.dp).semantics { contentDescription = "减少 25 克" },
-                        ) {
-                            Text("−", fontSize = 24.sp)
-                        }
-                        BasicTextField(
-                            value = grams,
-                            onValueChange = {
-                                grams = it
-                                error = null
-                            },
-                            modifier =
-                                Modifier.weight(1f).padding(vertical = 8.dp).semantics {
-                                    contentDescription = "可食份量 · g"
-                                },
-                            singleLine = true,
-                            textStyle =
-                                LocalTextStyle.current.copy(
-                                    fontSize = 26.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    textAlign = TextAlign.Center,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                ),
-                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        )
-                        TextButton(
-                            onClick = {
-                                grams =
-                                    ((grams.toDoubleOrNull() ?: 100.0) + 25)
-                                        .coerceAtMost(10000.0)
-                                        .number()
-                                error = null
-                            },
-                            modifier =
-                                Modifier.width(40.dp).semantics { contentDescription = "增加 25 克" },
-                        ) {
-                            Text("+", fontSize = 24.sp)
-                        }
-                    }
-                }
+                FitStepperField(
+                    value = grams,
+                    onValueChange = {
+                        grams = it
+                        error = null
+                    },
+                    label = "可食份量 · g",
+                    onDecrease = {
+                        grams = ((grams.toDoubleOrNull() ?: 100.0) - 25).coerceAtLeast(1.0).number()
+                        error = null
+                    },
+                    onIncrease = {
+                        grams =
+                            ((grams.toDoubleOrNull() ?: 100.0) + 25).coerceAtMost(10000.0).number()
+                        error = null
+                    },
+                    decreaseLabel = "减少 25 克",
+                    increaseLabel = "增加 25 克",
+                )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     listOf(50, 100, 150, 200).forEach { value ->
                         TextButton(
@@ -382,7 +332,7 @@ internal fun FoodLibrarySheet(
                     lineHeight = 17.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                error?.let { Text(it, fontSize = 12.sp, color = MaterialTheme.colorScheme.error) }
+                error?.let { FitInlineMessage(it) }
                 Button(
                     onClick = {
                         if (weight == null) error = "请输入 0–10000 g 范围内的正数"

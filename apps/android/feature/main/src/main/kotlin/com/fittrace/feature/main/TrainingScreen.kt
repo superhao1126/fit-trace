@@ -127,16 +127,15 @@ internal fun TrainingScreen(
             "template-editor" -> {
                 if (state.restored && !state.editingTemplate)
                     Text("已恢复本机草稿", color = MaterialTheme.colorScheme.secondary, fontSize = 12.sp)
-                OutlinedTextField(
+                FitTextField(
                     state.name,
                     model::name,
                     Modifier.fillMaxWidth(),
                     label = { Text(if (state.editingTemplate) "模板名称" else "训练名称") },
                     singleLine = true,
                     enabled = !state.saving,
-                    shape = RoundedCornerShape(14.dp),
                 )
-                OutlinedTextField(
+                FitTextField(
                     state.minutes,
                     model::minutes,
                     Modifier.fillMaxWidth(),
@@ -144,7 +143,6 @@ internal fun TrainingScreen(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     enabled = !state.saving,
-                    shape = RoundedCornerShape(14.dp),
                 )
                 if (state.exercises.isEmpty()) FitMessage("先选择动作，再填写实际完成的组")
                 state.exercises.forEachIndexed { exerciseIndex, exercise ->
@@ -347,12 +345,12 @@ internal fun TrainingScreen(
         }
     }
     replacing?.let { template ->
-        AlertDialog(
+        FitDialog(
             onDismissRequest = { replacing = null },
             title = { Text("替换当前训练清单？") },
             text = { Text("使用模板会替换当前草稿中的动作和组。") },
             confirmButton = {
-                TextButton(
+                FitDialogButton(
                     onClick = {
                         model.use(template)
                         page = "session"
@@ -362,11 +360,13 @@ internal fun TrainingScreen(
                     Text("使用模板")
                 }
             },
-            dismissButton = { TextButton(onClick = { replacing = null }) { Text("取消") } },
+            dismissButton = {
+                FitDialogButton(primary = false, onClick = { replacing = null }) { Text("取消") }
+            },
         )
     }
     if (leave)
-        AlertDialog(
+        FitDialog(
             onDismissRequest = { leave = false },
             title = { Text("离开训练？") },
             text = {
@@ -387,7 +387,7 @@ internal fun TrainingScreen(
                 }
             },
             confirmButton = {
-                TextButton(
+                FitDialogButton(
                     onClick = {
                         leave = false
                         page = "tools"
@@ -397,10 +397,12 @@ internal fun TrainingScreen(
                     Text("返回工具")
                 }
             },
-            dismissButton = { TextButton(onClick = { leave = false }) { Text("继续训练") } },
+            dismissButton = {
+                FitDialogButton(primary = false, onClick = { leave = false }) { Text("继续训练") }
+            },
         )
     if (finish)
-        AlertDialog(
+        FitDialog(
             onDismissRequest = { finish = false },
             title = { Text("核对训练记录") },
             text = {
@@ -409,7 +411,7 @@ internal fun TrainingScreen(
                 )
             },
             confirmButton = {
-                TextButton(
+                FitDialogButton(
                     onClick = {
                         finish = false
                         model.save()
@@ -418,7 +420,9 @@ internal fun TrainingScreen(
                     Text("保存记录")
                 }
             },
-            dismissButton = { TextButton(onClick = { finish = false }) { Text("继续训练") } },
+            dismissButton = {
+                FitDialogButton(primary = false, onClick = { finish = false }) { Text("继续训练") }
+            },
         )
 }
 
@@ -445,7 +449,7 @@ private fun ExerciseSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text("动作库", style = MaterialTheme.typography.titleLarge)
-            OutlinedTextField(
+            FitTextField(
                 search,
                 { search = it },
                 Modifier.fillMaxWidth(),
@@ -548,7 +552,7 @@ private fun ExerciseSheet(
         }
     }
     detail?.let { exercise ->
-        AlertDialog(
+        FitDialog(
             onDismissRequest = { detail = null },
             title = { Text(exercise.name) },
             text = {
@@ -558,7 +562,7 @@ private fun ExerciseSheet(
                 }
             },
             confirmButton = {
-                TextButton(
+                FitDialogButton(
                     onClick = {
                         onAdd(exercise)
                         detail = null
@@ -567,7 +571,9 @@ private fun ExerciseSheet(
                     Text("加入训练")
                 }
             },
-            dismissButton = { TextButton(onClick = { detail = null }) { Text("返回") } },
+            dismissButton = {
+                FitDialogButton(primary = false, onClick = { detail = null }) { Text("返回") }
+            },
         )
     }
 }
@@ -582,30 +588,30 @@ private fun TrainingSetDialog(
     var reps by remember { mutableStateOf(set.reps.toString()) }
     var weight by remember { mutableStateOf(set.weightKg.toString()) }
     var error by remember { mutableStateOf<String?>(null) }
-    AlertDialog(
+    FitDialog(
         onDismissRequest = onDismiss,
         title = { Text("记录这一组") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
+                FitTextField(
                     reps,
                     { reps = it },
                     label = { Text(if (unit == "seconds") "时长 · 秒" else "次数") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                 )
-                OutlinedTextField(
+                FitTextField(
                     weight,
                     { weight = it },
                     label = { Text("重量 · kg（徒手填 0）") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                 )
-                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                error?.let { FitInlineMessage(it) }
             }
         },
         confirmButton = {
-            TextButton(
+            FitDialogButton(
                 onClick = {
                     val r = reps.toIntOrNull()
                     val w = weight.toDoubleOrNull()
@@ -624,7 +630,7 @@ private fun TrainingSetDialog(
                 Text("确认")
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
+        dismissButton = { FitDialogButton(primary = false, onClick = onDismiss) { Text("取消") } },
     )
 }
 

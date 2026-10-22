@@ -6,7 +6,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
@@ -14,6 +13,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
+import com.fittrace.core.designsystem.*
 import java.io.File
 
 @Composable
@@ -50,7 +50,7 @@ internal fun MealPhotoSourcePicker(
             }
         }
     if (visible)
-        AlertDialog(
+        FitDialog(
             onDismissRequest = onDismiss,
             title = { Text("添加餐食照片") },
             text = {
@@ -95,6 +95,6 @@ internal fun MealPhotoSourcePicker(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = onDismiss) { Text("取消") } },
+            confirmButton = { FitDialogButton(onClick = onDismiss) { Text("取消") } },
         )
 }

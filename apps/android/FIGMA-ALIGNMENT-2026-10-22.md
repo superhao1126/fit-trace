@@ -45,9 +45,9 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/liberica-jdk-21.jdk/Contents/Home ./
 | core/network | 25 | 0 / 0 / 0 |
 | core/data | 26 | 0 / 0 / 0 |
 | feature/auth | 18 | 0 / 0 / 0 |
-| feature/main | 76 | 0 / 0 / 0 |
+| feature/main | 82 | 0 / 0 / 0 |
 | app（devDebug） | 5 | 0 / 0 / 0 |
-| 合计 | **150** | **0 / 0 / 0** |
+| 合计 | **156** | **0 / 0 / 0** |
 
 新增交互测试覆盖明确保存、失败保留、未知热量、部分提交重试、历史日期、草稿恢复、收藏恢复、上次训练分页、模板更新、照片筛选/删除/取消退出、餐食图片保留/移除，以及 AI 核对、模拟状态与识别中退出保护。测试使用受控 Repository 或 MockWebServer，验证接口合同与客户端行为。
 
@@ -65,13 +65,13 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/liberica-jdk-21.jdk/Contents/Home ./
 
 APK：`app/build/outputs/apk/prod/debug/app-prod-debug.apk`。
 
-SHA-256：`5076a37920442653547df977a42b33ad8450ace689b6d7c731846e8822adca67`。
+SHA-256：`af2f8bdf228b6e7aa79da9e659dd3bed727c8937894f3210bac33e5970c2796c`。
 
 ## 仍需区分的边界
 
 - 这是按功能与代表状态的源码、交互和截图核对，**不是113页/452个版本全部实现或全部验收的声明**。
 - 运动距离需要服务端字段，运动 AI 需要相应接口。当前使用实际分钟和手动记录，基础运动目录可用自定义补充，没有新增无法持久化的公里或虚假识别入口。
-- Android 日期/时间、系统文件选择器和部分逐组数字表单沿用原生组件；没有声明与全部静态画板逐像素一致。
+- Android 输入、日期/时间、提示与确认框已统一到 core/designsystem；系统文件选择器及部分逐组数字表单保留对应平台或业务交互，没有声明与全部静态画板逐像素一致。
 - 真实账号 API、真实 AI 模型效果、真实图片服务器、系统进程回收恢复、后台休息提醒与手机交互尚未验收；当前休息计时支持页面内显示和恢复，不含后台通知。
 - 指纹登录继续按此前计划延期，没有混入本轮。
 
@@ -84,3 +84,11 @@ SHA-256：`5076a37920442653547df977a42b33ad8450ace689b6d7c731846e8822adca67`。
 补充测试覆盖拍照取消后重新拍照、完整文件回调、Provider 非导出及临时 URI 授权、相册 MIME 类型与成功/取消，以及份量小数和双向加减。本次完整验证共150项测试通过；已核对 prod Debug 合并 Manifest 中 Provider 的实际 authority。未安装或操作手机，系统相机与相册真机验收仍待进行。
 
 新增截图：`feature/main/build/reports/body-screenshots/body-ruler-drag-390.png`、`feature/main/build/reports/food-screenshots/food-portion-390.png`、`food-portion-dark-320.png`、`feature/main/build/reports/meal-screenshots/meal-photo-source-390.png`。
+
+## 统一基础交互组件
+
+组件入口与接入约定见 `core/designsystem/README.md`。新增 `FitTextField` / `FitStepperField`、`FitDatePickerDialog` / `FitTimePickerDialog`、`FitNotice` / `FitInlineMessage`、`FitDialog` / `FitDialogButton`。原 `FitMessage` 和资料页 `ProfileError` 复用同一提示实现。
+
+登录、记录、训练、资料及设置的相关入口已迁移，业务模块不再自行调用 Material 输入框、日期时间选择器或 AlertDialog。字段键盘、密码显示、校验与只读行为保持；日期按场景分别限制记录不晚于今天、目标不早于今天。对话框统一宽度、圆角、间距、可滚动正文及底部操作，删除等操作使用语义警示色；只有显式确认才回传修改。
+
+新增6项共享组件测试，覆盖闰日、非法日期与日期范围、时间边界、取消、长正文、大字体、深色窄屏和显式重试。完整156项测试通过，0失败/错误/跳过；同时运行 `verify :core:designsystem:lintDebug :feature:main:lintDebug :feature:auth:lintDebug :app:assembleProdDebug`。已查看 `feature/main/build/reports/shared-ui-screenshots/` 中日历、时间、手动日期、长确认框与输入/提示截图。未安装或操作手机，系统软键盘和真机显示仍待复测。

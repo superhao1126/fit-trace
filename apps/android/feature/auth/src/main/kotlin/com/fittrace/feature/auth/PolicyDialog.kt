@@ -7,10 +7,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.fittrace.core.designsystem.*
 
 @Composable
 fun PolicyDialog(kind: PolicyKind, onDismiss: () -> Unit) {
-    AlertDialog(
+    FitDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (kind == PolicyKind.AGREEMENT) "用户协议" else "隐私政策") },
         text = {
@@ -28,6 +29,6 @@ fun PolicyDialog(kind: PolicyKind, onDismiss: () -> Unit) {
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("关闭") } },
+        confirmButton = { FitDialogButton(onClick = onDismiss) { Text("关闭") } },
     )
 }

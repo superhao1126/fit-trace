@@ -7,6 +7,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.fittrace.core.designsystem.*
 import com.fittrace.core.model.*
 import java.time.*
 import java.time.format.DateTimeFormatter
@@ -31,24 +32,24 @@ internal fun FoodDialog(existing: FoodEntry?, onDismiss: () -> Unit, onSave: (Fo
     var amount by remember { mutableStateOf(existing?.amount.orEmpty()) }
     var calories by remember { mutableStateOf(existing?.calories?.toString().orEmpty()) }
     var error by remember { mutableStateOf<String?>(null) }
-    AlertDialog(
+    FitDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (existing == null) "添加食物" else "修改食物") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(name, { name = it }, label = { Text("食物名称") }, singleLine = true)
-                OutlinedTextField(
+                FitTextField(name, { name = it }, label = { Text("食物名称") }, singleLine = true)
+                FitTextField(
                     amount,
                     { amount = it },
                     label = { Text("份量（如 1 碗 / 100 g）") },
                     singleLine = true,
                 )
                 NumberInput("热量 · kcal（选填）", calories, true, true) { calories = it }
-                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                error?.let { FitInlineMessage(it) }
             }
         },
         confirmButton = {
-            TextButton(
+            FitDialogButton(
                 onClick = {
                     if (name.trim().length !in 1..100 || amount.length > 50)
                         error = "名称需 1–100 字，份量不超过 50 字"
@@ -68,7 +69,7 @@ internal fun FoodDialog(existing: FoodEntry?, onDismiss: () -> Unit, onSave: (Fo
                 Text("加入清单")
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
+        dismissButton = { FitDialogButton(primary = false, onClick = onDismiss) { Text("取消") } },
     )
 }
 
@@ -80,7 +81,7 @@ private fun NumberInput(
     integer: Boolean = false,
     onChange: (String) -> Unit,
 ) {
-    OutlinedTextField(
+    FitTextField(
         value,
         onChange,
         Modifier.fillMaxWidth(),
@@ -94,52 +95,13 @@ private fun NumberInput(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun RecordDateDialog(date: LocalDate, onDismiss: () -> Unit, onSave: (LocalDate) -> Unit) {
-    val state =
-        rememberDatePickerState(
-            date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
-            selectableDates =
-                object : SelectableDates {
-                    override fun isSelectableDate(utcTimeMillis: Long) =
-                        Instant.ofEpochMilli(utcTimeMillis).atZone(ZoneOffset.UTC).toLocalDate() <=
-                            LocalDate.now()
-                },
-        )
-    DatePickerDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    state.selectedDateMillis?.let {
-                        onSave(Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate())
-                    }
-                }
-            ) {
-                Text("确认")
-            }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
-    ) {
-        DatePicker(state, title = { Text("选择记录日期", Modifier.padding(20.dp)) })
-    }
-}
+internal fun RecordDateDialog(date: LocalDate, onDismiss: () -> Unit, onSave: (LocalDate) -> Unit) =
+    FitDatePickerDialog(date, onDismiss, onSave, maxDate = LocalDate.now())
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun RecordTimeDialog(time: LocalTime, onDismiss: () -> Unit, onSave: (LocalTime) -> Unit) {
-    val state = rememberTimePickerState(time.hour, time.minute, true)
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("记录时间") },
-        text = { TimeInput(state) },
-        confirmButton = {
-            TextButton(onClick = { onSave(LocalTime.of(state.hour, state.minute)) }) { Text("确认") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
-    )
-}
+internal fun RecordTimeDialog(time: LocalTime, onDismiss: () -> Unit, onSave: (LocalTime) -> Unit) =
+    FitTimePickerDialog(time, onDismiss, onSave)
 
 internal fun RecordKind.label() =
     when (this) {

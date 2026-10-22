@@ -12,6 +12,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.fittrace.core.designsystem.*
 import com.fittrace.core.domain.DashboardRepository
 import com.fittrace.core.domain.ProfileRepository
 import com.fittrace.core.domain.RecordsRepository
@@ -390,11 +391,11 @@ fun MainRoute(
             }
         }
         notice?.let { text ->
-            AlertDialog(
+            FitDialog(
                 onDismissRequest = { notice = null },
                 title = { Text("提示") },
                 text = { Text(text) },
-                confirmButton = { TextButton(onClick = { notice = null }) { Text("知道了") } },
+                confirmButton = { FitDialogButton(onClick = { notice = null }) { Text("知道了") } },
             )
         }
     }

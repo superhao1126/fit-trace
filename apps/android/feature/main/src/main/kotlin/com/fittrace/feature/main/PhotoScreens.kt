@@ -202,14 +202,13 @@ internal fun PhotoRecordScreen(
                             TextButton(onClick = { clock = true }, enabled = !busy) {
                                 Text("拍摄时间 · ${time.format(DateTimeFormatter.ofPattern("HH:mm"))}")
                             }
-                            OutlinedTextField(
+                            FitTextField(
                                 d.note,
                                 { value -> model.edit { it.copy(note = value) } },
                                 Modifier.fillMaxWidth(),
                                 label = { Text("备注（选填）") },
                                 maxLines = 4,
                                 enabled = !busy,
-                                shape = RoundedCornerShape(14.dp),
                             )
                         }
                         Text(
@@ -282,29 +281,34 @@ internal fun PhotoRecordScreen(
             clock = false
         }
     if (leave)
-        AlertDialog(
+        FitDialog(
             onDismissRequest = { leave = false },
             title = { Text("放弃本次照片记录？") },
             text = { Text("照片尚未加入归档，未保存的填写内容会丢失。") },
-            confirmButton = { TextButton(onClick = onBack) { Text("放弃") } },
-            dismissButton = { TextButton(onClick = { leave = false }) { Text("继续记录") } },
+            confirmButton = { FitDialogButton(onClick = onBack) { Text("放弃") } },
+            dismissButton = {
+                FitDialogButton(primary = false, onClick = { leave = false }) { Text("继续记录") }
+            },
         )
     if (deleting)
-        AlertDialog(
+        FitDialog(
             onDismissRequest = { deleting = false },
             title = { Text("删除这张照片？") },
             text = { Text("删除后无法恢复，照片记录和备注将一起移除。") },
             confirmButton = {
-                TextButton(
+                FitDialogButton(
+                    destructive = true,
                     onClick = {
                         deleting = false
                         model.delete()
-                    }
+                    },
                 ) {
                     Text("确认删除")
                 }
             },
-            dismissButton = { TextButton(onClick = { deleting = false }) { Text("取消") } },
+            dismissButton = {
+                FitDialogButton(primary = false, onClick = { deleting = false }) { Text("取消") }
+            },
         )
 }
 

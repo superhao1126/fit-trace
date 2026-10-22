@@ -15,7 +15,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.*
@@ -23,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fittrace.core.designsystem.*
 import com.fittrace.core.model.*
 import java.time.*
 import java.time.format.DateTimeFormatter
@@ -165,12 +165,12 @@ internal fun ProfileEditScreen(
             }
         }
     if (avatarDialog)
-        AlertDialog(
+        FitDialog(
             onDismissRequest = { avatarDialog = false },
             title = { Text("修改头像") },
             text = { Text("选择照片后，点击保存资料统一提交。") },
             confirmButton = {
-                TextButton(
+                FitDialogButton(
                     onClick = {
                         avatarDialog = false
                         picker.launch("image/*")
@@ -180,59 +180,41 @@ internal fun ProfileEditScreen(
                 }
             },
             dismissButton = {
-                TextButton(
+                FitDialogButton(
+                    primary = false,
                     onClick = {
                         avatarDialog = false
                         onAvatar(null)
-                    }
+                    },
                 ) {
                     Text("移除头像")
                 }
             },
         )
     if (nicknameDialog) {
-        AlertDialog(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-            properties =
-                androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+        FitDialog(
             onDismissRequest = { nicknameDialog = false },
             title = { Text("修改昵称") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    androidx.compose.foundation.text.BasicTextField(
+                    FitTextField(
                         value = nicknameDraft,
                         onValueChange = {
                             nicknameDraft = it
                             nicknameError = false
                         },
-                        modifier =
-                            Modifier.fillMaxWidth()
-                                .background(
-                                    MaterialTheme.colorScheme.primaryContainer,
-                                    RoundedCornerShape(16.dp),
-                                )
-                                .padding(16.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("昵称") },
                         singleLine = true,
                         textStyle =
-                            LocalTextStyle.current.copy(
-                                color = MaterialTheme.colorScheme.onSurface
-                            ),
-                        cursorBrush =
-                            androidx.compose.ui.graphics.SolidColor(
-                                MaterialTheme.colorScheme.secondary
-                            ),
+                            LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
                     )
-                    Text(
-                        if (nicknameError) "昵称长度应为 1–40 字" else "1–40 字",
-                        style = MaterialTheme.typography.bodySmall,
-                        color =
-                            if (nicknameError) MaterialTheme.colorScheme.error
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    if (nicknameError) FitInlineMessage("昵称长度应为 1–40 字")
+                    else Text("1–40 字", style = MaterialTheme.typography.bodySmall)
                 }
             },
             confirmButton = {
-                TextButton(
+                FitDialogButton(
                     onClick = {
                         if (nicknameDraft.trim().length !in 1..40) nicknameError = true
                         else {
@@ -244,11 +226,15 @@ internal fun ProfileEditScreen(
                     Text("确认")
                 }
             },
-            dismissButton = { TextButton(onClick = { nicknameDialog = false }) { Text("取消") } },
+            dismissButton = {
+                FitDialogButton(primary = false, onClick = { nicknameDialog = false }) {
+                    Text("取消")
+                }
+            },
         )
     }
     if (genderDialog)
-        AlertDialog(
+        FitDialog(
             onDismissRequest = { genderDialog = false },
             title = { Text("性别") },
             text = {
@@ -265,15 +251,19 @@ internal fun ProfileEditScreen(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { genderDialog = false }) { Text("取消") } },
+            confirmButton = { FitDialogButton(onClick = { genderDialog = false }) { Text("取消") } },
         )
     if (discard)
-        AlertDialog(
+        FitDialog(
             onDismissRequest = { discard = false },
             title = { Text("放弃资料修改？") },
             text = { Text("未保存的资料将不会更新。") },
-            confirmButton = { TextButton(onClick = onBack) { Text("放弃修改") } },
-            dismissButton = { TextButton(onClick = { discard = false }) { Text("继续编辑") } },
+            confirmButton = {
+                FitDialogButton(destructive = true, onClick = onBack) { Text("放弃修改") }
+            },
+            dismissButton = {
+                FitDialogButton(primary = false, onClick = { discard = false }) { Text("继续编辑") }
+            },
         )
     ProfilePage("编辑资料", back, !state.saving && !reading) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -371,12 +361,16 @@ internal fun GoalEditScreen(
     }
     androidx.activity.compose.BackHandler { back() }
     if (discard)
-        AlertDialog(
+        FitDialog(
             onDismissRequest = { discard = false },
             title = { Text("放弃目标修改？") },
             text = { Text("未保存的目标将不会更新。") },
-            confirmButton = { TextButton(onClick = onBack) { Text("放弃修改") } },
-            dismissButton = { TextButton(onClick = { discard = false }) { Text("继续编辑") } },
+            confirmButton = {
+                FitDialogButton(destructive = true, onClick = onBack) { Text("放弃修改") }
+            },
+            dismissButton = {
+                FitDialogButton(primary = false, onClick = { discard = false }) { Text("继续编辑") }
+            },
         )
     ProfilePage("我的目标", back, !state.saving) {
         LinearProgressIndicator(
@@ -453,10 +447,10 @@ internal fun GoalEditScreen(
                     }
                 }
             }
-            state.bodyError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            state.bodyError?.let { FitInlineMessage(it) }
             ProfileCard {
                 Text("目标体重", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                OutlinedTextField(
+                FitTextField(
                     state.targetWeight,
                     onTarget,
                     Modifier.fillMaxWidth().padding(top = 12.dp),
@@ -514,47 +508,17 @@ internal fun GoalEditScreen(
             }
         }
     }
-    if (calendar) {
-        val today = LocalDate.now()
-        val date = state.targetDate?.let(LocalDate::parse) ?: today
-        val picker =
-            rememberDatePickerState(
-                initialSelectedDateMillis =
-                    date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
-                selectableDates =
-                    object : SelectableDates {
-                        override fun isSelectableDate(utcTimeMillis: Long): Boolean =
-                            Instant.ofEpochMilli(utcTimeMillis)
-                                .atZone(ZoneOffset.UTC)
-                                .toLocalDate() >= today
-
-                        override fun isSelectableYear(year: Int): Boolean = year >= today.year
-                    },
-            )
-        DatePickerDialog(
-            onDismissRequest = { calendar = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        picker.selectedDateMillis?.let {
-                            onDate(
-                                Instant.ofEpochMilli(it)
-                                    .atZone(ZoneOffset.UTC)
-                                    .toLocalDate()
-                                    .toString()
-                            )
-                        }
-                        calendar = false
-                    }
-                ) {
-                    Text("确认")
-                }
+    if (calendar)
+        FitDatePickerDialog(
+            date = state.targetDate?.let(LocalDate::parse) ?: LocalDate.now(),
+            onDismiss = { calendar = false },
+            onSave = {
+                onDate(it.toString())
+                calendar = false
             },
-            dismissButton = { TextButton(onClick = { calendar = false }) { Text("取消") } },
-        ) {
-            DatePicker(picker, title = { Text("选择目标日期", Modifier.padding(24.dp)) })
-        }
-    }
+            title = "选择目标日期",
+            minDate = LocalDate.now(),
+        )
 }
 
 @Composable
@@ -621,12 +585,13 @@ internal fun ProfileSettingsScreen(
     }
     if (appearance) ProfileAppearanceSheet(mode, onMode) { appearance = false }
     if (logout)
-        AlertDialog(
+        FitDialog(
             onDismissRequest = { if (!busy) logout = false },
             title = { Text("退出登录？") },
             text = { Text("退出后将清除本机登录状态，账号中的记录会保留。") },
             confirmButton = {
-                TextButton(
+                FitDialogButton(
+                    destructive = true,
                     onClick = {
                         logout = false
                         onLogout()
@@ -637,7 +602,9 @@ internal fun ProfileSettingsScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { logout = false }, enabled = !busy) { Text("取消") }
+                FitDialogButton(primary = false, onClick = { logout = false }, enabled = !busy) {
+                    Text("取消")
+                }
             },
         )
 }
@@ -745,7 +712,7 @@ private fun ProfileField(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(label, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        OutlinedTextField(
+        FitTextField(
             value,
             onChange,
             Modifier.fillMaxWidth().semantics { contentDescription = label },
@@ -754,13 +721,6 @@ private fun ProfileField(
             keyboardOptions =
                 KeyboardOptions(
                     keyboardType = if (number) KeyboardType.Decimal else KeyboardType.Text
-                ),
-            shape = RoundedCornerShape(14.dp),
-            colors =
-                OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedBorderColor = Color.Transparent,
                 ),
         )
     }

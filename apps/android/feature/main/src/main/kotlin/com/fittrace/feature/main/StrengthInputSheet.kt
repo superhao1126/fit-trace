@@ -18,6 +18,7 @@ import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fittrace.core.designsystem.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -144,7 +145,7 @@ internal fun StrengthInputSheet(
                         }
                     }
                 }
-            error?.let { Text(it, fontSize = 12.sp, color = MaterialTheme.colorScheme.error) }
+            error?.let { FitInlineMessage(it) }
             Button(
                 onClick = {
                     val w = weight.toDoubleOrNull()

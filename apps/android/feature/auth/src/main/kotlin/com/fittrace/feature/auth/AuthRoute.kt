@@ -1,13 +1,10 @@
 package com.fittrace.feature.auth
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,6 +36,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.fittrace.core.designsystem.*
 import com.fittrace.core.designsystem.FitTraceTheme
 import com.fittrace.core.designsystem.R as DesignR
 import com.fittrace.core.domain.AuthRepository
@@ -385,16 +383,7 @@ internal fun AuthScreen(
                         }
                     }
                 }
-                state.notice?.let {
-                    Text(
-                        it,
-                        Modifier.padding(top = 12.dp).semantics {
-                            liveRegion = LiveRegionMode.Polite
-                        },
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                state.notice?.let { FitNotice(it, Modifier.padding(top = 12.dp)) }
                 Spacer(Modifier.height(24.dp))
                 Button(
                     onClick = onSubmit,
@@ -502,9 +491,7 @@ internal fun AuthScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    state.errors[AuthField.AGREEMENT]?.let {
-                        Text(it, fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
-                    }
+                    state.errors[AuthField.AGREEMENT]?.let { FitInlineMessage(it) }
                 }
                 Text(
                     "每一点记录，都算数。",
@@ -539,16 +526,6 @@ private fun AuthInput(
     onDone: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
-    val interaction = remember { MutableInteractionSource() }
-    val focused by interaction.collectIsFocusedAsState()
-    val borderColor by
-        animateColorAsState(
-            targetValue =
-                if (focused) MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)
-                else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
-            animationSpec = tween(160),
-            label = "auth-input-focus",
-        )
     Column {
         Text(
             label,
@@ -557,17 +534,15 @@ private fun AuthInput(
             lineHeight = 16.sp,
             modifier = Modifier.padding(bottom = 8.dp),
         )
-        OutlinedTextField(
+        FitTextField(
             value,
             onValue,
             modifier = Modifier.fillMaxWidth().semantics { contentDescription = label },
-            interactionSource = interaction,
             enabled = enabled,
             singleLine = true,
             isError = error != null,
             placeholder = { Text(placeholder, fontSize = 14.sp) },
             textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
-            shape = RoundedCornerShape(16.dp),
             visualTransformation = visual,
             trailingIcon = trailing,
             keyboardOptions =
@@ -577,21 +552,10 @@ private fun AuthInput(
                     autoCorrectEnabled = false,
                 ),
             keyboardActions = KeyboardActions(onDone = { onDone?.invoke() }),
-            colors =
-                OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = borderColor,
-                    unfocusedBorderColor = borderColor,
-                    focusedContainerColor =
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = .35f),
-                    unfocusedContainerColor =
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = .35f),
-                    disabledContainerColor =
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = .35f),
-                ),
             supportingText =
                 if (error == null) null
                 else {
-                    { Text(error, fontSize = 12.sp) }
+                    { FitInlineMessage(error) }
                 },
         )
     }

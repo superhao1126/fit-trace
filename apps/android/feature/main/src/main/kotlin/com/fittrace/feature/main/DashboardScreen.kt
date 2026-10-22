@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fittrace.core.designsystem.*
 import com.fittrace.core.designsystem.FitCard
 import com.fittrace.core.model.*
 import java.time.*
@@ -193,18 +194,7 @@ internal fun DashboardScreen(
             if (state.loading && data == null) HomeLoadingCard()
             state.error?.let { error ->
                 if (data != null) {
-                    Surface(
-                        shape = RoundedCornerShape(18.dp),
-                        color = MaterialTheme.colorScheme.tertiaryContainer,
-                    ) {
-                        Row(
-                            Modifier.fillMaxWidth().padding(start = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text("刷新失败 · 当前为上次加载内容", Modifier.weight(1f), fontSize = 11.sp)
-                            TextButton(onClick = onRefresh) { Text("重试", fontSize = 12.sp) }
-                        }
-                    }
+                    FitMessage("刷新失败 · 当前为上次加载内容", onRefresh, error = true)
                 } else
                     HomeCard {
                         Column(
@@ -598,40 +588,16 @@ internal fun DashboardScreen(
             }
         }
     }
-    if (calendar) {
-        val picker =
-            rememberDatePickerState(
-                initialSelectedDateMillis =
-                    state.date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
-                selectableDates =
-                    object : SelectableDates {
-                        override fun isSelectableDate(utcTimeMillis: Long): Boolean =
-                            Instant.ofEpochMilli(utcTimeMillis)
-                                .atZone(ZoneOffset.UTC)
-                                .toLocalDate() <= today
-
-                        override fun isSelectableYear(year: Int): Boolean = year <= today.year
-                    },
-            )
-        DatePickerDialog(
-            onDismissRequest = { calendar = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        picker.selectedDateMillis?.let {
-                            onDate(Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate())
-                        }
-                        calendar = false
-                    }
-                ) {
-                    Text("确认")
-                }
+    if (calendar)
+        FitDatePickerDialog(
+            date = state.date,
+            onDismiss = { calendar = false },
+            onSave = {
+                onDate(it)
+                calendar = false
             },
-            dismissButton = { TextButton(onClick = { calendar = false }) { Text("取消") } },
-        ) {
-            DatePicker(picker, title = { Text("选择记录日期", Modifier.padding(24.dp)) })
-        }
-    }
+            maxDate = today,
+        )
 }
 
 @Composable

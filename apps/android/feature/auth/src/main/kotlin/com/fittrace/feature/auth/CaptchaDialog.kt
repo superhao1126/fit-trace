@@ -13,8 +13,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.delay
 import org.json.JSONObject
@@ -33,18 +31,12 @@ internal fun CaptchaDialog(
         delay(120_000)
         currentError("安全验证已超时，请重试")
     }
-    Dialog(
+    com.fittrace.core.designsystem.FitDialog(
         onDismissRequest = { currentResult(null) },
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        Surface(Modifier.fillMaxWidth().padding(16.dp), shape = MaterialTheme.shapes.large) {
-            Column(Modifier.padding(16.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("安全验证", style = MaterialTheme.typography.titleMedium)
-                    TextButton(onClick = { currentResult(null) }) { Text("取消") }
-                }
+        title = { Text("安全验证") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("由阿里云提供安全验证，验证通过后发送邮箱验证码", style = MaterialTheme.typography.bodySmall)
-                Spacer(Modifier.height(12.dp))
                 AndroidView(
                     modifier = Modifier.fillMaxWidth().height(420.dp),
                     factory = { context ->
@@ -97,8 +89,16 @@ internal fun CaptchaDialog(
                     update = {},
                 )
             }
-        }
-    }
+        },
+        confirmButton = {
+            com.fittrace.core.designsystem.FitDialogButton(
+                onClick = { currentResult(null) },
+                primary = false,
+            ) {
+                Text("取消")
+            }
+        },
+    )
 }
 
 private class CaptchaBridge(private val result: (String?, Boolean) -> Unit) {

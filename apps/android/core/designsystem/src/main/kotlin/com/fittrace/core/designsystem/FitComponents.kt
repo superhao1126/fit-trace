@@ -75,15 +75,7 @@ fun FitPage(
 
 @Composable
 fun FitMessage(text: String, onRetry: (() -> Unit)? = null, error: Boolean = false) {
-    FitCard {
-        Text(
-            text,
-            color =
-                if (error) MaterialTheme.colorScheme.error
-                else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (onRetry != null) TextButton(onClick = onRetry) { Text("重试") }
-    }
+    FitNotice(text, error = error, onRetry = onRetry)
 }
 
 @Composable
