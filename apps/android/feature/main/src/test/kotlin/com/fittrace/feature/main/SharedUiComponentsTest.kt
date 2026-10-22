@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -32,88 +33,144 @@ import org.robolectric.annotation.GraphicsMode
 class SharedUiComponentsTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
+    private fun selectWheel(label: String, value: Int) {
+        compose.onNodeWithContentDescription(label).performSemanticsAction(
+            SemanticsActions.SetProgress
+        ) {
+            it(value.toFloat())
+        }
+        compose.waitForIdle()
+    }
+
+    private fun assertWheel(label: String, value: String) {
+        compose
+            .onNodeWithContentDescription(label)
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, value))
+    }
+
     @Test
-    fun `record calendar handles leap day and prevents future selection until explicit confirmation`() {
+    fun `date wheels clamp month lengths and leap year without editable fields`() {
         var saved: LocalDate? = null
         compose.setContent {
             FitTraceTheme {
                 FitDatePickerDialog(
-                    LocalDate.of(2024, 2, 28),
+                    LocalDate.of(2024, 1, 31),
                     {},
+                    { saved = it },
+                    maxDate = LocalDate.of(2024, 12, 31),
+                )
+            }
+        }
+        compose.onAllNodes(hasSetTextAction()).assertCountEquals(0)
+        selectWheel("月份", 2)
+        assertWheel("日期", "29日")
+        selectWheel("年份", 2023)
+        assertWheel("日期", "28日")
+        assertNull(saved)
+        capture("shared-date-wheel-390")
+        compose.onNodeWithText("确认").performClick()
+        assertEquals(LocalDate.of(2023, 2, 28), saved)
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w320dp-h720dp-mdpi")
+    fun `goal date wheels only offer permitted dates in narrow dark mode`() {
+        var saved: LocalDate? = null
+        compose.setContent {
+            FitTraceTheme(true) {
+                FitDatePickerDialog(
+                    LocalDate.of(2024, 3, 31),
+                    {},
+                    { saved = it },
+                    "选择目标日期",
+                    minDate = LocalDate.of(2024, 2, 29),
+                    maxDate = LocalDate.of(2024, 4, 10),
+                )
+            }
+        }
+        selectWheel("月份", 2)
+        assertWheel("日期", "29日")
+        selectWheel("日期", 1)
+        assertWheel("日期", "29日")
+        selectWheel("月份", 4)
+        assertWheel("日期", "10日")
+        selectWheel("年份", 2023)
+        assertWheel("年份", "2024年")
+        compose.onAllNodes(hasSetTextAction()).assertCountEquals(0)
+        capture("shared-date-wheel-dark-320")
+        compose.onNodeWithText("确认").performClick()
+        assertEquals(LocalDate.of(2024, 4, 10), saved)
+    }
+
+    @Test
+    fun `record date wheels do not offer future dates and cancel does not save`() {
+        var saved: LocalDate? = null
+        var dismissed = false
+        compose.setContent {
+            FitTraceTheme {
+                FitDatePickerDialog(
+                    LocalDate.of(2024, 2, 29),
+                    { dismissed = true },
                     { saved = it },
                     maxDate = LocalDate.of(2024, 2, 29),
                 )
             }
         }
-        compose.onNodeWithContentDescription("下个月").assertIsNotEnabled()
-        compose.onNodeWithContentDescription("2024-02-29").performClick().assertIsSelected()
-        assertNull(saved)
-        capture("shared-date-record-390")
-        compose.onNodeWithText("确认").performClick()
-        assertEquals(LocalDate.of(2024, 2, 29), saved)
-    }
-
-    @Test
-    @Config(sdk = [35], qualifiers = "w320dp-h720dp-mdpi")
-    fun `goal calendar manual entry shares range validation and supports narrow dark mode`() {
-        var saved: LocalDate? = null
-        compose.setContent {
-            FitTraceTheme(true) {
-                FitDatePickerDialog(
-                    LocalDate.of(2024, 3, 1),
-                    {},
-                    { saved = it },
-                    "选择目标日期",
-                    minDate = LocalDate.of(2024, 2, 29),
-                )
-            }
-        }
-        compose.onNodeWithText("输入日期").performClick()
-        compose.onNodeWithText("日期 · YYYY-MM-DD").performTextReplacement("2024-02-28")
-        compose.onNodeWithText("确认").assertIsNotEnabled()
-        compose.onNodeWithText("日期 · YYYY-MM-DD").performTextReplacement("2024-02-30")
-        compose.onNodeWithText("确认").assertIsNotEnabled()
-        compose.onNodeWithText("日期 · YYYY-MM-DD").performTextReplacement("2024-02-29")
-        compose.onNodeWithText("确认").assertIsEnabled()
-        capture("shared-date-manual-dark-320")
-        assertNull(saved)
-        compose.onNodeWithText("确认").performClick()
-        assertEquals(LocalDate.of(2024, 2, 29), saved)
-    }
-
-    @Test
-    @Config(sdk = [35], qualifiers = "w320dp-h720dp-mdpi")
-    fun `calendar days remain reachable on narrow screen`() {
-        var dismissed = false
-        compose.setContent {
-            FitTraceTheme(true) {
-                FitDatePickerDialog(LocalDate.of(2026, 8, 31), { dismissed = true }, {})
-            }
-        }
-        compose.onNodeWithContentDescription("2026-08-31").assertIsDisplayed()
-        compose.onNodeWithContentDescription("2026-08-01").assertIsDisplayed()
-        capture("shared-date-calendar-dark-320")
+        selectWheel("月份", 12)
+        assertWheel("月份", "2月")
+        selectWheel("日期", 31)
+        assertWheel("日期", "29日")
         compose.onNodeWithText("取消").performClick()
         assertTrue(dismissed)
+        assertNull(saved)
     }
 
     @Test
-    fun `time validates hour and minute and cancels without committing changes`() {
+    fun `time wheels change by vertical gestures and commit only after snapping`() {
+        var saved: LocalTime? = null
+        compose.setContent {
+            FitTraceTheme { FitTimePickerDialog(LocalTime.of(12, 30), {}, { saved = it }) }
+        }
+        compose.onAllNodes(hasSetTextAction()).assertCountEquals(0)
+        compose.onNodeWithContentDescription("分钟").performTouchInput {
+            down(center)
+            moveBy(androidx.compose.ui.geometry.Offset(0f, -65f), delayMillis = 500)
+        }
+        compose.onNodeWithText("确认").assertIsNotEnabled()
+        capture("shared-time-wheel-drag-390")
+        compose.onNodeWithContentDescription("分钟").performTouchInput { up() }
+        compose.waitForIdle()
+        val minute =
+            compose
+                .onNodeWithContentDescription("分钟")
+                .fetchSemanticsNode()
+                .config[SemanticsProperties.StateDescription]
+                .removeSuffix("分")
+                .toInt()
+        assertTrue(minute > 30)
+        assertNull(saved)
+        selectWheel("小时", 23)
+        selectWheel("分钟", 59)
+        capture("shared-time-wheel-390")
+        compose.onNodeWithText("确认").assertIsEnabled().performClick()
+        assertEquals(LocalTime.of(23, 59), saved)
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w320dp-h720dp-mdpi")
+    fun `time wheel boundaries midnight and cancel work without keyboard`() {
         var saved: LocalTime? = null
         var dismissed = false
         compose.setContent {
-            FitTraceTheme {
+            FitTraceTheme(true) {
                 FitTimePickerDialog(LocalTime.of(23, 59), { dismissed = true }, { saved = it })
             }
         }
-        compose.onNodeWithText("时").performTextReplacement("24")
-        compose.onNodeWithText("确认").assertIsNotEnabled()
-        compose.onNodeWithText("时").performTextReplacement("00")
-        compose.onNodeWithText("分").performTextReplacement("60")
-        compose.onNodeWithText("确认").assertIsNotEnabled()
-        compose.onNodeWithText("分").performTextReplacement("00")
-        capture("shared-time-390")
-        assertNull(saved)
+        selectWheel("小时", 0)
+        selectWheel("分钟", 0)
+        assertWheel("小时", "0时")
+        assertWheel("分钟", "0分")
+        capture("shared-time-wheel-dark-320")
         compose.onNodeWithText("取消").performClick()
         assertTrue(dismissed)
         assertNull(saved)

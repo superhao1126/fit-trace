@@ -45,9 +45,9 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/liberica-jdk-21.jdk/Contents/Home ./
 | core/network | 25 | 0 / 0 / 0 |
 | core/data | 26 | 0 / 0 / 0 |
 | feature/auth | 18 | 0 / 0 / 0 |
-| feature/main | 82 | 0 / 0 / 0 |
+| feature/main | 83 | 0 / 0 / 0 |
 | app（devDebug） | 5 | 0 / 0 / 0 |
-| 合计 | **156** | **0 / 0 / 0** |
+| 合计 | **157** | **0 / 0 / 0** |
 
 新增交互测试覆盖明确保存、失败保留、未知热量、部分提交重试、历史日期、草稿恢复、收藏恢复、上次训练分页、模板更新、照片筛选/删除/取消退出、餐食图片保留/移除，以及 AI 核对、模拟状态与识别中退出保护。测试使用受控 Repository 或 MockWebServer，验证接口合同与客户端行为。
 
@@ -65,7 +65,7 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/liberica-jdk-21.jdk/Contents/Home ./
 
 APK：`app/build/outputs/apk/prod/debug/app-prod-debug.apk`。
 
-SHA-256：`af2f8bdf228b6e7aa79da9e659dd3bed727c8937894f3210bac33e5970c2796c`。
+SHA-256：`801ee828c9167477d19a24bd9667b16333d5c4b6620091c4810cbb01bd272cd4`。
 
 ## 仍需区分的边界
 
@@ -91,4 +91,12 @@ SHA-256：`af2f8bdf228b6e7aa79da9e659dd3bed727c8937894f3210bac33e5970c2796c`。
 
 登录、记录、训练、资料及设置的相关入口已迁移，业务模块不再自行调用 Material 输入框、日期时间选择器或 AlertDialog。字段键盘、密码显示、校验与只读行为保持；日期按场景分别限制记录不晚于今天、目标不早于今天。对话框统一宽度、圆角、间距、可滚动正文及底部操作，删除等操作使用语义警示色；只有显式确认才回传修改。
 
-新增6项共享组件测试，覆盖闰日、非法日期与日期范围、时间边界、取消、长正文、大字体、深色窄屏和显式重试。完整156项测试通过，0失败/错误/跳过；同时运行 `verify :core:designsystem:lintDebug :feature:main:lintDebug :feature:auth:lintDebug :app:assembleProdDebug`。已查看 `feature/main/build/reports/shared-ui-screenshots/` 中日历、时间、手动日期、长确认框与输入/提示截图。未安装或操作手机，系统软键盘和真机显示仍待复测。
+当前7项共享组件测试，覆盖滚轮上下拖动、大小月/闰年联动、日期范围、时间边界、取消、长正文、大字体、深色窄屏和显式重试。完整157项测试通过，0失败/错误/跳过；同时运行 `verify :core:designsystem:lintDebug :feature:main:lintDebug :feature:auth:lintDebug :app:assembleProdDebug`。已查看 `feature/main/build/reports/shared-ui-screenshots/` 中日期与时间滚轮、长确认框与输入/提示截图。未安装或操作手机，系统软键盘和真机显示仍待复测。
+
+## 日期时间滚轮交互
+
+日期改为年/月/日三个联动滚轮，时间改为时/分两个滚轮；移除日期手动输入入口和时分输入框，不弹出键盘。中间行选中并高亮，邻近行渐淡，拖动结束自动吸附，也可点选邻近项或用读屏逐项调整。滚动期间禁用确认，取消不回传修改。
+
+业务范围继续生效：记录不能选择未来日期、目标不能选择过去日期，滚轮不提供范围外选项。31日切换到短月、闰年切换为平年时自动调整为有效日期。时分仅提供00–23与00–59。默认年份范围与边界约定见 `core/designsystem/README.md`。
+
+完整157项测试、设计系统/主功能/登录 Lint 和 dev/prod Debug 构建通过；已查看浅色390、深色320的日期与时间滚轮截图。拖动测试验证上下滑动确实改变分钟、滑动中不能确认，并在吸附后确认实际选择值。测试同时确认选择器中不存在可编辑文本节点。未安装到手机，实际滚动手感仍需真机复测。
