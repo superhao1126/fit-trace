@@ -17,6 +17,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
@@ -28,6 +30,9 @@ import java.time.*
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
+import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.round
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -442,15 +447,19 @@ private fun WeightRuler(value: String, enabled: Boolean, onWeight: (String) -> U
     val update by rememberUpdatedState(onWeight)
     val line = MaterialTheme.colorScheme.outline
     val primary = MaterialTheme.colorScheme.primary
-    var remainder by remember { mutableFloatStateOf(0f) }
-    var dragValue by remember { mutableDoubleStateOf(70.0) }
+    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+    var dragging by remember { mutableStateOf(false) }
+    var visualWeight by remember { mutableDoubleStateOf(value.toDoubleOrNull() ?: 70.0) }
+    LaunchedEffect(value, dragging) { if (!dragging) visualWeight = value.toDoubleOrNull() ?: 70.0 }
     Canvas(
         Modifier.fillMaxWidth()
-            .height(70.dp)
-            .padding(vertical = 14.dp)
+            .height(82.dp)
+            .padding(top = 10.dp, bottom = 4.dp)
             .semantics {
                 contentDescription = "体重标尺"
-                if (enabled) {
+                stateDescription =
+                    value.takeIf { it.isNotBlank() }?.let { "当前体重 $it kg" } ?: "滑动选择体重"
+                if (enabled)
                     customActions =
                         listOf(
                             CustomAccessibilityAction("增加 0.1 kg") {
@@ -462,45 +471,53 @@ private fun WeightRuler(value: String, enabled: Boolean, onWeight: (String) -> U
                                 true
                             },
                         )
-                }
             }
             .pointerInput(enabled) {
                 if (enabled)
                     detectHorizontalDragGestures(
                         onDragStart = {
-                            remainder = 0f
-                            dragValue = latest.toDoubleOrNull() ?: 70.0
+                            dragging = true
+                            visualWeight = latest.toDoubleOrNull() ?: 70.0
                         },
+                        onDragEnd = {
+                            visualWeight = round(visualWeight * 10) / 10
+                            update(String.format(Locale.ROOT, "%.1f", visualWeight))
+                            dragging = false
+                        },
+                        onDragCancel = { dragging = false },
                         onHorizontalDrag = { change, amount ->
                             change.consume()
-                            remainder -= amount
-                            val steps = (remainder / 8.dp.toPx()).toInt()
-                            if (steps != 0) {
-                                dragValue = (dragValue + steps * .1).coerceIn(1.0, 500.0)
-                                remainder -= steps * 8.dp.toPx()
-                                update(String.format(Locale.ROOT, "%.1f", dragValue))
-                            }
+                            visualWeight =
+                                (visualWeight - amount / 8.dp.toPx() * .1).coerceIn(1.0, 500.0)
+                            update(String.format(Locale.ROOT, "%.1f", visualWeight))
                         },
                     )
             }
     ) {
-        val spacing = size.width / 30
-        repeat(31) { index ->
-            drawLine(
-                line,
-                Offset(index * spacing, 0f),
-                Offset(
-                    index * spacing,
-                    if (index % 10 == 0) 32.dp.toPx()
-                    else if (index % 5 == 0) 20.dp.toPx() else 12.dp.toPx(),
-                ),
-                1.dp.toPx(),
-            )
+        val spacing = 8.dp.toPx()
+        val selectedTick = visualWeight * 10
+        val half = size.width / spacing / 2
+        val first = floor(selectedTick - half).toInt().coerceAtLeast(10)
+        val last = ceil(selectedTick + half).toInt().coerceAtMost(5000)
+        val paint =
+            android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                color = labelColor.toArgb()
+                textSize = 11.sp.toPx()
+                textAlign = android.graphics.Paint.Align.CENTER
+            }
+        for (tick in first..last) {
+            val x = (size.width / 2 + (tick - selectedTick) * spacing).toFloat()
+            val height =
+                if (tick % 10 == 0) 28.dp.toPx()
+                else if (tick % 5 == 0) 20.dp.toPx() else 12.dp.toPx()
+            drawLine(line, Offset(x, 0f), Offset(x, height), 1.dp.toPx())
+            if (tick % 10 == 0)
+                drawContext.canvas.nativeCanvas.drawText("${tick / 10}", x, 48.dp.toPx(), paint)
         }
         drawLine(
             primary,
             Offset(size.width / 2, 0f),
-            Offset(size.width / 2, 28.dp.toPx()),
+            Offset(size.width / 2, 32.dp.toPx()),
             2.dp.toPx(),
         )
     }

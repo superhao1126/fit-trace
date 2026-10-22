@@ -119,6 +119,47 @@ class BodyRecordScreenTest {
         capture("body-load-failed-390")
     }
 
+    @Test
+    fun `drag visibly translates ruler marks while center pointer selects actual weight`() {
+        val model = RecordEditorViewModel(RecordsRepositoryFake(), RecordKind.BODY, date, null)
+        model.edit { it.copy(weight = "70.2") }
+        compose.setContent {
+            val state by model.state.collectAsState()
+            FitTraceTheme { RecordEditorScreen(state, model, {}) }
+        }
+        val ruler = compose.onNodeWithContentDescription("体重标尺").performScrollTo()
+        fun rulerImage(): Bitmap {
+            val bounds = ruler.fetchSemanticsNode().boundsInRoot
+            lateinit var bitmap: Bitmap
+            compose.runOnIdle {
+                val view = compose.activity.window.decorView
+                val full = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+                view.draw(Canvas(full))
+                bitmap =
+                    Bitmap.createBitmap(
+                        full,
+                        bounds.left.toInt(),
+                        bounds.top.toInt(),
+                        bounds.width.toInt(),
+                        bounds.height.toInt(),
+                    )
+            }
+            return bitmap
+        }
+        val before = rulerImage()
+        ruler.performTouchInput {
+            down(center)
+            moveBy(androidx.compose.ui.geometry.Offset(-70f, 0f))
+        }
+        ruler.performTouchInput { moveBy(androidx.compose.ui.geometry.Offset(-3f, 0f)) }
+        val during = rulerImage()
+        assertFalse("标尺刻度必须随手指移动", before.sameAs(during))
+        assertTrue(model.state.value.draft.weight.toDouble() > 70.2)
+        capture("body-ruler-drag-390")
+        ruler.performTouchInput { up() }
+        assertTrue(model.state.value.draft.weight.toDouble() in 1.0..500.0)
+    }
+
     private fun capture(name: String) {
         compose.runOnIdle {
             val view = compose.activity.window.decorView
