@@ -1,23 +1,34 @@
 package com.fittrace.feature.main
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.*
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.fittrace.core.designsystem.*
 import com.fittrace.core.model.*
+import kotlinx.coroutines.delay
 
 @Composable
 internal fun TrainingScreen(
@@ -30,22 +41,50 @@ internal fun TrainingScreen(
     var library by remember { mutableStateOf(false) }
     var leave by remember { mutableStateOf(false) }
     var finish by remember { mutableStateOf(false) }
-    var editing by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    var libraryFromTools by remember { mutableStateOf(false) }
+    var replacing by remember { mutableStateOf<TrainingTemplate?>(null) }
+    var editing by remember { mutableStateOf<Int?>(null) }
     val back = {
         if (!state.saving) {
-            if (page == "session" && state.exercises.isNotEmpty()) leave = true
+            if (page == "template-editor") {
+                model.cancelTemplate()
+                page = "templates"
+            } else if (page == "session" && state.exercises.isNotEmpty()) leave = true
             else if (page != "tools") page = "tools" else onBack()
         }
     }
+    LaunchedEffect(state.editingTemplate, page) {
+        if (page == "template-editor" && !state.editingTemplate) page = "templates"
+    }
     BackHandler { back() }
-    FitPage(
+    TrainingPage(
         when (page) {
             "session" -> "力量训练"
-            "templates" -> "训练模板"
+            "template-editor" -> "编辑训练模板"
+            "templates" -> "我的模板"
             "plan" -> "每周计划"
             else -> "运动与训练"
         },
         back,
+        if (page == "session" || page == "template-editor")
+            ({
+                Column(
+                    Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        "已选 ${state.exercises.size} 个动作 · ${state.exercises.sumOf { it.sets.size }} 组",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    FitSaveButton(
+                        state.saving,
+                        { if (page == "template-editor") model.save(true) else finish = true },
+                        if (page == "template-editor") "保存模板" else "完成并核对",
+                    )
+                }
+            })
+        else null,
     ) {
         if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         state.error?.let { FitMessage(it, if (page != "session") model::load else null, true) }
@@ -64,6 +103,15 @@ internal fun TrainingScreen(
                     Text("按动作记录次数、重量和完成组")
                 }
                 OutlinedButton(
+                    onClick = {
+                        libraryFromTools = true
+                        library = true
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("动作库")
+                }
+                OutlinedButton(
                     onClick = { page = "templates" },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -73,86 +121,76 @@ internal fun TrainingScreen(
                     Text("每周计划")
                 }
             }
-            "session" -> {
+            "session",
+            "template-editor" -> {
+                if (state.restored && !state.editingTemplate)
+                    Text("已恢复本机草稿", color = MaterialTheme.colorScheme.secondary, fontSize = 12.sp)
                 OutlinedTextField(
                     state.name,
                     model::name,
                     Modifier.fillMaxWidth(),
-                    label = { Text("训练名称") },
+                    label = { Text(if (state.editingTemplate) "模板名称" else "训练名称") },
                     singleLine = true,
                     enabled = !state.saving,
+                    shape = RoundedCornerShape(14.dp),
                 )
                 OutlinedTextField(
                     state.minutes,
                     model::minutes,
                     Modifier.fillMaxWidth(),
-                    label = { Text("实际训练时长 · 分钟") },
+                    label = { Text(if (state.editingTemplate) "预计时长 · 分钟" else "实际训练时长 · 分钟") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     enabled = !state.saving,
+                    shape = RoundedCornerShape(14.dp),
                 )
+                if (state.exercises.isEmpty()) FitMessage("先选择动作，再填写实际完成的组")
                 state.exercises.forEachIndexed { exerciseIndex, exercise ->
                     FitCard {
+                        Text(
+                            exercise.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            "${exercise.sets.size} 组 · 已完成 ${exercise.sets.count { it.completed }} 组",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 12.sp,
+                        )
+                        exercise.sets.forEachIndexed { i, set ->
+                            Text(
+                                "${i + 1}. ${set.weightKg.number()} kg × ${set.reps} ${if (exercise.unit == "seconds") "秒" else "次"}${if (set.completed) " · 已完成" else ""}",
+                                fontSize = 13.sp,
+                            )
+                        }
                         Row(
                             Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            Text(
-                                exercise.name,
-                                Modifier.weight(1f),
-                                style = MaterialTheme.typography.titleMedium,
-                            )
+                            TextButton(
+                                onClick = { editing = exerciseIndex },
+                                enabled = !state.saving,
+                            ) {
+                                Text("修改组数")
+                            }
                             TextButton(
                                 onClick = { model.remove(exerciseIndex) },
                                 enabled = !state.saving,
                             ) {
-                                Text("移除")
+                                Text("移除", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
-                        Text(
-                            "组数 · ${if(exercise.unit == "seconds") "秒" else "次数"} · 重量 kg",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                        exercise.sets.forEachIndexed { setIndex, set ->
-                            Row(
-                                Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
+                        if (!state.editingTemplate)
+                            TextButton(
+                                onClick = { model.startRest(exerciseIndex) },
+                                enabled = !state.saving,
                             ) {
-                                Text("${setIndex + 1}", Modifier.width(24.dp))
-                                TextButton(
-                                    onClick = { editing = exerciseIndex to setIndex },
-                                    enabled = !state.saving,
-                                    modifier = Modifier.weight(1f),
-                                ) {
-                                    Text(
-                                        "${set.reps} ${if(exercise.unit == "seconds") "秒" else "次"} · ${set.weightKg.number()} kg"
-                                    )
-                                }
-                                Checkbox(
-                                    set.completed,
-                                    {
-                                        model.set(exerciseIndex, setIndex, set.copy(completed = it))
-                                    },
-                                    enabled = !state.saving,
-                                )
-                                if (exercise.sets.size > 1)
-                                    TextButton(
-                                        onClick = { model.removeSet(exerciseIndex, setIndex) },
-                                        enabled = !state.saving,
-                                    ) {
-                                        Text("－")
-                                    }
+                                Text("休息 ${exercise.restSeconds} 秒")
                             }
-                        }
-                        TextButton(
-                            onClick = { model.addSet(exerciseIndex) },
-                            enabled = !state.saving && exercise.sets.size < 20,
-                        ) {
-                            Text("＋ 添加一组")
-                        }
                     }
                 }
+                if (!state.editingTemplate && state.restUntil != null)
+                    RestTimer(state.restUntil, model::extendRest, model::stopRest)
                 OutlinedButton(
                     onClick = { library = true },
                     enabled = !state.saving && state.exercises.size < 20,
@@ -161,16 +199,26 @@ internal fun TrainingScreen(
                     Text("＋ 添加动作")
                 }
                 Text(
-                    "只保存已完成的组；未完成组不会进入记录。",
-                    style = MaterialTheme.typography.bodySmall,
+                    if (state.editingTemplate) "模板保留全部计划组，使用模板时重新勾选完成。" else "只保存已完成的组；未完成组不会进入记录。",
+                    fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                FitSaveButton(state.saving, { finish = true }, "完成并核对")
-                TextButton(onClick = { model.save(true) }, enabled = !state.saving) {
-                    Text("将当前清单保存为模板")
-                }
+                if (!state.editingTemplate)
+                    TextButton(onClick = { model.save(true) }, enabled = !state.saving) {
+                        Text("将当前清单保存为模板")
+                    }
             }
             "templates" -> {
+                OutlinedButton(
+                    onClick = {
+                        model.beginTemplate()
+                        page = "template-editor"
+                    },
+                    enabled = !state.saving && !state.loading,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("创建我的模板")
+                }
                 if (!state.loading && state.templates.isEmpty() && state.error == null)
                     FitMessage("还没有训练模板，先添加动作并保存为模板。")
                 state.templates.forEach { template ->
@@ -183,12 +231,24 @@ internal fun TrainingScreen(
                         )
                         TextButton(
                             onClick = {
-                                model.use(template)
-                                page = "session"
+                                if (state.exercises.isNotEmpty()) replacing = template
+                                else {
+                                    model.use(template)
+                                    page = "session"
+                                }
                             },
                             enabled = !state.saving,
                         ) {
                             Text("使用模板")
+                        }
+                        TextButton(
+                            onClick = {
+                                model.beginTemplate(template)
+                                page = "template-editor"
+                            },
+                            enabled = !state.saving,
+                        ) {
+                            Text("编辑模板")
                         }
                     }
                 }
@@ -237,24 +297,71 @@ internal fun TrainingScreen(
         }
     }
     if (library)
-        ExerciseSheet({ library = false }) {
-            model.add(it)
-            library = false
-        }
-    editing?.let { (ei, si) ->
-        val exercise = state.exercises.getOrNull(ei)
-        val set = exercise?.sets?.getOrNull(si)
-        if (exercise != null && set != null)
-            TrainingSetDialog(exercise.unit, set, { editing = null }) {
-                model.set(ei, si, it)
-                editing = null
+        ExerciseSheet(state.exercises.map { it.exerciseId }.toSet(), { library = false }) {
+            if (libraryFromTools) {
+                model.beginTemplate()
+                page = "template-editor"
+                libraryFromTools = false
             }
+            model.add(it)
+        }
+    editing?.let { ei ->
+        state.exercises.getOrNull(ei)?.let { exercise ->
+            StrengthSetsSheet(
+                exercise,
+                !state.editingTemplate,
+                state.previousLoading,
+                { editing = null },
+                { i, set -> model.set(ei, i, set) },
+                { model.addSet(ei) },
+                { model.removeSet(ei, it) },
+                { model.bringPrevious(ei) },
+                { model.restSeconds(ei, it) },
+                {
+                    if (exercise.sets.any { it.completed } && !state.editingTemplate)
+                        model.startRest(ei)
+                    editing = null
+                },
+            )
+        }
+    }
+    replacing?.let { template ->
+        AlertDialog(
+            onDismissRequest = { replacing = null },
+            title = { Text("替换当前训练清单？") },
+            text = { Text("使用模板会替换当前草稿中的动作和组。") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        model.use(template)
+                        page = "session"
+                        replacing = null
+                    }
+                ) {
+                    Text("使用模板")
+                }
+            },
+            dismissButton = { TextButton(onClick = { replacing = null }) { Text("取消") } },
+        )
     }
     if (leave)
         AlertDialog(
             onDismissRequest = { leave = false },
             title = { Text("离开训练？") },
-            text = { Text("当前清单保留在本次应用会话中；关闭应用后可能丢失。") },
+            text = {
+                Column {
+                    Text("已保留本机草稿，下次可继续本日期的训练。")
+                    TextButton(
+                        onClick = {
+                            model.discard()
+                            leave = false
+                            page = "tools"
+                        }
+                    ) {
+                        Text("放弃本次草稿", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -292,7 +399,11 @@ internal fun TrainingScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ExerciseSheet(onDismiss: () -> Unit, onAdd: (CatalogExercise) -> Unit) {
+private fun ExerciseSheet(
+    selected: Set<String>,
+    onDismiss: () -> Unit,
+    onAdd: (CatalogExercise) -> Unit,
+) {
     val context = LocalContext.current
     val exercises = remember { catalogExercises(context) }
     var category by remember { mutableStateOf("全部") }
@@ -314,34 +425,80 @@ private fun ExerciseSheet(onDismiss: () -> Unit, onAdd: (CatalogExercise) -> Uni
                 label = { Text("搜索动作或器械") },
                 singleLine = true,
             )
-            Row(
-                Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                (listOf("全部") + exercises.map { it.bodyPart }.distinct()).forEach { part ->
-                    FilterChip(category == part, { category = part }, { Text(part) })
+            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(
+                    Modifier.width(76.dp)
+                        .verticalScroll(rememberScrollState())
+                        .background(
+                            MaterialTheme.colorScheme.primaryContainer,
+                            RoundedCornerShape(14.dp),
+                        )
+                ) {
+                    (listOf("全部") + exercises.map { it.bodyPart }.distinct()).forEach { part ->
+                        Text(
+                            part,
+                            Modifier.fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { category = part }
+                                .background(
+                                    if (category == part) MaterialTheme.colorScheme.surface
+                                    else MaterialTheme.colorScheme.primaryContainer
+                                )
+                                .padding(horizontal = 10.dp, vertical = 16.dp),
+                            fontSize = 12.sp,
+                            color =
+                                if (category == part) MaterialTheme.colorScheme.secondary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
-            }
-            LazyColumn(Modifier.weight(1f)) {
-                items(
+                val filtered =
                     exercises.filter {
                         (category == "全部" || it.bodyPart == category) &&
                             (it.name.contains(search) || it.equipment.contains(search))
                     }
-                ) { exercise ->
-                    ListItem(
-                        headlineContent = { Text(exercise.name) },
-                        supportingContent = {
-                            Text(
-                                "${exercise.bodyPart} · ${exercise.equipment} · ${if(exercise.unit == "seconds") "按秒" else "按次"}"
+                LazyColumn(Modifier.weight(1f)) {
+                    if (filtered.isEmpty()) item { Text("没有找到相关动作，请换个关键词", fontSize = 12.sp) }
+                    items(filtered) { exercise ->
+                        Row(
+                            Modifier.fillMaxWidth()
+                                .clickable { detail = exercise }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Image(
+                                painterResource(R.drawable.strength_dumbbells),
+                                null,
+                                Modifier.size(34.dp).clip(RoundedCornerShape(8.dp)),
+                                contentScale = ContentScale.Crop,
                             )
-                        },
-                        trailingContent = {
-                            TextButton(onClick = { onAdd(exercise) }) { Text("添加") }
-                        },
-                        modifier = Modifier.clickable { detail = exercise },
-                    )
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    exercise.name,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                                Text(
+                                    "${exercise.bodyPart} · ${exercise.equipment}",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            TextButton(
+                                onClick = { onAdd(exercise) },
+                                enabled = exercise.id !in selected,
+                                contentPadding = PaddingValues(0.dp),
+                                modifier = Modifier.width(32.dp),
+                            ) {
+                                Text(if (exercise.id in selected) "✓" else "＋")
+                            }
+                        }
+                    }
                 }
+            }
+            Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+                Text("完成选择 · ${selected.size} 个动作")
             }
         }
     }
@@ -415,4 +572,186 @@ private fun TrainingSetDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
     )
+}
+
+@Composable
+private fun TrainingPage(
+    title: String,
+    back: () -> Unit,
+    footer: (@Composable () -> Unit)?,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        bottomBar = { if (footer != null) Surface { footer() } },
+    ) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding).imePadding()) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(
+                    onClick = back,
+                    modifier = Modifier.width(32.dp).semantics { contentDescription = "返回" },
+                    contentPadding = PaddingValues(0.dp),
+                ) {
+                    Text("‹", fontSize = 28.sp)
+                }
+                Text(title, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+            }
+            Column(
+                Modifier.weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                content = content,
+            )
+        }
+    }
+}
+
+@Composable
+private fun RestTimer(until: Long, extend: () -> Unit, stop: () -> Unit) {
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(until) {
+        while (now < until) {
+            now = System.currentTimeMillis()
+            delay(250)
+        }
+    }
+    val seconds = ((until - now + 999) / 1000).coerceAtLeast(0)
+    FitCard {
+        Text(
+            if (seconds == 0L) "休息结束"
+            else "组间休息 · ${seconds / 60}:${(seconds % 60).toString().padStart(2, '0')}",
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.secondary,
+        )
+        Row {
+            TextButton(onClick = extend) { Text("＋30 秒") }
+            TextButton(onClick = stop) { Text("结束休息") }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun StrengthSetsSheet(
+    exercise: TrainingExercise,
+    session: Boolean,
+    previousLoading: Boolean,
+    dismiss: () -> Unit,
+    change: (Int, TrainingSet) -> Unit,
+    add: () -> Unit,
+    remove: (Int) -> Unit,
+    previous: () -> Unit,
+    rest: (Int) -> Unit,
+    confirm: () -> Unit,
+) {
+    var input by remember { mutableStateOf<Int?>(null) }
+    ModalBottomSheet(
+        onDismissRequest = dismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
+        Column(
+            Modifier.fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Image(
+                    painterResource(R.drawable.strength_dumbbells),
+                    null,
+                    Modifier.size(42.dp).clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop,
+                )
+                Text(exercise.name, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            }
+            Text(
+                if (exercise.unit == "seconds") "按秒记录实际时长" else "按单只重量记录",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("组", Modifier.width(24.dp), fontSize = 12.sp)
+                Text(
+                    "重量 kg / ${if (exercise.unit == "seconds") "秒" else "次数"}",
+                    Modifier.weight(1f),
+                    fontSize = 12.sp,
+                )
+                if (session) Text("完成", fontSize = 12.sp)
+            }
+            exercise.sets.forEachIndexed { i, set ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("${i + 1}", Modifier.width(24.dp))
+                    FilledTonalButton(
+                        onClick = { input = i },
+                        Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        Text(
+                            "${set.weightKg.number()} kg × ${set.reps} ${if (exercise.unit == "seconds") "秒" else "次"}"
+                        )
+                    }
+                    if (session)
+                        Checkbox(
+                            set.completed,
+                            { change(i, set.copy(completed = it)) },
+                            modifier = Modifier.semantics { contentDescription = "完成第 ${i + 1} 组" },
+                        )
+                    if (exercise.sets.size > 1)
+                        TextButton(
+                            onClick = { remove(i) },
+                            modifier = Modifier.width(40.dp),
+                            contentPadding = PaddingValues(0.dp),
+                        ) {
+                            Text("－")
+                        }
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                TextButton(onClick = add, enabled = exercise.sets.size < 20) { Text("＋ 添加一组") }
+                if (session)
+                    TextButton(onClick = previous, enabled = !previousLoading) {
+                        Text(if (previousLoading) "正在读取…" else "带入上次")
+                    }
+            }
+            if (session) {
+                Text("组间休息", fontSize = 13.sp)
+                Row(
+                    Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listOf(0, 30, 60, 90, 120).forEach { seconds ->
+                        FilterChip(
+                            exercise.restSeconds == seconds,
+                            { rest(seconds) },
+                            { Text(if (seconds == 0) "不休息" else "${seconds}秒") },
+                        )
+                    }
+                }
+            }
+            Text(
+                if (session) "未勾选的组不会写入正式记录。" else "模板中的组不会自动标记完成。",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Button(onClick = confirm, Modifier.fillMaxWidth().height(48.dp)) { Text("确认修改") }
+        }
+    }
+    input?.let { i ->
+        exercise.sets.getOrNull(i)?.let { set ->
+            TrainingSetDialog(exercise.unit, set, { input = null }) {
+                change(i, it)
+                input = null
+            }
+        }
+    }
 }

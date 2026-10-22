@@ -17,6 +17,11 @@ import com.fittrace.core.session.KeystoreSessionStore
 
 /** 唯一的应用级依赖装配入口，feature 只接收领域接口。 */
 class AppContainer(context: Context, baseUrl: String, debugLogging: Boolean = false) {
+    private val appContext = context.applicationContext
+
+    fun trainingDraftStore(accountId: String): com.fittrace.core.domain.TrainingDraftStore =
+        com.fittrace.core.session.LocalTrainingDraftStore(appContext, accountId)
+
     private val network =
         NetworkClient(
             baseUrl,

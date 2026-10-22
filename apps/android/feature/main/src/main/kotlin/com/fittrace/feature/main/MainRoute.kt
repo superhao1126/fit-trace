@@ -34,6 +34,7 @@ fun MainRoute(
     recordsRepository: RecordsRepository,
     trainingRepository: com.fittrace.core.domain.TrainingRepository,
     passwordPage: @Composable (() -> Unit) -> Unit,
+    trainingDraftStore: com.fittrace.core.domain.TrainingDraftStore? = null,
 ) {
     key(userId) {
         val factory =
@@ -152,6 +153,7 @@ fun MainRoute(
                                             trainingRepository,
                                             recordsRepository,
                                             LocalDate.parse(editorDate),
+                                            trainingDraftStore,
                                         )
                                     }
                                 }

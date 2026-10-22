@@ -109,6 +109,7 @@ class MainActivity : ComponentActivity() {
                                     onResetClosed = back,
                                 )
                             },
+                            trainingDraftStore = container.trainingDraftStore(session.user.id),
                         )
                 }
                 if (status is SessionStatus.SignedIn)

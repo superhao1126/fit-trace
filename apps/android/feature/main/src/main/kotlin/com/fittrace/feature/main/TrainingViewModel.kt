@@ -3,11 +3,15 @@ package com.fittrace.feature.main
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fittrace.core.domain.RecordsRepository
+import com.fittrace.core.domain.TrainingDraft
+import com.fittrace.core.domain.TrainingDraftStore
 import com.fittrace.core.domain.TrainingRepository
 import com.fittrace.core.model.*
 import java.time.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 data class TrainingState(
@@ -21,19 +25,59 @@ data class TrainingState(
     val minutes: String = "",
     val saved: Boolean = false,
     val notice: String? = null,
+    val restUntil: Long? = null,
+    val restored: Boolean = false,
+    val editingTemplate: Boolean = false,
+    val templateId: String? = null,
+    val previousLoading: Boolean = false,
 )
 
 class TrainingViewModel(
     private val repository: TrainingRepository,
     private val records: RecordsRepository,
     private val date: LocalDate,
+    private val drafts: TrainingDraftStore? = null,
+    private val now: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
     private val mutable = MutableStateFlow(TrainingState())
     val state = mutable.asStateFlow()
 
     private var planReady = false
+    private var sessionBeforeTemplate: TrainingState? = null
 
     init {
+        drafts?.read(date.toString())?.let {
+            mutable.value =
+                mutable.value.copy(
+                    name = it.name,
+                    minutes = it.minutes,
+                    exercises = it.exercises,
+                    restUntil = it.restUntil,
+                    restored = true,
+                )
+        }
+        viewModelScope.launch {
+            state
+                .map {
+                    if (it.editingTemplate) null
+                    else
+                        (it.saved to TrainingDraft(it.name, it.minutes, it.exercises, it.restUntil))
+                }
+                .distinctUntilChanged()
+                .collect { value ->
+                    if (value != null && drafts != null) {
+                        val (saved, draft) = value
+                        runCatching {
+                                if (saved || draft.exercises.isEmpty())
+                                    drafts.clear(date.toString())
+                                else drafts.write(date.toString(), draft)
+                            }
+                            .onFailure {
+                                mutable.value = mutable.value.copy(notice = "本机草稿保存失败，请勿关闭应用")
+                            }
+                    }
+                }
+        }
         load()
     }
 
@@ -167,6 +211,139 @@ class TrainingViewModel(
                 )
     }
 
+    fun startRest(index: Int) {
+        val exercise = mutable.value.exercises.getOrNull(index) ?: return
+        if (!mutable.value.saving)
+            mutable.value = mutable.value.copy(restUntil = now() + exercise.restSeconds * 1000L)
+    }
+
+    fun extendRest() {
+        if (!mutable.value.saving)
+            mutable.value =
+                mutable.value.copy(
+                    restUntil = maxOf(now(), mutable.value.restUntil ?: now()) + 30000
+                )
+    }
+
+    fun stopRest() {
+        mutable.value = mutable.value.copy(restUntil = null)
+    }
+
+    fun restSeconds(index: Int, seconds: Int) {
+        if (mutable.value.saving || seconds !in 0..600) return
+        mutable.value =
+            mutable.value.copy(
+                exercises =
+                    mutable.value.exercises.mapIndexed { i, e ->
+                        if (i == index) e.copy(restSeconds = seconds) else e
+                    }
+            )
+    }
+
+    fun discard() {
+        if (mutable.value.saving) return
+        mutable.value =
+            mutable.value.copy(
+                exercises = emptyList(),
+                minutes = "",
+                name = "力量训练",
+                restUntil = null,
+                restored = false,
+            )
+    }
+
+    fun beginTemplate(template: TrainingTemplate? = null) {
+        if (mutable.value.saving) return
+        sessionBeforeTemplate = mutable.value
+        mutable.value =
+            mutable.value.copy(
+                editingTemplate = true,
+                templateId = template?.id,
+                name = template?.name ?: "",
+                minutes = template?.durationMinutes?.toString() ?: "",
+                exercises =
+                    template?.exercises?.map {
+                        it.copy(sets = it.sets.map { s -> s.copy(completed = false) })
+                    } ?: emptyList(),
+                restUntil = null,
+                error = null,
+            )
+    }
+
+    fun cancelTemplate() {
+        if (mutable.value.saving) return
+        sessionBeforeTemplate?.let {
+            mutable.value =
+                mutable.value.copy(
+                    name = it.name,
+                    minutes = it.minutes,
+                    exercises = it.exercises,
+                    restUntil = it.restUntil,
+                    editingTemplate = false,
+                    templateId = null,
+                    error = null,
+                )
+        }
+        sessionBeforeTemplate = null
+    }
+
+    fun bringPrevious(index: Int) {
+        val exercise = mutable.value.exercises.getOrNull(index) ?: return
+        if (mutable.value.saving || mutable.value.previousLoading) return
+        mutable.value = mutable.value.copy(previousLoading = true, notice = null)
+        viewModelScope.launch {
+            val until =
+                date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toOffsetDateTime().toString()
+            var page = 1
+            var seen = 0
+            var found: TrainingExercise? = null
+            var failure: String? = null
+            while (found == null && failure == null) {
+                when (val result = records.workouts(page, to = until)) {
+                    is AppResult.Failure -> failure = result.error.recordMessage()
+                    is AppResult.Success -> {
+                        val entries =
+                            result.data.entries.sortedByDescending {
+                                OffsetDateTime.parse(it.startedAt).toInstant()
+                            }
+                        found =
+                            entries
+                                .asSequence()
+                                .flatMap { it.exercises.orEmpty().asSequence() }
+                                .firstOrNull {
+                                    it.exerciseId == exercise.exerciseId &&
+                                        it.unit == exercise.unit &&
+                                        it.sets.any { s -> s.completed }
+                                }
+                        seen += entries.size
+                        if (entries.isEmpty() || seen >= result.data.total) break
+                        page++
+                    }
+                }
+            }
+            val same = mutable.value.exercises.getOrNull(index) == exercise
+            mutable.value =
+                mutable.value.copy(
+                    previousLoading = false,
+                    exercises =
+                        if (found != null && same && !mutable.value.saving)
+                            mutable.value.exercises.mapIndexed { i, e ->
+                                if (i == index)
+                                    e.copy(
+                                        sets =
+                                            found!!
+                                                .sets
+                                                .filter { it.completed }
+                                                .map { it.copy(completed = false) }
+                                    )
+                                else e
+                            }
+                        else mutable.value.exercises,
+                    notice = failure ?: if (found == null) "暂无这个动作的历史完成组" else "已带入上次，请按实际完成情况勾选",
+                )
+        }
+    }
+
     private fun valid(): Boolean {
         val s = mutable.value
         val error =
@@ -196,7 +373,13 @@ class TrainingViewModel(
         mutable.value = s.copy(saving = true, error = null, notice = null)
         viewModelScope.launch {
             val result =
-                if (template) repository.saveTemplate(s.name.trim(), s.minutes.toInt(), exercises)
+                if (template)
+                    repository.saveTemplate(
+                        s.name.trim(),
+                        s.minutes.toInt(),
+                        exercises,
+                        s.templateId,
+                    )
                 else
                     records.saveWorkout(
                         WorkoutInput(
@@ -224,7 +407,11 @@ class TrainingViewModel(
                     is AppResult.Failure ->
                         mutable.value.copy(saving = false, error = result.error.recordMessage())
                 }
-            if (template && result is AppResult.Success) load()
+            if (template && result is AppResult.Success) {
+                if (s.editingTemplate) cancelTemplate()
+                mutable.value = mutable.value.copy(notice = "模板已保存")
+                load()
+            }
         }
     }
 
