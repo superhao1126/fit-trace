@@ -266,11 +266,13 @@ internal fun TrainingScreen(
                             Box {
                                 TextButton(
                                     onClick = { expanded = true },
-                                    enabled = !state.loading && !state.saving,
+                                    enabled = !state.loading && !state.saving && state.planReady,
                                 ) {
                                     Text(
-                                        state.templates.find { it.id == day.templateId }?.name
-                                            ?: "休息"
+                                        if (day.templateId == null) "休息"
+                                        else
+                                            state.templates.find { it.id == day.templateId }?.name
+                                                ?: "模板暂不可用"
                                     )
                                 }
                                 DropdownMenu(expanded, { expanded = false }) {
@@ -294,7 +296,13 @@ internal fun TrainingScreen(
                             }
                         }
                     }
-                FitSaveButton(state.saving, model::savePlan, "保存每周计划")
+                Button(
+                    onClick = model::savePlan,
+                    enabled = !state.saving && !state.loading && state.planReady,
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                ) {
+                    Text(if (state.saving) "正在保存…" else "保存每周计划")
+                }
             }
         }
     }

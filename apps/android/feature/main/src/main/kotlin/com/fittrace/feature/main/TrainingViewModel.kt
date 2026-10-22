@@ -32,6 +32,7 @@ data class TrainingState(
     val previousLoading: Boolean = false,
     val favoriteExercises: Set<String> = emptySet(),
     val draftError: Boolean = false,
+    val planReady: Boolean = false,
 )
 
 class TrainingViewModel(
@@ -44,7 +45,6 @@ class TrainingViewModel(
     private val mutable = MutableStateFlow(TrainingState())
     val state = mutable.asStateFlow()
 
-    private var planReady = false
     private var sessionBeforeTemplate: TrainingState? = null
 
     init {
@@ -104,10 +104,11 @@ class TrainingViewModel(
         viewModelScope.launch {
             val templates = repository.templates()
             val plan = repository.plan()
-            planReady = plan is AppResult.Success && templates is AppResult.Success
+            val ready = plan is AppResult.Success && templates is AppResult.Success
             mutable.value =
                 mutable.value.copy(
                     loading = false,
+                    planReady = ready,
                     templates = (templates as? AppResult.Success)?.data ?: mutable.value.templates,
                     plan = (plan as? AppResult.Success)?.data?.days ?: mutable.value.plan,
                     error =
@@ -461,7 +462,7 @@ class TrainingViewModel(
     }
 
     fun savePlan() {
-        if (mutable.value.saving || mutable.value.loading || !planReady) return
+        if (mutable.value.saving || mutable.value.loading || !mutable.value.planReady) return
         val days = mutable.value.plan
         mutable.value = mutable.value.copy(saving = true, error = null)
         viewModelScope.launch {

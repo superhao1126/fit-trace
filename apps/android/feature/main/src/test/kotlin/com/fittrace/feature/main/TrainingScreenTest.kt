@@ -106,6 +106,37 @@ class TrainingScreenTest {
         Assert.assertTrue(sets.all { it.reps == 10 && it.weightKg == 12.0 && !it.completed })
     }
 
+    @Test
+    fun `unavailable plan template is not presented as a rest day and save is disabled`() {
+        val model =
+            TrainingViewModel(
+                object : TrainingRepositoryFake() {
+                    override suspend fun templates(): AppResult<List<TrainingTemplate>> =
+                        AppResult.Failure(AppError.Network)
+
+                    override suspend fun plan() =
+                        AppResult.Success(
+                            TrainingPlan(
+                                true,
+                                (0..6).map {
+                                    TrainingPlanDay(it, if (it == 0) "unavailable" else null)
+                                },
+                            )
+                        )
+                },
+                RecordsRepositoryFake(),
+                LocalDate.of(2026, 10, 19),
+            )
+        compose.setContent {
+            val state by model.state.collectAsState()
+            FitTraceTheme { TrainingScreen(state, model, {}, {}) }
+        }
+        compose.waitUntil { !model.state.value.loading }
+        compose.onNodeWithText("每周计划").performClick()
+        compose.onNodeWithText("模板暂不可用").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("保存每周计划").performScrollTo().assertIsNotEnabled()
+    }
+
     private fun capture(name: String, sheet: Boolean = false) {
         compose.runOnIdle {
             val view =
