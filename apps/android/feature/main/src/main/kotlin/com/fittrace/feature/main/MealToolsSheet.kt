@@ -29,10 +29,13 @@ internal fun MealToolsSheet(
     var editing by remember { mutableStateOf<Int?>(null) }
     var deleting by remember { mutableStateOf<MealFavorite?>(null) }
     LaunchedEffect(Unit) { controller.load() }
-    ModalBottomSheet(
-        onDismissRequest = { if (!state.busy) dismiss() },
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-    ) {
+    val latestBusy by rememberUpdatedState(state.busy)
+    val sheetState =
+        rememberModalBottomSheetState(
+            skipPartiallyExpanded = true,
+            confirmValueChange = { it != SheetValue.Hidden || !latestBusy },
+        )
+    ModalBottomSheet(onDismissRequest = { if (!state.busy) dismiss() }, sheetState = sheetState) {
         Column(
             Modifier.fillMaxWidth()
                 .fillMaxHeight(.92f)

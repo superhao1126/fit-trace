@@ -143,6 +143,34 @@ class MealToolsTest {
         capture("meal-favorite-failed-390")
     }
 
+    @Test
+    fun `recognition in progress cannot dismiss its sheet and abandon pending results`() {
+        val pending = kotlinx.coroutines.CompletableDeferred<AppResult<FoodRecognition>>()
+        val model =
+            RecordEditorViewModel(
+                object : RecordsRepositoryFake() {
+                    override suspend fun recognizeMealText(description: String) = pending.await()
+                },
+                RecordKind.MEAL,
+                date,
+                null,
+            )
+        compose.setContent {
+            val state by model.state.collectAsState()
+            FitTraceTheme { RecordEditorScreen(state, model, {}) }
+        }
+        compose.onNodeWithText("AI 速记 · 最近 · 常用餐").performClick()
+        compose.onNodeWithText("餐食描述 / 照片补充说明").performTextInput("午餐")
+        compose.onNodeWithText("识别餐食描述").performClick()
+        compose.waitUntil { model.mealTools.state.value.busy }
+        compose.onNodeWithText("返回核对这餐").assertIsNotEnabled()
+        compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        compose.onNode(hasText("饮食工具") and !hasClickAction()).assertIsDisplayed()
+        compose.runOnIdle { pending.complete(AppResult.Failure(AppError.Network)) }
+        compose.waitUntil { !model.mealTools.state.value.busy }
+        compose.onNodeWithText("返回核对这餐").assertIsEnabled()
+    }
+
     private fun capture(name: String) {
         compose.runOnIdle {
             val view = WindowInspector.getGlobalWindowViews().last()
