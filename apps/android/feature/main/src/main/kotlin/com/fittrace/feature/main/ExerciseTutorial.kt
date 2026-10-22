@@ -1,5 +1,6 @@
 package com.fittrace.feature.main
 
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -87,16 +88,20 @@ internal fun ExerciseTutorial(
                         style = MaterialTheme.typography.labelSmall,
                     )
                 }
-                val link = exercise.mediaSourceUrl.ifBlank { exercise.sourceUrl }
-                if (link.isNotBlank())
-                    TextButton(
-                        onClick = {
-                            linkFailed = runCatching { uriHandler.openUri(link) }.isFailure
-                        },
-                        contentPadding = PaddingValues(0.dp),
-                    ) {
-                        Text(if (exercise.images.isEmpty()) "打开图文参考教程 ↗" else "查看示范来源 ↗")
-                    }
+                val link =
+                    Uri.Builder()
+                        .scheme("https")
+                        .authority("search.bilibili.com")
+                        .path("/all")
+                        .appendQueryParameter("keyword", "${exercise.name} 动作教程")
+                        .build()
+                        .toString()
+                TextButton(
+                    onClick = { linkFailed = runCatching { uriHandler.openUri(link) }.isFailure },
+                    contentPadding = PaddingValues(0.dp),
+                ) {
+                    Text("在哔哩哔哩搜索教程 ↗")
+                }
                 if (linkFailed) Text("暂时无法打开链接，请稍后重试", color = MaterialTheme.colorScheme.error)
             }
         },

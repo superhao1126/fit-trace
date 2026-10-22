@@ -87,6 +87,11 @@ class TrainingPlanNavigationTest {
         }
         capture("weekly-plan-arm-tutorial-390")
         compose.onNodeWithText("动作要点").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("在哔哩哔哩搜索教程 ↗").performScrollTo().performClick()
+        val opened = android.net.Uri.parse(openedLinks.single())
+        assertEquals("https", opened.scheme)
+        assertEquals("search.bilibili.com", opened.host)
+        assertEquals("绳索臂屈伸 动作教程", opened.getQueryParameter("keyword"))
         compose.onNodeWithText("看完了").performClick()
         compose.onNodeWithText("周四训练计划").assertIsDisplayed()
         assertEquals(before.exercises, model.state.value.exercises)
@@ -139,6 +144,7 @@ class TrainingPlanNavigationTest {
         assertTrue(rdl.sourceUrl.endsWith("/dumbbell-romanian-deadlift"))
     }
 
+    private val openedLinks = mutableListOf<String>()
     private var writes = 0
     private val repository =
         object : TrainingRepositoryFake() {
@@ -167,7 +173,16 @@ class TrainingPlanNavigationTest {
             model.add(CatalogExercise("pushup", "俯卧撑", "胸部", "徒手", "reps", emptyList(), ""))
         compose.setContent {
             val state by model.state.collectAsState()
-            FitTraceTheme(dark) { TrainingScreen(state, model, {}, {}) }
+            CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalUriHandler provides
+                    object : androidx.compose.ui.platform.UriHandler {
+                        override fun openUri(uri: String) {
+                            openedLinks.add(uri)
+                        }
+                    }
+            ) {
+                FitTraceTheme(dark) { TrainingScreen(state, model, {}, {}) }
+            }
         }
         compose.waitUntil { !model.state.value.loading }
         compose.onNodeWithText("每周计划").performClick()
