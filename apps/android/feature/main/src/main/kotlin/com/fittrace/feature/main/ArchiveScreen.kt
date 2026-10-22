@@ -40,6 +40,20 @@ internal fun RecordsScreen(
     month: YearMonth = YearMonth.from(date ?: LocalDate.now()),
     onMonth: (YearMonth) -> Unit = {},
 ) {
+    if (kind == RecordKind.PHOTO) {
+        PhotoArchiveScreen(
+            state,
+            month,
+            onMonth,
+            onRefresh,
+            onMore,
+            onOpen,
+            { onCreate(RecordKind.PHOTO) },
+            onBack,
+            { onKind(null) },
+        )
+        return
+    }
     var calendar by remember { mutableStateOf(false) }
     var monthPicker by remember { mutableStateOf(false) }
     var add by remember { mutableStateOf(false) }
@@ -319,7 +333,7 @@ private fun ArchiveRow(item: RecordItem, onOpen: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ArchiveMonthPicker(
+internal fun ArchiveMonthPicker(
     month: YearMonth,
     onDismiss: () -> Unit,
     onMonth: (YearMonth) -> Unit,

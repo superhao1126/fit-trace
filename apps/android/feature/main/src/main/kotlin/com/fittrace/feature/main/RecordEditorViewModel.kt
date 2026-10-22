@@ -47,6 +47,7 @@ data class EditorState(
     val loadingFailed: Boolean = false,
     val previousBody: BodyEntry? = null,
     val workouts: List<WorkoutSelection> = emptyList(),
+    val uploading: Boolean = false,
 )
 
 class RecordEditorViewModel(
@@ -190,6 +191,7 @@ class RecordEditorViewModel(
                 saving = true,
                 error = null,
                 draft = mutable.value.draft.copy(imageUrl = null),
+                uploading = true,
             )
         viewModelScope.launch {
             when (val result = repository.upload(bytes, mimeType)) {
@@ -199,10 +201,15 @@ class RecordEditorViewModel(
                             draft = mutable.value.draft.copy(imageUrl = result.data),
                             saving = false,
                             dirty = true,
+                            uploading = false,
                         )
                 is AppResult.Failure ->
                     mutable.value =
-                        mutable.value.copy(saving = false, error = result.error.recordMessage())
+                        mutable.value.copy(
+                            saving = false,
+                            uploading = false,
+                            error = result.error.recordMessage(),
+                        )
             }
         }
     }
