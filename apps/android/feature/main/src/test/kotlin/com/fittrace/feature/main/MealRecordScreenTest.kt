@@ -3,9 +3,11 @@ package com.fittrace.feature.main
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.unit.dp
 import com.fittrace.core.designsystem.FitTraceTheme
 import com.fittrace.core.model.*
 import java.io.File
@@ -22,6 +24,39 @@ import org.robolectric.annotation.GraphicsMode
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class MealRecordScreenTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+
+    @OptIn(coil3.annotation.DelicateCoilApi::class)
+    @Before
+    fun imageDecoder() {
+        coil3.SingletonImageLoader.setUnsafe(
+            coil3.ImageLoader.Builder(compose.activity)
+                .components { add(coil3.decode.BitmapFactoryDecoder.Factory()) }
+                .build()
+        )
+    }
+
+    private fun testPhoto(): String {
+        val file = File(compose.activity.cacheDir, "meal-test-photo.jpg")
+        compose.activity.resources.openRawResource(R.drawable.sport_walking).use { input ->
+            file.outputStream().use { input.copyTo(it) }
+        }
+        return android.net.Uri.fromFile(file).toString()
+    }
+
+    private fun waitPhoto() {
+        compose.waitUntil(5000) {
+            compose
+                .onAllNodes(
+                    SemanticsMatcher.expectValue(
+                        androidx.compose.ui.semantics.SemanticsProperties.StateDescription,
+                        "照片已加载",
+                    )
+                )
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+    }
+
     private val date = LocalDate.of(2026, 10, 19)
 
     @Test
@@ -113,7 +148,7 @@ class MealRecordScreenTest {
     @Test
     fun `meal editing preserves photo until explicit removal is saved`() {
         val writes = mutableListOf<MealInput>()
-        val image = "https://example.test/meal.jpg"
+        val image = testPhoto()
         val repo =
             object : RecordsRepositoryFake() {
                 override suspend fun meal(id: String) =
@@ -144,10 +179,36 @@ class MealRecordScreenTest {
         compose.onNodeWithText("保存这餐").performClick()
         compose.waitUntil { writes.size == 1 }
         assertEquals(image, writes.first().imageUrl)
-        compose.onNodeWithText("移除餐食照片").performScrollTo().performClick()
+        compose.onNodeWithText("移除餐食照片").performScrollTo()
+        waitPhoto()
+        capture("meal-photo-edit-390")
+        compose.onNodeWithText("移除餐食照片").performClick()
         compose.onNodeWithText("保存这餐").performClick()
         compose.waitUntil { writes.size == 2 }
         assertNull(writes.last().imageUrl)
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w320dp-h720dp-mdpi")
+    fun `dark narrow meal photo card renders uploaded image and removal controls`() {
+        val image = testPhoto()
+        val model = RecordEditorViewModel(RecordsRepositoryFake(), RecordKind.MEAL, date, null)
+        model.edit { it.copy(imageUrl = image) }
+        compose.setContent {
+            val state by model.state.collectAsState()
+            FitTraceTheme(true) {
+                androidx.compose.material3.Surface(androidx.compose.ui.Modifier.fillMaxSize()) {
+                    androidx.compose.foundation.layout.Column(
+                        androidx.compose.ui.Modifier.padding(24.dp)
+                    ) {
+                        MealPhotoCard(state, model, true) {}
+                    }
+                }
+            }
+        }
+        waitPhoto()
+        compose.onNodeWithText("移除餐食照片").assertIsDisplayed()
+        capture("meal-photo-dark-320")
     }
 
     private fun capture(name: String) {
