@@ -44,6 +44,7 @@ androidComponents {
 }
 
 dependencies {
+    implementation(libs.biometric)
     implementation(libs.coil.network.okhttp)
     implementation(project(":core:domain"))
     implementation(project(":core:data"))

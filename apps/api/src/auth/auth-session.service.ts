@@ -18,10 +18,16 @@ export class AuthSessionService {
     user: PublicUser,
     tokenVersion: number,
     transaction: Prisma.TransactionClient = this.prisma,
+    emailVerified = false,
   ): Promise<AuthResult> {
     const refreshToken = randomBytes(32).toString('hex');
     const session = await transaction.authSession.create({
-      data: { userId: user.id, tokenVersion, tokenHash: this.digest(refreshToken) },
+      data: {
+        userId: user.id,
+        tokenVersion,
+        tokenHash: this.digest(refreshToken),
+        ...(emailVerified ? { emailVerifiedAt: new Date() } : {}),
+      },
     });
     return this.result(user, session.id, tokenVersion, refreshToken);
   }

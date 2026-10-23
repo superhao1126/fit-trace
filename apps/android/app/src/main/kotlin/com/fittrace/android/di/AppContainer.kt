@@ -37,6 +37,30 @@ class AppContainer(context: Context, baseUrl: String, debugLogging: Boolean = fa
                 else null,
         )
     private val sessionAuth = DefaultAuthRepository(network.authApi, KeystoreSessionStore(context))
+    val biometricRepository: com.fittrace.core.domain.BiometricRepository =
+        com.fittrace.core.data.DefaultBiometricRepository(
+            network.deviceCredentialApi,
+            sessionAuth,
+            com.fittrace.core.session.BiometricKeyStore(appContext) {
+                when (
+                    androidx.biometric.BiometricManager.from(appContext)
+                        .canAuthenticate(
+                            androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
+                        )
+                ) {
+                    androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS ->
+                        com.fittrace.core.model.BiometricCapability.AVAILABLE
+                    androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED ->
+                        com.fittrace.core.model.BiometricCapability.NOT_ENROLLED
+                    androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE ->
+                        com.fittrace.core.model.BiometricCapability.UNSUPPORTED
+                    else -> com.fittrace.core.model.BiometricCapability.TEMPORARILY_UNAVAILABLE
+                }
+            },
+            if (baseUrl.isNotBlank() && appContext.packageName.contains(".dev")) "android-dev"
+            else "android-prod",
+            android.os.Build.MODEL.take(80),
+        )
     private val records =
         com.fittrace.core.data.DefaultRecordsRepository(network.recordsApi, sessionAuth)
     val recordsRepository: com.fittrace.core.domain.RecordsRepository = records

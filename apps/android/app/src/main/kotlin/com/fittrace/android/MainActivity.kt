@@ -1,7 +1,6 @@
 package com.fittrace.android
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -27,7 +26,7 @@ import com.fittrace.feature.auth.PolicyKind
 import com.fittrace.feature.auth.message
 import com.fittrace.feature.main.MainRoute
 
-class MainActivity : ComponentActivity() {
+class MainActivity : androidx.fragment.app.FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -66,7 +65,15 @@ class MainActivity : ComponentActivity() {
                         Surface(Modifier.fillMaxSize()) {
                             Box(contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                         }
-                    SessionStatus.SignedOut -> AuthRoute(auth, model.authFlowOwner)
+                    SessionStatus.SignedOut ->
+                        com.fittrace.feature.auth.BiometricRoute(
+                            container.biometricRepository,
+                            auth,
+                            remember { BiometricAuthenticator(this@MainActivity) },
+                            emailPage = { biometric ->
+                                AuthRoute(auth, model.authFlowOwner, onBiometric = biometric)
+                            },
+                        )
                     is SessionStatus.RecoveryRequired ->
                         Scaffold { padding ->
                             Column(
@@ -110,6 +117,15 @@ class MainActivity : ComponentActivity() {
                                 )
                             },
                             trainingDraftStore = container.trainingDraftStore(session.user.id),
+                            biometricPage = { back ->
+                                com.fittrace.feature.auth.BiometricRoute(
+                                    container.biometricRepository,
+                                    auth,
+                                    remember { BiometricAuthenticator(this@MainActivity) },
+                                    email = session.user.email,
+                                    onBack = back,
+                                )
+                            },
                         )
                 }
                 if (status is SessionStatus.SignedIn)

@@ -206,6 +206,9 @@ class DefaultAuthRepository(
         else requests.unit { api.logout(RefreshRequest(old.refreshToken)) }
     }
 
+    internal suspend fun acceptDeviceSession(dto: AuthSessionDto): AppResult<Unit> =
+        mutex.withLock { commitResult(AppResult.Success(dto)) }
+
     private suspend fun commitResult(result: AppResult<AuthSessionDto>): AppResult<Unit> =
         when (result) {
             is AppResult.Failure -> result

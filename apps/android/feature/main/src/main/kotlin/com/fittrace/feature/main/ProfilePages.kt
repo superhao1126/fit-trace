@@ -588,7 +588,7 @@ internal fun ProfileSettingsScreen(
         FitDialog(
             onDismissRequest = { if (!busy) logout = false },
             title = { Text("退出登录？") },
-            text = { Text("退出后将清除本机登录状态，账号中的记录会保留。") },
+            text = { Text("退出后将清除本机登录状态，账号中的记录会保留。若已开启指纹登录，本机仍可使用；可在登录安全中关闭。") },
             confirmButton = {
                 FitDialogButton(
                     destructive = true,
@@ -610,7 +610,12 @@ internal fun ProfileSettingsScreen(
 }
 
 @Composable
-internal fun ProfileSecurityScreen(email: String, onBack: () -> Unit, onPassword: () -> Unit) {
+internal fun ProfileSecurityScreen(
+    email: String,
+    onBack: () -> Unit,
+    onPassword: () -> Unit,
+    onBiometric: (() -> Unit)? = null,
+) {
     ProfilePage("登录安全", onBack) {
         ProfileMenuGroup("当前账号") {
             Column(
@@ -619,6 +624,11 @@ internal fun ProfileSecurityScreen(email: String, onBack: () -> Unit, onPassword
             ) {
                 Text("登录邮箱", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(email, fontSize = 15.sp)
+            }
+        }
+        onBiometric?.let { open ->
+            ProfileMenuGroup("快捷登录") {
+                ProfileMenuRow("指纹 / 生物识别登录", R.drawable.profile_archive, onClick = open)
             }
         }
         ProfileMenuGroup("密码管理") {

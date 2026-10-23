@@ -29,6 +29,8 @@ model User {
   workoutRecords WorkoutRecord[]
   progressPhotos ProgressPhoto[]
   authSessions   AuthSession[]
+  deviceCredentials DeviceCredential[]
+  deviceChallenges DeviceAuthChallenge[]
   trainingTemplates TrainingTemplate[]
   trainingPlan TrainingPlan?
 
@@ -43,6 +45,7 @@ model AuthSession {
   tokenVersion Int
   createdAt    DateTime  @default(now())
   lastUsedAt   DateTime  @default(now())
+  emailVerifiedAt DateTime?
   revokedAt    DateTime?
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -248,4 +251,37 @@ model MealFavorite {
 
   @@index([userId, updatedAt])
   @@map("meal_favorites")
+}
+
+model DeviceCredential {
+  id String @id
+  userId String
+  publicKey String
+  scope String
+  deviceName String
+  tokenVersion Int
+  createdAt DateTime @default(now())
+  lastUsedAt DateTime?
+  revokedAt DateTime?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@map("device_credentials")
+}
+
+model DeviceAuthChallenge {
+  id String @id
+  userId String
+  purpose String
+  credentialId String
+  sessionId String?
+  tokenVersion Int
+  publicKey String?
+  deviceName String?
+  scope String
+  payload String
+  expiresAt DateTime
+  consumedAt DateTime?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([expiresAt])
+  @@map("device_auth_challenges")
 }

@@ -48,6 +48,7 @@ fun AuthRoute(
     initialNotice: String? = null,
     initialResetEmail: String? = null,
     onResetClosed: (() -> Unit)? = null,
+    onBiometric: (() -> Unit)? = null,
 ) {
     // owner 由应用级 ViewModel 持有：旋转时保留状态，登录完成后清除敏感输入。
     val factory =
@@ -92,6 +93,7 @@ fun AuthRoute(
         model::submit,
         model::openPolicy,
         model::refreshLoginCaptcha,
+        onBiometric = onBiometric,
     )
     state.policy?.let { PolicyDialog(it) { model.openPolicy(null) } }
     state.challenge?.let { challenge ->
@@ -121,6 +123,7 @@ internal fun AuthScreen(
     onSubmit: () -> Unit = {},
     onPolicy: (PolicyKind?) -> Unit = {},
     onRefreshCaptcha: () -> Unit = {},
+    onBiometric: (() -> Unit)? = null,
 ) {
     val reset = state.mode in listOf(AuthMode.RESET_EMAIL, AuthMode.RESET_PASSWORD)
     val title =
@@ -451,6 +454,10 @@ internal fun AuthScreen(
                             ) {
                                 Text("设置或找回密码", fontSize = 12.sp)
                             }
+                    }
+                if (!reset && onBiometric != null)
+                    TextButton(onClick = onBiometric, enabled = !state.busy) {
+                        Text("返回指纹 / 生物识别登录")
                     }
                 if (!reset) {
                     Spacer(Modifier.height(12.dp))

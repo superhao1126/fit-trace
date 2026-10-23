@@ -87,7 +87,7 @@ export class AuthService {
         }
         // 验证码消费、自动注册与设备会话写入同一事务，失败时可重试验证码。
         await this.security.loginSucceeded(dto.email, ip, tx);
-        return this.sessions.create(publicUser, user.tokenVersion, tx);
+        return this.sessions.create(publicUser, user.tokenVersion, tx, true);
       },
     );
     this.logger.log(

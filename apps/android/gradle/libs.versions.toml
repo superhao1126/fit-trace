@@ -16,6 +16,7 @@ robolectric = "4.17"
 coil = "3.3.0"
 
 [libraries]
+biometric = { module = "androidx.biometric:biometric", version = "1.1.0" }
 android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 compose-gradle-plugin = { module = "org.jetbrains.kotlin:compose-compiler-gradle-plugin", version.ref = "kotlin" }

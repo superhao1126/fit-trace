@@ -36,6 +36,7 @@ fun MainRoute(
     trainingRepository: com.fittrace.core.domain.TrainingRepository,
     passwordPage: @Composable (() -> Unit) -> Unit,
     trainingDraftStore: com.fittrace.core.domain.TrainingDraftStore? = null,
+    biometricPage: (@Composable (() -> Unit) -> Unit)? = null,
 ) {
     key(userId) {
         val factory =
@@ -264,8 +265,14 @@ fun MainRoute(
                                 archiveDate = null
                             },
                         )
+                    "biometric" -> biometricPage?.invoke(back)
                     "security" ->
-                        ProfileSecurityScreen(userEmail, back) { pages = pages + "password" }
+                        ProfileSecurityScreen(
+                            userEmail,
+                            back,
+                            { pages = pages + "password" },
+                            biometricPage?.let { { pages = pages + "biometric" } },
+                        )
                     "password" -> passwordPage(back)
                     "info" ->
                         profileState.profile?.let { ProfileInfoScreen(it, back) { open("edit") } }

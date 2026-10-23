@@ -1,5 +1,7 @@
 <resources>
-    <style name="Theme.FitTrace" parent="android:style/Theme.Material.Light.NoActionBar">
+    <style name="Theme.FitTrace" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorAccent">#24C867</item>
+        <item name="android:colorAccent">#24C867</item>
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowActionModeOverlay">true</item>

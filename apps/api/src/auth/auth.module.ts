@@ -1,3 +1,5 @@
+import { DeviceCredentialService } from './device-credential.service';
+import { DeviceCredentialController } from './device-credential.controller';
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
@@ -32,9 +34,10 @@ import { EmailCaptchaService } from './email-captcha.service';
       },
     }),
   ],
-  controllers: [AuthController, UsersController],
+  controllers: [AuthController, UsersController, DeviceCredentialController],
   providers: [
     AuthService,
+    DeviceCredentialService,
     AuthSessionService,
     JwtAuthGuard,
     AuthSecurityService,
