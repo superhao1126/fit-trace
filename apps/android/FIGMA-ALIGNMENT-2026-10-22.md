@@ -100,3 +100,13 @@ SHA-256：`801ee828c9167477d19a24bd9667b16333d5c4b6620091c4810cbb01bd272cd4`。
 业务范围继续生效：记录不能选择未来日期、目标不能选择过去日期，滚轮不提供范围外选项。31日切换到短月、闰年切换为平年时自动调整为有效日期。时分仅提供00–23与00–59。默认年份范围与边界约定见 `core/designsystem/README.md`。
 
 完整157项测试、设计系统/主功能/登录 Lint 和 dev/prod Debug 构建通过；已查看浅色390、深色320的日期与时间滚轮截图。拖动测试验证上下滑动确实改变分钟、滑动中不能确认，并在吸附后确认实际选择值。测试同时确认选择器中不存在可编辑文本节点。未安装到手机，实际滚动手感仍需真机复测。
+
+## 2026-10-23 最新训练功能回归
+
+在 `cccf593` 的训练功能基础上重新验证，并提交既有矢量图标和设计资料。五日训练动作已同步到 Android 静态目录；每周计划可打开动作详情、查看离线双姿势照片和中文步骤，并按计划开始训练。外部教程入口按动作中文名打开哔哩哔哩搜索。
+
+本次执行 `verify :core:designsystem:lintDebug :feature:main:lintDebug :feature:auth:lintDebug :app:assembleProdDebug :app:lintProdDebug --offline --no-daemon --no-configuration-cache --no-build-cache` 成功。报告共164项测试：network 25、data 26、auth 18、main 90、app 5，失败/错误/跳过均为0。共享组件测试归于 feature/main。此次 Debug Lint 报告均为0错误、0警告；未重跑 Release。
+
+已查看本次生成的浅色390与深色320动作教程截图，照片成功加载，中文步骤和确认操作可用。测试覆盖两张姿势切换、关闭保留草稿、计划动作详情及开始训练，仍属于本地 Compose 验证。
+
+重新生成的 `app/build/outputs/apk/prod/debug/app-prod-debug.apk` 包含最新训练功能。SHA-256：`ae7992c879da80975dbabd1df4c0522bbf6805f467c678fc09048eb6165d7fd4`。版本仍为0.2.0 / 3。本轮未安装手机、未调用真实账号写入或AI服务、未部署；相机/相册、滚轮手感与真实上传仍待设备联调。
