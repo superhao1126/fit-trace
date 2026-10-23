@@ -2,7 +2,7 @@
 
 Figma 文件 Ct4AworB8fYBPjpSVwWbRW，页面「10 · 核心页面完整状态」，画板 21:4957。
 使用 Figma Plugin API exportAsync 原样导出 PNG；下载工具的临时链接返回了空正文，未使用该空文件。
-原生本地资源位于 ../../res/drawable-nodpi/home_*.png，不依赖临时 URL。
+原始导出曾位于 drawable-nodpi/home_*.png；现已改为 drawable/home_*.xml 原生矢量资源，见下方清晰度修正记录。
 
 | 资源 | 原图层 | 用途 |
 | --- | --- | --- |
@@ -36,3 +36,7 @@ Figma 文件 Ct4AworB8fYBPjpSVwWbRW，页面「10 · 核心页面完整状态」
 ## 我的模块当前稿（2026-10-20）
 
 主页对齐最终 profile-1/profile-3 的绿色头像区、目标横幅和分组菜单；设置对齐 profile-6，显示模式使用 profile-10 的底部选择面板。目标横幅与关于页复用设计小芽 VectorDrawable，旧 profile_brand 图标已移除。
+
+## 图标清晰度修正（2026-10-21）
+
+原 home 图标 PNG 仅 14～19 像素，在高密度手机按 20dp 显示时会被放大。home_*、profile_archive、profile_avatar、profile_back、profile_right 已按原有房屋、趋势折线、档案、人物、体重秤、餐具、哑铃、相机和箭头轮廓重建为原生 VectorDrawable，位置为 res/drawable/*.xml；这批资源不再是 Figma 原样 PNG 导出。保留原资源名称和页面 tint，默认头像也使用矢量。快捷入口插画和真实用户头像仍使用原图片。
