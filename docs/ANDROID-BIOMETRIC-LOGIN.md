@@ -63,3 +63,10 @@
 - `apps/android/app/build/outputs/apk/prod/debug/app-prod-debug.apk`，版本0.2.0 / 3，SHA-256：`d3cfd33db92f4aa25bdfb1a829596197b44adf6d9d0ba209c2ab8d96fe18aa84`。
 
 依赖锁已覆盖全部 dev/prod 及测试配置。首次在线下载新增依赖后，最终完整验证可离线执行。Release 产物用于验证R8链路，仍未配置发布签名；未安装或部署。
+
+
+## 数据库迁移补验 · 2026-10-23
+
+用户报告当前开发API续期时因 `auth_sessions.emailVerifiedAt` 缺失返回500。检查根目录 `.env` 指向的 `127.0.0.1:5432 / fit_trace`，确认仅缺少 `20261023030000_device_credentials`。已执行 `pnpm --filter @fit-trace/api prisma:deploy` 成功，14项迁移全部就绪。
+
+只读回归确认 `authSession.findUnique`（包含原续期查询的关联用户字段）、`deviceCredential` 和 `deviceAuthChallenge` 均可访问。运行中的本机API使用符合格式的固定无效刷新凭据，返回预期401 / UNAUTHORIZED，未再触发缺列500。未读取真实Token、未修改业务记录、未重启用户管理的服务。真实账号续期和指纹传感器仍待客户端验证。本段迁移状态取代前文实施时“迁移未应用”的历史记录。
