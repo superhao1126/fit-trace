@@ -71,3 +71,19 @@
 `:feature:main:testDebugUnitTest :app:assembleProdDebug :app:lintProdDebug` 通过，main 共 26 项测试。新增失败后禁止保存旧头像、重试不重复上传、显式保存后更新头像、取消失败选择后可保存资料回归。已覆盖安装真机。
 
 真机经系统图片选择器选择当前头像原图，POST uploads 返回 201；与临时昵称 mashu123 一起 PATCH users/me/profile 返回 200。重启后从服务器重新读取，头像与昵称正确。随后恢复昵称 mashu，再次 PATCH 200，回读确认恢复。头像内容不变，文件地址已从停用域名迁移至当前本地后台生成的新地址；性别及其他资料保持原值。手机下载目录的临时图片已删除。此验收补齐此前未验证的头像上传和昵称保存流程。
+
+## 2026-10-21 导航与我的图标清晰度
+
+定位到底部导航及记录菜单使用的 home_* PNG 仅 14～19 像素，在高密度屏以 20dp 显示会放大。已将 8 个 home 图标和 profile_archive/profile_avatar/profile_back/profile_right 共 12 个资源按原轮廓重建为 VectorDrawable，移除对应低分辨率 PNG，保留资源名及现有着色和布局。默认头像、箭头和共用这些资源的二级页同步受益。
+
+`:feature:main:testDebugUnitTest :app:assembleProdDebug :app:lintProdDebug` 通过；已检查浅色 390 和深色 320 的我的页面本地渲染截图。APK 已重新构建，本轮未安装或操作手机，真机效果待覆盖更新后验收。
+
+## 2026-10-21 档案历史图片加载
+
+真机档案接口返回历史饮食 imageUrl 为 http://101.43.38.7/uploads/...，RecordsViewModel 原样传给 AsyncImage；prod 网络策略此前仅允许 10.0.3.54 的 HTTP，历史图片服务器不在白名单。实际图片 HEAD 返回 200、Content-Type image/jpeg。prod/dev 网络配置已精确允许 101.43.38.7，默认仍禁止其余明文 HTTP。
+
+`:app:assembleProdDebug :app:lintProdDebug` 通过，已覆盖安装并启动。更新后观察到应用处于登录页，未操作账号登录，档案图片真机显示尚待登录后回看；不能将服务端可访问与构建通过计为真机图片验收通过。
+
+## 2026-10-21 放开 HTTP 地址限制
+
+按用户明确要求，dev/prod 的网络安全配置改为 base-config cleartextTrafficPermitted=true，移除主机白名单；主 Manifest 同步 usesCleartextTraffic=true。HTTP 可访问任意地址，HTTPS 保持支持。仅在该配置处标注产品要求并局部忽略 InsecureBaseConfiguration Lint，未全局关闭检查。`:app:assembleProdDebug :app:lintProdDebug` 通过。

@@ -38,8 +38,8 @@ CI 另外构建并检查生产 Release，确保 R8 混淆链路可用。
 | prodDebug | `com.fittrace.android.debug` | `http://10.0.3.54:3000/api/v1/` | 当前指定接口，保留现有安装包身份 |
 | prodRelease | `com.fittrace.android` | 同上 | 生产构建，未配置签名 |
 
-`devRelease` 禁用。Dev 仅对白名单中的开发 IP、模拟器/回环地址允许 HTTP；Prod 禁止明文 HTTP。
-真机联调当前指定接口时，在 Android Studio 的 Build Variants 中选择 `prodDebug`。两个 Debug 变体包名不同，会安装为独立应用。`devDebug` 通过局域网访问电脑 `10.0.3.54:3000`，不需要 adb reverse。手机与电脑需网络互通，后端须监听 `0.0.0.0:3000` 或该局域网地址，并允许防火墙入站访问。电脑 IP 变化时需同步修改 dev 基础地址及开发环境网络白名单。
+`devRelease` 禁用。Dev 与 Prod 均允许任意地址的 HTTP 请求，同时保留 HTTPS 支持。
+真机联调当前指定接口时，在 Android Studio 的 Build Variants 中选择 `prodDebug`。两个 Debug 变体包名不同，会安装为独立应用。`devDebug` 通过局域网访问电脑 `10.0.3.54:3000`，不需要 adb reverse。手机与电脑需网络互通，后端须监听 `0.0.0.0:3000` 或该局域网地址，并允许防火墙入站访问。电脑 IP 变化时需同步修改 dev 基础地址。
 
 产物：
 
@@ -74,4 +74,4 @@ CI 另外构建并检查生产 Release，确保 R8 混淆链路可用。
 
 Debug 包已启用本地接口诊断日志，Android Studio 的 Logcat 以 `tag:FitTrace.Http` 筛选。记录完整 URL、查询参数、请求正文、服务端响应正文、HTTP 状态码、耗时及网络异常类型。按调试要求，正文中的密码、验证码和 Token 均明文显示；JSON 缩进并分段输出，请求头/响应头不输出。Release 关闭。查看步骤和验证边界见 [开发日志说明](../../docs/ANDROID-LOGGING.md)。
 
-2026-10-20：原域名已停用，按用户指定将 prod 接口改为 `http://10.0.3.54:3000/api/v1/`；prod 网络配置仅允许该 IP 的明文 HTTP。沿用 prodDebug 包名覆盖更新。
+2026-10-20：原域名已停用，按用户指定将 prod 接口改为 `http://10.0.3.54:3000/api/v1/`；2026-10-21 起 prod/dev 网络策略允许任意地址的 HTTP 请求。沿用 prodDebug 包名覆盖更新。
