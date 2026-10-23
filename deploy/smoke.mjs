@@ -120,7 +120,9 @@ try {
   const form = new FormData();
   form.append('file', new Blob([image], { type: 'image/png' }), 'deployment-smoke.png');
   uploaded = await request('/uploads', 'POST', form);
-  assert.ok(uploaded.url.startsWith('https://fittrace.idoit.icu/uploads/'));
+  const publicUrl = (process.env.STORAGE_PUBLIC_URL ?? 'http://101.43.38.7').replace(/\/+$/, '');
+  assert.ok(uploaded.url.startsWith(`${publicUrl}/uploads/`));
+  assert.equal((await fetch(uploaded.url)).status, 200);
   assert.equal((await fetch(new URL(`/uploads/${uploaded.key}`, base))).status, 200);
   const photo = await request('/progress-photos', 'POST', {
     type: 'OTHER',

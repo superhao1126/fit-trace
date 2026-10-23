@@ -3,16 +3,17 @@
 ## 服务器布局
 
 - 服务器：`ubuntu@101.43.38.7`。
-- H5：`https://fittrace.idoit.icu`，Nginx 提供静态资源并支持 History 路由回退。
-- API：`https://fittrace.idoit.icu/api/v1`，转发至 `127.0.0.1:3100`。
+- H5：`http://101.43.38.7`，Nginx 提供静态资源并支持 History 路由回退。
+- API：`http://101.43.38.7/api/v1`，转发至 `127.0.0.1:3100`。
 - 数据库：沿用服务器现有 PostgreSQL `fit_trace`，与当前开发环境共用。
 - 运行目录：`/opt/fittrace/current` 指向 `/opt/fittrace/releases/<发布标识>`。
 - 生产配置：`/etc/fittrace/api.env`，权限 `root:fittrace 640`；发布包不包含密钥。
 - 图片：`/var/lib/fittrace/uploads`，与代码发布目录分开，更新代码不会删除图片。
 - API 服务：`fittrace-api.service`，使用独立 `fittrace` 用户与 Node 24，开机启动。
-- TLS：复用 `/etc/ssl/soybean/` 中现有的 `*.idoit.icu` 证书。
+- 当前通过 HTTP 外网 IP 访问；旧域名证书不适用于 IP，不再强制跳转 HTTPS。
 
-`nginx-fittrace.conf` 仅为本项目增加精确域名站点，现有其他 Nginx 站点继续保留。
+`nginx-fittrace.conf` 仅为本项目配置 `101.43.38.7:80` 站点，现有管理平台和 TableFusion 配置继续保留。
+生产 `STORAGE_PUBLIC_URL` 与 `CORS_ORIGINS` 使用 `http://101.43.38.7`；历史图片的旧域名地址需在数据库备份后按完整 `/uploads/` 前缀替换。
 API 的 systemd 内存上限为 512 MB，V8 老生代上限为 256 MB，避免影响同机其他服务。
 
 ## 构建 H5
@@ -20,7 +21,7 @@ API 的 systemd 内存上限为 512 MB，V8 老生代上限为 256 MB，避免�
 在本机使用生产 API 地址构建。以下命令保留运行时 GlitchTip 错误上报，跳过源码映射生成与上传：
 
 ```bash
-VITE_API_BASE_URL=https://fittrace.idoit.icu/api/v1 \
+VITE_API_BASE_URL=http://101.43.38.7/api/v1 \
 GLITCHTIP_UPLOAD_SOURCEMAPS=false pnpm build:h5
 ```
 
@@ -72,7 +73,7 @@ sudo systemctl status fittrace-api
 sudo journalctl -u fittrace-api -n 100 --no-pager
 sudo systemctl restart fittrace-api
 sudo /usr/local/nginx/sbin/nginx -t
-curl -fsS https://fittrace.idoit.icu/api/v1/health
+curl -fsS http://101.43.38.7/api/v1/health
 ```
 
 回滚时将 `current` 指向上一个发布目录并重启 API；数据库迁移与代码回滚分开处理。
