@@ -40,7 +40,7 @@ internal fun CaptchaDialog(
                 AndroidView(
                     modifier = Modifier.fillMaxWidth().height(420.dp),
                     factory = { context ->
-                        WebView(context).apply {
+                        CaptchaWebView(context).apply {
                             setBackgroundColor(Color.WHITE)
                             settings.javaScriptEnabled = true
                             settings.domStorageEnabled = true
