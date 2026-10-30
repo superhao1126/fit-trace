@@ -162,6 +162,11 @@ export class DeviceCredentialService {
       )
         throw error;
       // 验证码消费、近期证明与挑战创建同事务；不接收客户端认证时间戳。
+      if (!user.email)
+        throw new ForbiddenException({
+          code: 'EMAIL_ACCOUNT_REQUIRED',
+          message: '此功能需要邮箱账号',
+        });
       return this.verification.withCode(user.email, 'LOGIN', dto.emailCode, (tx) =>
         action(tx, true),
       );

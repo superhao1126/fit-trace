@@ -16,20 +16,27 @@ export class WorkoutsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(userId: string, dto: CreateWorkoutDto): Promise<WorkoutRecordResponse> {
-    const workout = await this.prisma.workoutRecord.create({
-      data: {
-        userId,
-        type: dto.type,
-        name: dto.name.trim(),
-        startedAt: dto.startedAt ? new Date(dto.startedAt) : new Date(),
-        durationMinutes: dto.durationMinutes,
-        calories: dto.calories ?? null,
-        note: dto.note?.trim() || null,
-        ...(dto.exercises
-          ? { exercises: normalizeExercises(dto.exercises) as unknown as Prisma.InputJsonValue }
-          : {}),
-      },
-    });
+    const data = {
+      userId,
+      clientRequestId: dto.clientRequestId,
+      type: dto.type,
+      name: dto.name.trim(),
+      startedAt: dto.startedAt ? new Date(dto.startedAt) : new Date(),
+      durationMinutes: dto.durationMinutes,
+      calories: dto.calories ?? null,
+      note: dto.note?.trim() || null,
+      ...(dto.exercises
+        ? { exercises: normalizeExercises(dto.exercises) as unknown as Prisma.InputJsonValue }
+        : {}),
+    };
+    // Retry after a lost response returns the first saved snapshot for this account.
+    const workout = dto.clientRequestId
+      ? await this.prisma.workoutRecord.upsert({
+          where: { userId_clientRequestId: { userId, clientRequestId: dto.clientRequestId } },
+          create: data,
+          update: {},
+        })
+      : await this.prisma.workoutRecord.create({ data });
     this.logger.log(
       `新增训练记录 user=${this.short(userId)} id=${this.short(workout.id)} 类型=${workout.type} 时长=${workout.durationMinutes}min`,
     );

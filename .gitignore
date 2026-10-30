@@ -30,3 +30,7 @@ apps/api/prisma/*.db-journal
 /docs/fittrace-ui-balanced-theme-2026-10-10.fig
 /docs/fittrace-ui-neutral-theme-2026-10-10.fig
 /docs/fittrace-ui-rounded-icons-2026-10-10.fig
+
+/apps/miniprogram/src/pages.json
+/apps/miniprogram/src/manifest.json
+/apps/miniprogram/uni-pages.d.ts

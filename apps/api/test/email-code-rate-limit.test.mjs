@@ -201,3 +201,15 @@ test('429 exposes remaining cooldown without changing the shared response envelo
   assert.equal(body.code, 'AUTH_RATE_LIMITED');
   assert.deepEqual(Object.keys(body).sort(), ['code', 'data', 'message', 'meta']);
 });
+
+test('miniprogram login skips captcha but shares server email quotas', async () => {
+  const f = fixture();
+  f.service.captcha = {
+    verify: async () => assert.fail('Mini program must not call Aliyun captcha'),
+  };
+  await f.service.sendMiniprogramLoginCode('mini@example.invalid', 'mini-ip');
+  assert.equal(f.sent.length, 1);
+  assert.equal(f.sent[0][1], 'LOGIN');
+  await assert.rejects(f.service.sendMiniprogramLoginCode('mini@example.invalid', 'mini-ip'));
+  assert.equal(f.sent.length, 1);
+});

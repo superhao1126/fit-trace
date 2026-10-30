@@ -72,7 +72,7 @@ internal fun CaptchaDialog(
                                 "CaptchaResult",
                             )
                             loadDataWithBaseURL(
-                                "https://fittrace.idoit.icu/",
+                                "https://fitness.rungos.cn/",
                                 captchaHtml(challenge),
                                 "text/html",
                                 "UTF-8",

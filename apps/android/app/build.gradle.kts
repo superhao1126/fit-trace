@@ -21,7 +21,7 @@ android {
         }
         create("prod") {
             dimension = "environment"
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.3.54:3000/api/v1/\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://fitness.rungos.cn/api/v1/\"")
         }
     }
     buildTypes {

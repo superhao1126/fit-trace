@@ -12,20 +12,25 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   ...vue.configs['flat/recommended'],
   {
-    files: ['apps/h5/**/*.{ts,vue}'],
+    files: ['apps/h5/**/*.{ts,vue}', 'apps/miniprogram/**/*.{ts,vue}'],
     languageOptions: {
-      globals: globals.browser,
+      globals: { ...globals.browser, uni: 'readonly' },
       parserOptions: { parser: tseslint.parser, extraFileExtensions: ['.vue'] },
     },
     rules: { 'vue/multi-word-component-names': 'off' },
   },
   {
-    files: ['apps/api/**/*.ts'],
+    files: ['apps/miniprogram/src/**/*.{ts,vue}'],
+    languageOptions: { globals: { getCurrentPages: 'readonly' } },
+  },
+  {
+    files: ['apps/api/**/*.ts', 'apps/miniprogram/*.config.ts'],
     languageOptions: { globals: globals.node },
   },
   {
-    files: ['deploy/**/*.mjs'],
+    files: ['deploy/**/*.mjs', 'apps/miniprogram/**/*.mjs'],
     languageOptions: { globals: globals.node },
   },
+  { files: ['apps/api/test/**/*.mjs'], languageOptions: { globals: { URL: 'readonly' } } },
   eslintConfigPrettier,
 );

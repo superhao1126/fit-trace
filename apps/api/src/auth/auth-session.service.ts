@@ -53,7 +53,7 @@ export class AuthSessionService {
 
   async replaceAfterPasswordChange(
     payload: JwtPayload,
-    expectedHash: string,
+    expectedHash: string | null,
     passwordHash: string,
     transaction?: Prisma.TransactionClient,
   ): Promise<AuthResult> {

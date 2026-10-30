@@ -154,7 +154,7 @@ export class AuthService {
   async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
     await this.security.limit('change-password-user', userId, 10, 900);
     const user = await this.users.findById(userId);
-    if (!user || !(await compare(dto.currentPassword, user.passwordHash))) {
+    if (!user || !user.passwordHash || !(await compare(dto.currentPassword, user.passwordHash))) {
       throw new BadRequestException({
         code: 'CURRENT_PASSWORD_INCORRECT',
         message: '当前密码不正确',
@@ -174,7 +174,13 @@ export class AuthService {
     if (!user || user.tokenVersion !== (payload.ver ?? 0)) {
       throw new UnauthorizedException({ code: 'UNAUTHORIZED', message: '请重新登录后再试' });
     }
-    return user;
+    if (!user.email) {
+      throw new BadRequestException({
+        code: 'EMAIL_ACCOUNT_REQUIRED',
+        message: '请使用原邮箱账号管理密码',
+      });
+    }
+    return { ...user, email: user.email };
   }
 
   async sendPasswordCode(payload: JwtPayload, ip: string, proof?: EmailCaptchaDto) {
@@ -203,7 +209,7 @@ export class AuthService {
   ): Promise<AuthResult> {
     await this.security.limit('change-password-user', payload.sub, 10, 900);
     const user = await this.passwordAccount(payload);
-    if (!(await compare(dto.currentPassword, user.passwordHash))) {
+    if (!user.passwordHash || !(await compare(dto.currentPassword, user.passwordHash))) {
       throw new BadRequestException({
         code: 'CURRENT_PASSWORD_INCORRECT',
         message: '当前密码不正确',

@@ -19,7 +19,9 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "pnpm format:check && pnpm lint && pnpm lint:ox && pnpm typecheck"
+    "check": "pnpm format:check && pnpm lint && pnpm lint:ox && pnpm typecheck",
+    "dev:mp": "pnpm --filter @fit-trace/miniprogram dev",
+    "build:mp": "pnpm --filter @fit-trace/miniprogram build"
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",

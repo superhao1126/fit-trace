@@ -10,7 +10,7 @@ import { useAuthStore } from '@/stores/auth';
 const auth = useAuthStore();
 const router = useRouter();
 const nickname = computed(
-  () => auth.user?.nickname || auth.user?.email.split('@')[0] || '循形Fitness用户',
+  () => auth.user?.nickname || auth.user?.email?.split('@')[0] || '循形Fitness用户',
 );
 const genderLabels: Record<UserGender, string> = {
   UNSPECIFIED: '未设置',

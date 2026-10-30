@@ -23,8 +23,8 @@ pnpm dev
 
 ## 线上版本
 
-- H5：[fittrace.idoit.icu](https://fittrace.idoit.icu)
-- API：[健康检查](https://fittrace.idoit.icu/api/v1/health)
+- H5：[fitness.rungos.cn](https://fitness.rungos.cn)
+- API：[健康检查](https://fitness.rungos.cn/api/v1/health)
 
 部署目录、构建和回滚步骤见 [生产部署说明](deploy/README.md)。服务器服务、内存占用及 MySQL 合并建议见 [服务器审计](deploy/SERVER-SERVICES-20261009.md)。
 
@@ -80,13 +80,15 @@ GET  /api/v1/auth/me
 
 `/auth/me` 需要 `Authorization: Bearer <token>`。开发前请在 `.env` 中设置可用的 PostgreSQL `DATABASE_URL` 和足够长的 `JWT_SECRET`。
 
-邮件验证码发送可接入阿里云验证码 2.0，安全验证通过后再发送邮件，验证形态由控制台场景配置决定。开通、H5 场景和 API 密钥配置见 [邮箱安全验证](docs/EMAIL-CAPTCHA.md)。
+H5 / Android 的邮件验证码发送可接入阿里云验证码 2.0，安全验证通过后再发送邮件，验证形态由控制台场景配置决定。开通、H5 场景和 API 密钥配置见 [邮箱安全验证](docs/EMAIL-CAPTCHA.md)。
+
+小程序使用专用邮箱验证码登录接口，发送验证码不经过阿里云验证；限流和验证码消费规则继续复用现有服务。
 
 ## 目录
 
 - `apps/android`: Kotlin + Jetpack Compose 原生客户端
 - `apps/h5`: Vue 3 H5
 - `apps/api`: NestJS REST API
-- `apps/miniprogram`: 未来微信小程序占位
+- `apps/miniprogram`: 基于 unibest 的 Vue 3 / TypeScript 微信小程序（登录与训练基础版，见目录 README）
 - `packages/shared`: 跨应用共享的类型、常量和纯函数
 - `docs`: 产品与技术文档

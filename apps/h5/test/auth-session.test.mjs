@@ -282,3 +282,48 @@ test('valid legacy token upgrades silently and another tab logout invalidates pe
   manager.syncFromStorage();
   assert.equal(manager.snapshot, null);
 });
+
+test('WeChat binding requests carry and renew the logged-in account token', async () => {
+  let refreshes = 0;
+  const f = fixture({
+    refresh: async () => {
+      refreshes++;
+      return result('binding-renewed');
+    },
+  });
+  f.manager.save(result('expired', 0));
+  const client = axios.create({
+    adapter: async (config) => {
+      assert.equal(config.headers.Authorization, 'Bearer binding-renewed');
+      return {
+        config,
+        status: 200,
+        headers: {},
+        data: { code: 'OK', data: { code: 'binding-code' } },
+        statusText: '',
+      };
+    },
+  });
+  installSessionInterceptor(client, f.manager);
+  const response = await client.post('/auth/wechat/binding-code');
+  assert.equal(response.data.data.code, 'binding-code');
+  await client.post('/auth/wechat/binding-code?source=settings');
+  assert.equal(refreshes, 1);
+});
+
+test('unknown protected auth routes keep authentication, while WeChat login stays public', async () => {
+  const f = fixture();
+  f.manager.save(result('current'));
+  const seen = [];
+  const client = axios.create({
+    adapter: async (config) => {
+      seen.push(config.headers.Authorization);
+      return { config, status: 200, headers: {}, data: { code: 'OK' }, statusText: '' };
+    },
+  });
+  installSessionInterceptor(client, f.manager);
+  await client.post('/auth/wechat/login', { code: 'new-wechat-code' });
+  await client.post('/auth/session');
+  await client.post('/auth/future-protected-action');
+  assert.deepEqual(seen, [undefined, 'Bearer current', 'Bearer current']);
+});

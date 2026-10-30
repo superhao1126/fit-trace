@@ -1,3 +1,6 @@
+import { MiniprogramAuthController } from './miniprogram-auth.controller';
+import { WechatService } from './wechat.service';
+import { WechatController } from './wechat.controller';
 import { DeviceCredentialService } from './device-credential.service';
 import { DeviceCredentialController } from './device-credential.controller';
 import { Module } from '@nestjs/common';
@@ -34,9 +37,16 @@ import { EmailCaptchaService } from './email-captcha.service';
       },
     }),
   ],
-  controllers: [AuthController, UsersController, DeviceCredentialController],
+  controllers: [
+    MiniprogramAuthController,
+    WechatController,
+    AuthController,
+    UsersController,
+    DeviceCredentialController,
+  ],
   providers: [
     AuthService,
+    WechatService,
     DeviceCredentialService,
     AuthSessionService,
     JwtAuthGuard,

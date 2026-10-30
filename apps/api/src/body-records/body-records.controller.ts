@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Patch,
+  Put,
   Post,
   Query,
   UseGuards,
@@ -58,6 +59,15 @@ export class BodyRecordsController {
     @Param('id') id: string,
   ): Promise<ApiPayload<BodyRecord>> {
     return { data: await this.bodyRecords.findOne(userId, id) };
+  }
+
+  @Put(':id')
+  async replace(
+    @CurrentUser('sub') userId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateBodyRecordDto,
+  ) {
+    return { data: await this.bodyRecords.update(userId, id, dto) };
   }
 
   @Patch(':id')

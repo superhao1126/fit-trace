@@ -7,7 +7,26 @@ interface SessionRequest extends InternalAxiosRequestConfig {
 }
 
 function publicAuthRequest(config: SessionRequest): boolean {
-  return /^\/auth\/(?!(?:me|password)(?:$|\/|\?))/.test(config.url ?? '');
+  // Only explicitly public endpoints bypass authentication. New /auth routes
+  // (such as WeChat account binding) must carry the current account's token.
+  const path = (config.url ?? '').split('?')[0].replace(/\/$/, '');
+  return new Set([
+    '/auth/register',
+    '/auth/login',
+    '/auth/login/email',
+    '/auth/email-code',
+    '/auth/email-captcha/config',
+    '/auth/refresh',
+    '/auth/logout',
+    '/auth/captcha',
+    '/auth/reset-password',
+    '/auth/reset-password/verify-code',
+    '/auth/wechat/login',
+    '/auth/miniprogram/email-code',
+    '/auth/miniprogram/login',
+    '/auth/device-credentials/login-options',
+    '/auth/device-credentials/login-verify',
+  ]).has(path);
 }
 
 export function installSessionInterceptor(

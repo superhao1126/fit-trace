@@ -120,7 +120,10 @@ try {
   const form = new FormData();
   form.append('file', new Blob([image], { type: 'image/png' }), 'deployment-smoke.png');
   uploaded = await request('/uploads', 'POST', form);
-  const publicUrl = (process.env.STORAGE_PUBLIC_URL ?? 'http://101.43.38.7').replace(/\/+$/, '');
+  const publicUrl = (process.env.STORAGE_PUBLIC_URL ?? 'https://fitness.rungos.cn').replace(
+    /\/+$/,
+    '',
+  );
   assert.ok(uploaded.url.startsWith(`${publicUrl}/uploads/`));
   assert.equal((await fetch(uploaded.url)).status, 200);
   assert.equal((await fetch(new URL(`/uploads/${uploaded.key}`, base))).status, 200);

@@ -6,6 +6,8 @@ packages:
 engineStrict: true
 
 allowBuilds:
+  '@tdesign/uniapp': false
+  core-js: false
   '@parcel/watcher': true
   '@prisma/client': true
   '@prisma/engines': true
@@ -13,3 +15,7 @@ allowBuilds:
   esbuild: true
   prisma: true
   vue-demi: true
+
+# Keep the uni-app 20250821 compiler runtime on the upstream Vue 3.4-compatible router.
+overrides:
+  '@dcloudio/uni-h5>vue-router': 4.5.1

@@ -2,7 +2,7 @@ import axios from 'axios';
 import type { ApiResponse, AuthResult } from '@fit-trace/shared';
 import { AuthSessionManager } from '@/utils/auth-session';
 
-export const apiBaseURL = import.meta.env.VITE_API_BASE_URL ?? 'http://10.0.3.54:3000/api/v1';
+export const apiBaseURL = import.meta.env.VITE_API_BASE_URL ?? 'https://fitness.rungos.cn/api/v1';
 // 续期独立发送，避免 401 拦截器递归调用自己。
 const client = axios.create({ baseURL: apiBaseURL, timeout: 10_000 });
 

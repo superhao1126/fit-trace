@@ -27,8 +27,23 @@ export class EmailVerificationService {
     ip: string,
     proof?: EmailCaptchaDto,
   ): Promise<EmailCodeResult> {
+    return this.sendCode(email, purpose, ip, proof, true);
+  }
+
+  /** Mini program email login intentionally has no third-party captcha. */
+  async sendMiniprogramLoginCode(email: string, ip: string): Promise<EmailCodeResult> {
+    return this.sendCode(email, 'LOGIN', ip, undefined, false);
+  }
+
+  private async sendCode(
+    email: string,
+    purpose: EmailCodePurpose,
+    ip: string,
+    proof: EmailCaptchaDto | undefined,
+    requireCaptcha: boolean,
+  ): Promise<EmailCodeResult> {
     this.mail.assertConfigured();
-    await this.captcha.verify(proof, ip);
+    if (requireCaptcha) await this.captcha.verify(proof, ip);
     await this.security.cleanup();
     const code = randomInt(0, 1000000).toString().padStart(6, '0');
     const codeHash = this.security.digest(`email:${email}:${purpose}:${code}`);

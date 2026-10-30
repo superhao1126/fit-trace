@@ -505,15 +505,17 @@ Loading
 Vue 3 H5
 ```
 
-未来微信小程序计划使用：
+微信小程序基础版选型（2026-10-30 更新，取代旧预留方案）：
 
 ```text
-weapp-vite
+unibest（uni-app）
 +
-Vue SFC / Wevu
+Vue 3 + TypeScript
 +
-TDesign Miniprogram
+uni-app 基础组件（可按需接入 Wot UI）
 ```
+
+小程序当前认证方式为邮箱 + 6 位验证码，使用原邮箱直接读取原账号数据；不使用关联码或微信 code 登录。专用发码入口不要求阿里云验证，继续复用后端限流、验证码有效期与错误次数限制。UI 以当前 Android 的 CalJimi 亮绿风格为准，详见 [小程序 Figma 设计交付](design/miniprogram-email-ui-2026-10-30.md)。
 
 因此 H5 阶段应避免：
 
@@ -542,7 +544,7 @@ H5
 TDesign Vue Next
 
 小程序
-TDesign Miniprogram
+uni-app 基础组件（可按需接入 Wot UI）
 ```
 
 保持相似视觉语言。
@@ -2341,9 +2343,9 @@ UI
 └── Tailwind CSS
 
 Future MiniProgram
-├── weapp-vite
-├── Vue SFC / Wevu
-└── TDesign Miniprogram
+├── unibest（uni-app）
+├── Vue 3 + TypeScript
+└── uni-app 基础组件（可按需接入 Wot UI）
 
 Repository
 ├── apps/h5

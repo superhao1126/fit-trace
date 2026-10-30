@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Patch,
+  Put,
   Post,
   Query,
   UseGuards,
@@ -44,6 +45,15 @@ export class WorkoutsController {
     @Param('id') id: string,
   ): Promise<ApiPayload<WorkoutRecord>> {
     return { data: await this.workouts.findOne(userId, id) };
+  }
+
+  @Put(':id')
+  async replace(
+    @CurrentUser('sub') userId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateWorkoutDto,
+  ) {
+    return { data: await this.workouts.update(userId, id, dto) };
   }
 
   @Patch(':id')

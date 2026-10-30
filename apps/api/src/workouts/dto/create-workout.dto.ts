@@ -28,6 +28,7 @@ export const WORKOUT_TYPES: WorkoutType[] = [
 ];
 
 export class CreateWorkoutDto {
+  @IsOptional() @IsString() @IsNotEmpty() @MaxLength(100) clientRequestId?: string;
   @ValidateIf((_object, value) => value !== undefined)
   @IsArray()
   @ArrayMinSize(1)

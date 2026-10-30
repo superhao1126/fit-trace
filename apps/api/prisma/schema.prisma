@@ -9,8 +9,8 @@ datasource db {
 
 model User {
   id             String          @id @default(uuid())
-  email          String          @unique
-  passwordHash   String
+  email          String?         @unique
+  passwordHash   String?
   hasPassword    Boolean?
   tokenVersion   Int             @default(0)
   nickname       String?
@@ -33,6 +33,8 @@ model User {
   deviceChallenges DeviceAuthChallenge[]
   trainingTemplates TrainingTemplate[]
   trainingPlan TrainingPlan?
+  wechatIdentities WechatIdentity[]
+  wechatBindingCodes WechatBindingCode[]
 
   @@map("users")
 }
@@ -175,6 +177,7 @@ enum WorkoutType {
 }
 
 model WorkoutRecord {
+  clientRequestId String?
   id              String      @id @default(uuid())
   userId          String
   type            WorkoutType
@@ -190,6 +193,7 @@ model WorkoutRecord {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, startedAt])
+  @@unique([userId, clientRequestId])
   @@map("workout_records")
 }
 
@@ -284,4 +288,29 @@ model DeviceAuthChallenge {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([expiresAt])
   @@map("device_auth_challenges")
+}
+
+model WechatIdentity {
+  id String @id @default(uuid())
+  appId String
+  openId String
+  unionId String?
+  userId String
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([appId, openId])
+  @@unique([appId, userId])
+  @@map("wechat_identities")
+}
+model WechatBindingCode {
+  id String @id @default(uuid())
+  codeHash String @unique
+  userId String
+  sessionId String
+  tokenVersion Int
+  expiresAt DateTime
+  consumedAt DateTime?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([expiresAt])
+  @@map("wechat_binding_codes")
 }

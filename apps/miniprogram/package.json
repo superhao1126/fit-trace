@@ -1,0 +1,33 @@
+{
+  "name": "@fit-trace/miniprogram",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/run.mjs",
+    "build": "node scripts/run.mjs build",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@dcloudio/uni-app": "3.0.0-4070620250821001",
+    "@dcloudio/uni-components": "3.0.0-4070620250821001",
+    "@dcloudio/uni-mp-weixin": "3.0.0-4070620250821001",
+    "@fit-trace/shared": "workspace:*",
+    "@tdesign/uniapp": "1.0.0",
+    "vue": "3.4.21",
+    "vue-router": "4.5.1"
+  },
+  "devDependencies": {
+    "@dcloudio/types": "3.4.14",
+    "@dcloudio/uni-cli-shared": "3.0.0-4070620250821001",
+    "@dcloudio/vite-plugin-uni": "3.0.0-4070620250821001",
+    "@types/node": "^24.3.1",
+    "@uni-helper/vite-plugin-uni-manifest": "0.2.12",
+    "@uni-helper/vite-plugin-uni-pages": "0.3.23",
+    "sass": "1.77.8",
+    "typescript": "5.9.3",
+    "vite": "5.2.8",
+    "vue-tsc": "3.0.6"
+  }
+}
