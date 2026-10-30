@@ -88,6 +88,30 @@ class AuthScreenTest {
         capture("email-login-dark-390")
     }
 
+    @Test
+    @Config(sdk = [35], qualifiers = "w320dp-h720dp-mdpi")
+    fun `biometric fallback retains email password and recovery controls`() {
+        var biometric = 0
+        compose.setContent {
+            var state by remember { mutableStateOf(AuthUiState()) }
+            FitTraceTheme {
+                AuthScreen(
+                    state,
+                    onMode = { state = state.copy(mode = it) },
+                    onBiometric = { biometric++ },
+                )
+            }
+        }
+        compose.onNodeWithText("邮箱登录").assertIsDisplayed()
+        compose.onNodeWithText("使用指纹登录").performScrollTo().performClick()
+        org.junit.Assert.assertEquals(1, biometric)
+        capture("email-biometric-fallback-320")
+        compose.onNodeWithText("密码登录").performScrollTo().performClick()
+        compose.onNodeWithText("邮箱验证码登录").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("设置或找回密码").performScrollTo().performClick()
+        compose.onNodeWithText("验证邮箱").assertIsDisplayed()
+    }
+
     private val consentText = "我已阅读并同意用户协议与隐私政策"
 
     private fun consentLayout(): TextLayoutResult {

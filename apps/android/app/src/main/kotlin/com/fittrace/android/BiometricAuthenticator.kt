@@ -70,14 +70,23 @@ class BiometricAuthenticator(private val activity: FragmentActivity) : Biometric
                                         BiometricPrompt.ERROR_USER_CANCELED,
                                         BiometricPrompt.ERROR_NEGATIVE_BUTTON,
                                     )
+                            val locked =
+                                errorCode == BiometricPrompt.ERROR_LOCKOUT ||
+                                    errorCode == BiometricPrompt.ERROR_LOCKOUT_PERMANENT
                             if (continuation.isActive)
                                 continuation.resume(
                                     AppResult.Failure(
                                         AppError.Business(
-                                            if (cancelled) "BIOMETRIC_CANCELLED"
-                                            else "BIOMETRIC_UNAVAILABLE",
-                                            if (cancelled) "已取消验证，可使用邮箱登录"
-                                            else "生物识别暂不可用：$errString",
+                                            when {
+                                                cancelled -> "BIOMETRIC_CANCELLED"
+                                                locked -> "BIOMETRIC_LOCKED"
+                                                else -> "BIOMETRIC_UNAVAILABLE"
+                                            },
+                                            when {
+                                                cancelled -> "已取消验证，点击指纹登录可重试。"
+                                                locked -> "验证次数过多，请稍后重试或使用邮箱。"
+                                                else -> "生物识别暂不可用：$errString"
+                                            },
                                         )
                                     )
                                 )
@@ -90,12 +99,12 @@ class BiometricAuthenticator(private val activity: FragmentActivity) : Biometric
             try {
                 prompt.authenticate(
                     BiometricPrompt.PromptInfo.Builder()
-                        .setTitle("循形生物识别验证")
-                        .setSubtitle("验证后授权本机密钥完成登录签名")
+                        .setTitle("指纹验证")
+                        .setConfirmationRequired(false)
                         .setAllowedAuthenticators(
                             androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
                         )
-                        .setNegativeButtonText("取消，使用邮箱")
+                        .setNegativeButtonText("取消")
                         .build(),
                     BiometricPrompt.CryptoObject(signature),
                 )

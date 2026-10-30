@@ -1,0 +1,27 @@
+{
+  "screens": 64,
+  "editable_text_nodes": 986,
+  "raster_images": 0,
+  "structural_issues": [],
+  "figma_file": "Ct4AworB8fYBPjpSVwWbRW",
+  "figma_page": "257:4365",
+  "figma_overview": "257:8000",
+  "figma_boards": {
+    "light-390": "257:4366",
+    "dark-390": "257:5272",
+    "light-320": "257:6178",
+    "dark-320": "257:7089"
+  },
+  "browser_checked": [
+    "390 light overview",
+    "320 dark settings including bottom copy",
+    "disable confirmation and confirm",
+    "fingerprint entry and cancel",
+    "email fallback and return"
+  ],
+  "limits": [
+    "Text bounds use estimated widths, visual checks sampled.",
+    "Click prototype uses SVG hotspots; no live authentication.",
+    "Figma imports preserve editable text and vectors, without native auto-layout or component bindings."
+  ]
+}

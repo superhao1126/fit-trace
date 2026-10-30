@@ -14,13 +14,15 @@ data class BiometricUiState(
     val busy: Boolean = false,
     val notice: String? = null,
     val needsEmail: Boolean = false,
+    val error: AppError? = null,
+    val statusConfirmed: Boolean = true,
 )
 
 class BiometricViewModel(
     private val repository: BiometricRepository,
     private val settings: Boolean,
 ) : ViewModel() {
-    private val mutable = MutableStateFlow(BiometricUiState())
+    private val mutable = MutableStateFlow(BiometricUiState(statusConfirmed = false))
     val state = mutable.asStateFlow()
     private var operation: Job? = null
 
@@ -28,9 +30,28 @@ class BiometricViewModel(
         refresh()
     }
 
-    private fun run(action: suspend () -> AppResult<Unit>, success: String? = null) {
+    private fun run(
+        action: suspend () -> AppResult<Unit>,
+        success: String? = null,
+        refreshing: Boolean = false,
+    ) {
         if (state.value.busy) return
-        mutable.value = state.value.copy(busy = true, notice = null)
+        val previous = state.value
+        val keepError =
+            refreshing &&
+                (previous.error as? AppError.Business)?.code in
+                    setOf(
+                        "DEVICE_CREDENTIAL_INVALID",
+                        "BIOMETRIC_INVALIDATED",
+                        "BIOMETRIC_KEY_UNAVAILABLE",
+                    )
+        mutable.value =
+            previous.copy(
+                busy = true,
+                notice = if (keepError) previous.notice else null,
+                error = if (keepError) previous.error else null,
+                statusConfirmed = if (refreshing) false else previous.statusConfirmed,
+            )
         operation =
             viewModelScope.launch {
                 try {
@@ -40,21 +61,34 @@ class BiometricViewModel(
                         mutable.value =
                             state.value.copy(
                                 notice = error.message(),
+                                error = error,
                                 needsEmail =
                                     state.value.needsEmail ||
                                         (error is AppError.Business &&
                                             error.code == "EMAIL_VERIFICATION_REQUIRED"),
                             )
-                    } else mutable.value = state.value.copy(notice = success, needsEmail = false)
-                    val refreshed = repository.status(settings)
-                    if (refreshed is AppResult.Success)
-                        mutable.value = state.value.copy(device = refreshed.data)
-                    else if (result is AppResult.Success && refreshed is AppResult.Failure)
-                        mutable.value = state.value.copy(notice = refreshed.error.message())
+                    } else if (!refreshing) {
+                        mutable.value =
+                            state.value.copy(notice = success, error = null, needsEmail = false)
+                    }
+                    if (!refreshing) {
+                        val refreshed = updateDevice()
+                        if (result is AppResult.Success && refreshed is AppResult.Failure)
+                            mutable.value =
+                                state.value.copy(
+                                    notice = refreshed.error.message(),
+                                    error = refreshed.error,
+                                )
+                    }
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
                 } catch (_: Exception) {
-                    mutable.value = state.value.copy(notice = "暂时无法读取本机凭据，请重试")
+                    mutable.value =
+                        state.value.copy(
+                            notice = "暂时无法读取本机登录状态，请重试",
+                            error = AppError.Storage,
+                            statusConfirmed = false,
+                        )
                 } finally {
                     mutable.value = state.value.copy(busy = false)
                 }
@@ -62,22 +96,32 @@ class BiometricViewModel(
     }
 
     fun refresh() =
-        run({
-            val local = repository.status(false)
-            if (local is AppResult.Success)
-                mutable.value =
-                    state.value.copy(
-                        device =
-                            local.data.copy(enabled = if (settings) false else local.data.enabled)
-                    )
-            when (val result = repository.status(settings)) {
-                is AppResult.Success -> {
-                    mutable.value = state.value.copy(device = result.data)
-                    AppResult.Success(Unit)
-                }
-                is AppResult.Failure -> result
+        run(
+            action = {
+                val local = repository.status(false)
+                if (local is AppResult.Success)
+                    mutable.value = state.value.copy(device = local.data)
+                updateDevice()
+            },
+            refreshing = true,
+        )
+
+    private suspend fun updateDevice(): AppResult<Unit> =
+        when (val result = repository.status(settings)) {
+            is AppResult.Success -> {
+                mutable.value = state.value.copy(device = result.data, statusConfirmed = true)
+                AppResult.Success(Unit)
             }
-        })
+            is AppResult.Failure -> {
+                mutable.value = state.value.copy(statusConfirmed = false)
+                result
+            }
+        }
+
+    fun dismissEmail() {
+        cancel()
+        mutable.value = state.value.copy(needsEmail = false, notice = null, error = null)
+    }
 
     fun enable(code: String, signer: BiometricSigner) =
         run({ repository.enable(code, signer) }, "已开启生物识别登录")

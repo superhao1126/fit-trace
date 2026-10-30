@@ -1,0 +1,10 @@
+# build.py 生成的设计稿与点击预览；按需重新生成。
+/light-320/
+/light-390/
+/dark-320/
+/dark-390/
+/all-*.svg
+/overview.svg
+/manifest.json
+/index.html
+/__pycache__/

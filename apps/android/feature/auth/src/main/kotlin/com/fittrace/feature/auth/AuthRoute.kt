@@ -3,7 +3,6 @@ package com.fittrace.feature.auth
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -19,7 +18,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -38,7 +36,6 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.fittrace.core.designsystem.*
 import com.fittrace.core.designsystem.FitTraceTheme
-import com.fittrace.core.designsystem.R as DesignR
 import com.fittrace.core.domain.AuthRepository
 
 @Composable
@@ -128,7 +125,7 @@ internal fun AuthScreen(
     val reset = state.mode in listOf(AuthMode.RESET_EMAIL, AuthMode.RESET_PASSWORD)
     val title =
         when (state.mode) {
-            AuthMode.EMAIL -> "开始你的记录"
+            AuthMode.EMAIL -> if (onBiometric != null) "邮箱登录" else "开始你的记录"
             AuthMode.PASSWORD -> "欢迎回来"
             AuthMode.RESET_EMAIL -> "验证邮箱"
             AuthMode.RESET_PASSWORD -> "设置新密码"
@@ -195,57 +192,7 @@ internal fun AuthScreen(
                 }
                 Spacer(Modifier.height(28.dp))
             } else {
-                Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(top = 16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("循形Fitness", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                    }
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        "记录一点，慢慢变好",
-                        fontSize = 27.sp,
-                        lineHeight = 36.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        "饮食、运动和身体变化，都记在这里",
-                        Modifier.padding(top = 6.dp),
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                if (!keyboardVisible)
-                    Box(Modifier.fillMaxWidth().height(170.dp)) {
-                        Image(
-                            painterResource(DesignR.drawable.login_illustration),
-                            null,
-                            Modifier.fillMaxSize(),
-                        )
-                        Surface(
-                            Modifier.padding(start = 28.dp, top = 20.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surface,
-                        ) {
-                            Text(
-                                "好好吃饭",
-                                Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Surface(
-                            Modifier.align(Alignment.TopEnd).padding(end = 28.dp, top = 7.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surface,
-                        ) {
-                            Text(
-                                "慢慢进步",
-                                Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                else Spacer(Modifier.height(16.dp))
+                AuthBrandHeader(compact = keyboardVisible)
             }
             Column(
                 Modifier.fillMaxWidth()
@@ -404,6 +351,9 @@ internal fun AuthScreen(
                     shape = RoundedCornerShape(25.dp),
                     colors =
                         ButtonDefaults.buttonColors(
+                            contentColor =
+                                if (onBiometric != null) Color(0xFF113821)
+                                else MaterialTheme.colorScheme.onPrimary,
                             disabledContainerColor = MaterialTheme.colorScheme.primaryContainer,
                             disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         ),
@@ -425,23 +375,41 @@ internal fun AuthScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         TextButton(
-                            onClick = {
-                                onMode(
-                                    if (state.mode == AuthMode.EMAIL) AuthMode.PASSWORD
-                                    else AuthMode.EMAIL
-                                )
-                            },
+                            onClick =
+                                onBiometric
+                                    ?: {
+                                        onMode(
+                                            if (state.mode == AuthMode.EMAIL) AuthMode.PASSWORD
+                                            else AuthMode.EMAIL
+                                        )
+                                    },
                             enabled = !state.busy,
                             contentPadding = PaddingValues(0.dp),
                         ) {
                             Text(
-                                if (state.mode == AuthMode.EMAIL) "密码登录" else "邮箱验证码登录",
+                                if (onBiometric != null) "使用指纹登录"
+                                else if (state.mode == AuthMode.EMAIL) "密码登录" else "邮箱验证码登录",
                                 fontSize = 13.sp,
                                 color = MaterialTheme.colorScheme.secondary,
                             )
                         }
                         Spacer(Modifier.weight(1f))
-                        if (state.mode == AuthMode.PASSWORD)
+                        if (onBiometric != null)
+                            TextButton(
+                                onClick = {
+                                    onMode(
+                                        if (state.mode == AuthMode.EMAIL) AuthMode.PASSWORD
+                                        else AuthMode.EMAIL
+                                    )
+                                },
+                                enabled = !state.busy,
+                            ) {
+                                Text(
+                                    if (state.mode == AuthMode.EMAIL) "密码登录" else "邮箱验证码登录",
+                                    fontSize = 12.sp,
+                                )
+                            }
+                        if (state.mode == AuthMode.PASSWORD && onBiometric == null)
                             TextButton(
                                 onClick = { onMode(AuthMode.RESET_EMAIL) },
                                 enabled = !state.busy,
@@ -449,9 +417,13 @@ internal fun AuthScreen(
                                 Text("设置或找回密码", fontSize = 12.sp)
                             }
                     }
-                if (!reset && onBiometric != null)
-                    TextButton(onClick = onBiometric, enabled = !state.busy) {
-                        Text("返回指纹 / 生物识别登录")
+                if (!reset && state.mode == AuthMode.PASSWORD && onBiometric != null)
+                    TextButton(
+                        onClick = { onMode(AuthMode.RESET_EMAIL) },
+                        enabled = !state.busy,
+                        modifier = Modifier.align(Alignment.End),
+                    ) {
+                        Text("设置或找回密码", fontSize = 12.sp)
                     }
                 if (!reset) {
                     Spacer(Modifier.height(12.dp))
