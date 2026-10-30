@@ -31,7 +31,7 @@ const items = [
     icon: 'archive' as const,
   },
   {
-    title: '关于循形',
+    title: '关于循形Fitness',
     description: '应用介绍与版本信息',
     path: '/settings/about',
     icon: 'home' as const,

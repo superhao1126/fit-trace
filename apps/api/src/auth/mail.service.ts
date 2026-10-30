@@ -41,7 +41,7 @@ export class MailService {
       await transporter.sendMail({
         from: this.config.get<string>('SMTP_FROM'),
         to: email,
-        subject: `循形 FitTrace ${{ LOGIN: '登录', REGISTER: '注册', RESET_PASSWORD: '重置密码' }[purpose]}验证码`,
+        subject: `循形Fitness ${{ LOGIN: '登录', REGISTER: '注册', RESET_PASSWORD: '重置密码' }[purpose]}验证码`,
         text: `你的验证码是 ${code}，10 分钟内有效，仅可使用一次。请勿将验证码提供给他人。如果不是你本人操作，请忽略此邮件`,
       });
     } catch {

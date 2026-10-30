@@ -1,6 +1,6 @@
-# FitTrace
+# 循形Fitness
 
-FitTrace 是一个用于长期记录身体数据、饮食、训练和身材变化的个人健康工具。本仓库是基于 pnpm workspace 的 Monorepo。
+循形Fitness 是一个用于长期记录身体数据、饮食、训练和身材变化的个人健康工具。本仓库是基于 pnpm workspace 的 Monorepo。
 
 ## 环境要求
 

@@ -17,7 +17,7 @@ import { showRequestError } from '@/utils/request-error';
 
 const auth = useAuthStore();
 const router = useRouter();
-const nickname = ref(auth.user?.nickname ?? auth.user?.email.split('@')[0] ?? '循形用户');
+const nickname = ref(auth.user?.nickname ?? auth.user?.email.split('@')[0] ?? '循形Fitness用户');
 const gender = ref<UserGender>(auth.user?.gender ?? 'UNSPECIFIED');
 const avatarUrl = ref(auth.user?.avatarUrl ?? null);
 const avatarFile = ref<File | null>(null);
@@ -113,7 +113,7 @@ onBeforeUnmount(() => {
               :disabled="saving"
               @click="imageInput?.click()"
             >
-              <UserAvatar :url="preview" :name="nickname || '循形用户'" :size="76" />
+              <UserAvatar :url="preview" :name="nickname || '循形Fitness用户'" :size="76" />
               <span class="avatar-picker__camera"><UiIcon name="photo" /></span>
             </button>
             <div>

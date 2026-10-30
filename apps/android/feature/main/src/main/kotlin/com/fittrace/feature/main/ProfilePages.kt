@@ -556,7 +556,7 @@ internal fun ProfileSettingsScreen(
                 appearance = true
             }
         }
-        ProfileMenuGroup("关于循形") {
+        ProfileMenuGroup("关于循形Fitness") {
             ProfileMenuRow("用户协议", R.drawable.profile_archive, enabled = !busy) { onPolicy(false) }
             ProfileMenuRow("隐私政策", R.drawable.profile_archive, enabled = !busy) { onPolicy(true) }
             ProfileMenuRow("版本与关于", R.drawable.home_home, enabled = !busy, onClick = onAbout)
@@ -653,7 +653,6 @@ internal fun ProfileAboutScreen(versionName: String, onBack: () -> Unit, onPolic
         ) {
             Image(painterResource(R.drawable.design_sprout), null, Modifier.size(100.dp))
             Text(stringResource(R.string.app_name), fontSize = 26.sp, fontWeight = FontWeight.Bold)
-            Text("FitTrace", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(
                 stringResource(R.string.brand_slogan),
                 fontSize = 14.sp,

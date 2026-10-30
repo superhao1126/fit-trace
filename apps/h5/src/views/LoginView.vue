@@ -55,7 +55,7 @@ const countdown = computed(() => Math.max(0, Math.ceil((resendAt.value - now.val
 const title = computed(() =>
   mode.value === 'reset' && resetGrant.value
     ? '设置新密码'
-    : { login: '登录循形', password: '密码登录', reset: '验证邮箱' }[mode.value],
+    : { login: '登录循形Fitness', password: '密码登录', reset: '验证邮箱' }[mode.value],
 );
 const subtitle = computed(
   () =>
@@ -297,9 +297,9 @@ async function submit(): Promise<void> {
   <main class="auth-page" :class="{ 'auth-page--reset': mode === 'reset' }">
     <div class="auth-shell">
       <header v-if="mode !== 'reset'" class="auth-header">
-        <div class="auth-brand" aria-label="循形 FitTrace">
+        <div class="auth-brand" aria-label="循形Fitness">
           <img src="/brand/app-icon-512.png" width="48" height="48" alt="" />
-          <span class="brand-wordmark"><strong>循形</strong><span>FitTrace</span></span>
+          <span class="brand-wordmark"><strong>循形Fitness</strong></span>
         </div>
       </header>
       <section class="auth-content" aria-labelledby="auth-title">

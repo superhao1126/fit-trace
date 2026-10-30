@@ -16,7 +16,7 @@ const kind = computed(() => (route.meta.policyKind === 'privacy' ? 'privacy' : '
     <UiDetailHeader
       :title="kind === 'agreement' ? '用户协议' : '隐私政策'"
       :subtitle="
-        kind === 'agreement' ? '循形 FitTrace · 基础使用条款' : '循形 FitTrace · 信息使用说明'
+        kind === 'agreement' ? '循形Fitness · 基础使用条款' : '循形Fitness · 信息使用说明'
       "
     />
     <section class="policy-card"><PolicyContent :kind="kind" /></section>

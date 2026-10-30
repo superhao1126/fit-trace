@@ -277,7 +277,7 @@ internal fun ProfileScreen(
                         }
                         ProfileMenuRow("显示与设置", R.drawable.home_profile, onClick = onSettings)
                     }
-                    ProfileMenuGroup("关于循形") {
+                    ProfileMenuGroup("关于循形Fitness") {
                         ProfileMenuRow("用户协议", R.drawable.profile_archive) { onPolicy(false) }
                         ProfileMenuRow("隐私政策", R.drawable.profile_archive) { onPolicy(true) }
                         ProfileMenuRow("版本与关于", R.drawable.home_home, onClick = onAbout)

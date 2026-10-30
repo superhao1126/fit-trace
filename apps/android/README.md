@@ -1,4 +1,4 @@
-# 循形 Android
+# 循形Fitness Android
 
 独立 Kotlin + Jetpack Compose 客户端。使用 Android Studio 打开本目录；H5、Node.js、pnpm 均不参与 Android 构建。
 
@@ -72,6 +72,6 @@ CI 另外构建并检查生产 Release，确保 R8 混淆链路可用。
 
 ## 开发日志
 
-Debug 包已启用本地接口诊断日志，Android Studio 的 Logcat 以 `tag:FitTrace.Http` 筛选。记录完整 URL、查询参数、请求正文、服务端响应正文、HTTP 状态码、耗时及网络异常类型。按调试要求，正文中的密码、验证码和 Token 均明文显示；JSON 缩进并分段输出，请求头/响应头不输出。Release 关闭。查看步骤和验证边界见 [开发日志说明](../../docs/ANDROID-LOGGING.md)。
+Debug 包已启用本地接口诊断日志，Android Studio 的 Logcat 以 `tag:循形Fitness.Http` 筛选。记录完整 URL、查询参数、请求正文、服务端响应正文、HTTP 状态码、耗时及网络异常类型。按调试要求，正文中的密码、验证码和 Token 均明文显示；JSON 缩进并分段输出，请求头/响应头不输出。Release 关闭。查看步骤和验证边界见 [开发日志说明](../../docs/ANDROID-LOGGING.md)。
 
 2026-10-20：原域名已停用，按用户指定将 prod 接口改为 `http://10.0.3.54:3000/api/v1/`；2026-10-21 起 prod/dev 网络策略允许任意地址的 HTTP 请求。沿用 prodDebug 包名覆盖更新。

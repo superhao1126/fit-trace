@@ -197,13 +197,7 @@ internal fun AuthScreen(
             } else {
                 Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(top = 16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("循形", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                        Text(
-                            "FITTRACE",
-                            Modifier.padding(start = 12.dp),
-                            fontSize = 10.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        Text("循形Fitness", fontSize = 22.sp, fontWeight = FontWeight.Bold)
                     }
                     Spacer(Modifier.height(16.dp))
                     Text(

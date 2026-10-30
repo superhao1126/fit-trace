@@ -20,7 +20,7 @@ const loading = ref(true);
 const summaryError = ref(false);
 const latestBody = ref<BodyRecord | null>(null);
 const displayName = computed(
-  () => auth.user?.nickname || auth.user?.email?.split('@')[0] || 'FitTrace 用户',
+  () => auth.user?.nickname || auth.user?.email?.split('@')[0] || '循形Fitness用户',
 );
 const goalProgress = computed(() => {
   const goal = auth.user?.goal;

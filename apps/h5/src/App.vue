@@ -30,7 +30,7 @@ void start();
   <UiToastHost />
   <RouterView v-if="ready" />
   <main v-else-if="startupError" class="startup-error" role="alert">
-    <p>启动失败，请重新打开循形</p>
+    <p>启动失败，请重新打开循形Fitness</p>
     <UiButton @click="retry">重新加载</UiButton>
   </main>
 </template>
